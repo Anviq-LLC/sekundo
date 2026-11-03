@@ -74,15 +74,15 @@ describe("graphical computer spec", () => {
     // Explicit "" stands for unset, so exported ANVIQ_COMPUTER_IMAGE* values cannot leak in.
     expect(resolveComputerImage("", "")).toBe("anviq/computer:local");
     expect(resolveComputerImage("", "edge")).toBe("anviq/computer:local");
-    expect(resolveComputerImage("ghcr.io/leovoss/anviq-agents/computer", "edge")).toBe(
-      "ghcr.io/leovoss/anviq-agents/computer:edge",
+    expect(resolveComputerImage("ghcr.io/anviq-llc/sekundo/computer", "edge")).toBe(
+      "ghcr.io/anviq-llc/sekundo/computer:edge",
     );
-    expect(resolveComputerImage("ghcr.io/leovoss/anviq-agents/computer", "")).toBe(
-      "ghcr.io/leovoss/anviq-agents/computer",
+    expect(resolveComputerImage("ghcr.io/anviq-llc/sekundo/computer", "")).toBe(
+      "ghcr.io/anviq-llc/sekundo/computer",
     );
     // Compose already appends the tag, so a tagged or pinned image is never tagged twice.
-    expect(resolveComputerImage("ghcr.io/leovoss/anviq-agents/computer:edge", "edge")).toBe(
-      "ghcr.io/leovoss/anviq-agents/computer:edge",
+    expect(resolveComputerImage("ghcr.io/anviq-llc/sekundo/computer:edge", "edge")).toBe(
+      "ghcr.io/anviq-llc/sekundo/computer:edge",
     );
     expect(resolveComputerImage("registry.example.com:5000/anviq/computer", "v1.2.3")).toBe(
       "registry.example.com:5000/anviq/computer:v1.2.3",

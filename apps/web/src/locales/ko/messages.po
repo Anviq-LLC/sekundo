@@ -722,8 +722,8 @@ msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "이 서비스에는 구독 로그인이 아니라 API 키가 저장되어 있습니다."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "An existing Honcho peer to read from. Anviq Agents never writes to it."
-msgstr "데이터를 읽어올 기존 Honcho 피어입니다. Anviq Agents는 이 피어에 데이터를 쓰지 않습니다."
+msgid "An existing Honcho peer to read from. Sekundo never writes to it."
+msgstr "데이터를 읽어올 기존 Honcho 피어입니다. Sekundo는 이 피어에 데이터를 쓰지 않습니다."
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -768,11 +768,11 @@ msgstr ""
 
 #: src/components/ModelCredits.tsx
 #: src/pages/Onboarding.tsx
-msgid "Anviq Agents credits"
+msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "anviq-shared and IDs starting with bot- are reserved for Anviq Agents."
+msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -1306,7 +1306,7 @@ msgstr "폴더 선택"
 
 #: src/components/ModelCredits.tsx
 #: src/components/SubscriptionGate.tsx
-msgid "Choose how to use Anviq Agents"
+msgid "Choose how to use Sekundo"
 msgstr ""
 
 #: src/lib/localized-provider-hint.ts
@@ -1611,8 +1611,8 @@ msgstr "먼저 이 모델의 제공자를 연결하세요."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose Anviq Agents credits in Billing."
-msgstr "AI 모델에서 자체 API 키를 연결하거나 결제에서 Anviq Agents 크레딧을 선택하세요."
+msgid "Connect your own API key in Models or choose Sekundo credits in Billing."
+msgstr "AI 모델에서 자체 API 키를 연결하거나 결제에서 Sekundo 크레딧을 선택하세요."
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2278,8 +2278,8 @@ msgid "Create space"
 msgstr "스페이스 만들기"
 
 #: src/pages/Auth.tsx
-msgid "Create your Anviq Agents"
-msgstr "Anviq Agents 계정 만들기"
+msgid "Create your Sekundo"
+msgstr "Sekundo 계정 만들기"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -3114,7 +3114,7 @@ msgid "How to check"
 msgstr "완료 확인 방법"
 
 #: src/components/SignupSurvey.tsx
-msgid "How will you use Anviq Agents?"
+msgid "How will you use Sekundo?"
 msgstr ""
 
 #: src/pages/shell/computer-release-actions.tsx
@@ -4127,8 +4127,8 @@ msgid "Not imported"
 msgstr "가져오지 않음"
 
 #: src/pages/shell/import-status.ts
-msgid "Not in Anviq Agents' catalog"
-msgstr "Anviq Agents 카탈로그에 없음"
+msgid "Not in Sekundo' catalog"
+msgstr "Sekundo 카탈로그에 없음"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Not in the plugin catalog"
@@ -4140,12 +4140,12 @@ msgstr "나중에"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
-msgid "Not supported in Anviq Agents"
-msgstr "Anviq Agents에서 지원하지 않음"
+msgid "Not supported in Sekundo"
+msgstr "Sekundo에서 지원하지 않음"
 
 #: src/pages/shell/agent-import.tsx
-msgid "Not used by Anviq Agents"
-msgstr "Anviq Agents에서 사용하지 않음"
+msgid "Not used by Sekundo"
+msgstr "Sekundo에서 사용하지 않음"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not working"
@@ -4389,8 +4389,8 @@ msgid "Paste a replacement key"
 msgstr "새 API 키를 붙여넣으세요"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
-msgid "Paste the OpenAI-compatible address from your server. Anviq Agents adds /v1 if needed."
-msgstr "서버의 OpenAI 호환 주소를 붙여넣으세요. 필요하면 Anviq Agents가 /v1을 추가합니다."
+msgid "Paste the OpenAI-compatible address from your server. Sekundo adds /v1 if needed."
+msgstr "서버의 OpenAI 호환 주소를 붙여넣으세요. 필요하면 Sekundo가 /v1을 추가합니다."
 
 #: src/pages/shell/agent-import.tsx
 msgid "Paste the reply"
@@ -4955,8 +4955,8 @@ msgid "Retry screen"
 msgstr ""
 
 #: src/pages/McpOAuthCallback.tsx
-msgid "Return to Anviq Agents"
-msgstr "Anviq Agents로 돌아가기"
+msgid "Return to Sekundo"
+msgstr "Sekundo로 돌아가기"
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -5399,8 +5399,8 @@ msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "<0>{0}</0>에서 로그인한 다음 코드를 여기에 붙여넣으세요."
 
 #: src/pages/Auth.tsx
-msgid "Sign in to Anviq Agents"
-msgstr "Anviq Agents 로그인"
+msgid "Sign in to Sekundo"
+msgstr "Sekundo 로그인"
 
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
@@ -5640,8 +5640,8 @@ msgid "Subscribe for ${0} / month"
 msgstr "월 ${0}에 구독"
 
 #: src/components/ModelCredits.tsx
-msgid "Subscribe to Anviq Agents credits"
-msgstr "Anviq Agents 크레딧 구독"
+msgid "Subscribe to Sekundo credits"
+msgstr "Sekundo 크레딧 구독"
 
 #: src/components/ModelCredits.tsx
 msgid "Subscribe with your own AI"
@@ -5955,8 +5955,8 @@ msgid "This server is already connected. Disconnect it first to authorize again.
 msgstr "이 서버는 이미 연결되어 있습니다. 다시 인증하려면 먼저 연결을 해제하세요."
 
 #: src/pages/model-settings/connection-controls.tsx
-msgid "This subscription sign-in is not available in Anviq Agents yet. Use a deployment credential or choose another provider."
-msgstr "이 구독 로그인 방식은 아직 Anviq Agents에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요."
+msgid "This subscription sign-in is not available in Sekundo yet. Use a deployment credential or choose another provider."
+msgstr "이 구독 로그인 방식은 아직 Sekundo에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요."
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
@@ -6215,7 +6215,7 @@ msgid "Use a found model"
 msgstr "찾은 모델 중에서 선택"
 
 #: src/components/ModelCredits.tsx
-msgid "Use Anviq Agents credits"
+msgid "Use Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
@@ -6380,7 +6380,7 @@ msgid "Weekends"
 msgstr "주말"
 
 #: src/components/SignupSurvey.tsx
-msgid "Welcome to Anviq Agents"
+msgid "Welcome to Sekundo"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -6388,7 +6388,7 @@ msgid "What about its memories?"
 msgstr "이 Bot의 기억은 어떻게 할까요?"
 
 #: src/components/SignupSurvey.tsx
-msgid "What do you most want Anviq Agents to help with?"
+msgid "What do you most want Sekundo to help with?"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx

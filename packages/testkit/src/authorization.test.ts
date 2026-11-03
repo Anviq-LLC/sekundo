@@ -628,7 +628,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
     const signIn = (password: string) =>
       app.request("/api/auth/sign-in/email", {
         method: "POST",
-        headers: { "content-type": "application/json", origin: "anviq://" },
+        headers: { "content-type": "application/json", origin: "sekundo://" },
         body: JSON.stringify({ email, password }),
       });
     const responses = {
@@ -641,7 +641,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
         body: "{}",
       }),
       me: await rpc("me", phone.headers),
-      signedOutMe: await rpc("me", { origin: "anviq://" }),
+      signedOutMe: await rpc("me", { origin: "sekundo://" }),
       unknownProcedure: await rpc("not-a-procedure", phone.headers),
     };
 
@@ -692,7 +692,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
         await app.request("/rpc/me", {
           method: "POST",
           headers: {
-            origin: "anviq://",
+            origin: "sekundo://",
             authorization: `Bearer ${token}`,
             "content-type": "application/json",
           },
@@ -703,7 +703,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
       const response = await app.request(`/api/auth${path}`, {
         method: "POST",
         headers: {
-          origin: "anviq://",
+          origin: "sekundo://",
           "content-type": "application/json",
           ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
@@ -728,7 +728,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
     expect(await me(stored.token)).toBe(401);
     expect(await me(`${stored.token}.${"A".repeat(43)}=`)).toBe(401);
     const rawSession = await app.request("/api/auth/get-session", {
-      headers: { origin: "anviq://", authorization: `Bearer ${stored.token}` },
+      headers: { origin: "sekundo://", authorization: `Bearer ${stored.token}` },
     });
     expect(await rawSession.json()).toBeNull();
 
@@ -2122,12 +2122,12 @@ async function signup(app: App, email: string, name: string) {
 async function phoneSession(app: App, email: string) {
   const response = await app.request("/api/auth/sign-up/email", {
     method: "POST",
-    headers: { "content-type": "application/json", origin: "anviq://" },
+    headers: { "content-type": "application/json", origin: "sekundo://" },
     body: JSON.stringify({ email, password: "password12", name: "Phone" }),
   });
   const { token, user } = (await response.json()) as { token: string; user: { id: string } };
   const cookie = sessionCookieHeader(response);
-  const headers = { origin: "anviq://", authorization: `Bearer ${token}` };
+  const headers = { origin: "sekundo://", authorization: `Bearer ${token}` };
   const me = async () =>
     (
       await app.request("/rpc/me", {

@@ -1116,7 +1116,7 @@ describe("composio tool mapping", () => {
     ).toEqual({ connectIds: ["row-gh"], revokeIds: [] });
   });
 
-  it("only fetches live Composio slugs when a Anviq Agents row is still pending or errored", () => {
+  it("only fetches live Composio slugs when a Sekundo row is still pending or errored", () => {
     expect(needsLivePluginSync([{ status: "connected" }, { status: "revoked" }])).toBe(false);
     expect(needsLivePluginSync([{ status: "pending" }])).toBe(true);
     expect(needsLivePluginSync([{ status: "error" }])).toBe(true);
@@ -1131,7 +1131,7 @@ describe("composio tool mapping", () => {
     ).toEqual([{ provider: "github", displayName: "GitHub" }]);
   });
 
-  it("plans DB sync when Composio is connected but Anviq Agents is still pending", () => {
+  it("plans DB sync when Composio is connected but Sekundo is still pending", () => {
     expect(
       planLiveConnectionSync(
         [

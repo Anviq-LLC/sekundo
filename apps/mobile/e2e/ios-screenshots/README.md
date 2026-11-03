@@ -1,6 +1,6 @@
 # iOS screenshot catalog
 
-Local, agent-run capture of the Anviq Agents iOS app. It is not part of CI.
+Local, agent-run capture of the Sekundo iOS app. It is not part of CI.
 
 One command signs into disposable fixture accounts, runs the Maestro flows in
 `catalog.json`, and writes PNGs plus a static `index.html` gallery. Add a screen

@@ -177,7 +177,7 @@ describe("classifyDockerFailure", () => {
     ["Error response from daemon: manifest unknown", "image-not-found"],
     ["pull access denied for ghcr.io/x/y, repository does not exist", "image-not-found"],
     [
-      'Error response from daemon: failed to resolve reference "ghcr.io/leovoss/anviq-agents/computer:v0.3.5": ghcr.io/leovoss/anviq-agents/computer:v0.3.5: not found',
+      'Error response from daemon: failed to resolve reference "ghcr.io/anviq-llc/sekundo/computer:v0.3.5": ghcr.io/anviq-llc/sekundo/computer:v0.3.5: not found',
       "image-not-found",
     ],
     ["Get https://ghcr.io/v2/: dial tcp: lookup ghcr.io: no such host", "network"],

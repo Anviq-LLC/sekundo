@@ -1,4 +1,4 @@
-# Self-hosting Anviq Agents
+# Self-hosting Sekundo
 
 The signed-in product is a long-running API, a Graphile Worker, Postgres, and a computer provider (Docker supervisor, E2B, Daytona, CreateOS, or Boat). It is not a static site.
 
@@ -12,12 +12,12 @@ Compose bot homes mount only their own subdirectory of the application volume us
 
 ## Published images (no checkout)
 
-Pull Postgres and `ghcr.io/leovoss/anviq-agents/app` into any empty folder. No clone or image build.
+Pull Postgres and `ghcr.io/anviq-llc/sekundo/app` into any empty folder. No clone or image build.
 Requires Docker Engine 26+ (API 1.45+ for bot home volume subpaths), the Compose plugin, curl, and OpenSSL.
 
 ```bash
 mkdir -p anviq && cd anviq &&
-curl -fsSLO https://raw.githubusercontent.com/leovoss/anviq-agents/main/infra/compose/install-images.sh &&
+curl -fsSLO https://raw.githubusercontent.com/anviq-llc/sekundo/main/infra/compose/install-images.sh &&
 bash install-images.sh
 ```
 
@@ -29,7 +29,7 @@ optional providers before startup, run `bash install-images.sh --prepare-only`, 
 run `bash install-images.sh`. Flags may be combined in either order: `--prepare-only`, `--local`.
 
 `SANDBOX_PROVIDER` defaults to `docker`. The images Compose file runs a sandbox supervisor
-(from the app image, on the internal network only) and pulls `ghcr.io/leovoss/anviq-agents/computer`.
+(from the app image, on the internal network only) and pulls `ghcr.io/anviq-llc/sekundo/computer`.
 Signup and local Docker computers work without an E2B account. Optional remote providers: set
 `SANDBOX_PROVIDER` to `e2b`, `daytona`, `createos`, or `boat` and add the matching API key. The published-images
 Compose stack requires `SANDBOX_SUPERVISOR_TOKEN` for every provider; leave it empty and `compose up` fails closed.
@@ -194,7 +194,7 @@ Do not publish Postgres on a public interface.
 
 ### Database roles
 
-Anviq Agents uses two Postgres logins:
+Sekundo uses two Postgres logins:
 
 - The owner (`POSTGRES_USER`, or `DATABASE_MIGRATION_URL` outside Compose) runs migrations and
   owns the tables.
@@ -294,7 +294,7 @@ AUTH_PASSWORD_ENABLED=true
 OIDC_ALLOW_SIGNUP_BYPASS=false
 ```
 
-The issuer must be HTTPS and exactly match the discovery document's issuer. Anviq Agents loads
+The issuer must be HTTPS and exactly match the discovery document's issuer. Sekundo loads
 `<issuer>/.well-known/openid-configuration`, verifies ID tokens against discovery JWKS with
 issuer, audience and nonce checks, and uses authorization codes with PKCE. Additional scopes
 may be space- or comma-separated; `openid email profile` are always requested. `OIDC_NAME`
@@ -310,7 +310,7 @@ https://app.example.com/api/auth/callback/oidc
 
 Web, Electron and mobile use the same provider redirect URI. Electron completes SSO in a
 sandboxed in-app popup sharing the app's session, then returns to the main window. Mobile completes the callback
-on the API, then returns to `anviq://sign-in` (or `anviq://account` for linking and reauthentication) through Better Auth's Expo authorization proxy
+on the API, then returns to `sekundo://sign-in` (or `sekundo://account` for linking and reauthentication) through Better Auth's Expo authorization proxy
 and a native auth browser session. The `anviq` app scheme is trusted by the auth server;
 never register a client secret in the mobile app. Mobile stores the resulting session with
 SecureStore, like password sign-in. Native builds need the Expo WebBrowser module.
@@ -377,7 +377,7 @@ error that names `EXPO_ACCESS_TOKEN`; the token itself is never logged.
 ### Verification and password recovery email
 
 Password changes for signed-in users require no email configuration. Forgotten-password recovery
-appears on sign-in only when a transactional email provider is available. Anviq Agents uses a
+appears on sign-in only when a transactional email provider is available. Sekundo uses a
 provider-neutral contract with Resend API and SMTP adapters. Templates render locally with React
 Email into HTML and plain text, independent of the sending provider.
 
@@ -387,7 +387,7 @@ to that domain, then configure:
 ```env
 EMAIL_PROVIDER=resend
 EMAIL_API_KEY=replace-with-sending-api-key
-EMAIL_FROM=Anviq Agents <hello@mail.example.com>
+EMAIL_FROM=Sekundo <hello@mail.example.com>
 ```
 
 Disable click and open tracking for account email in the provider's domain settings. Resend delivery
@@ -398,7 +398,7 @@ For Amazon SES or another SMTP server, use:
 
 ```env
 SMTP_URL=smtps://smtp-user:replace-with-password@smtp.example.com:465
-EMAIL_FROM=Anviq Agents <no-reply@example.com>
+EMAIL_FROM=Sekundo <no-reply@example.com>
 ```
 
 Set `EMAIL_REPLY_TO` to send replies somewhere other than `EMAIL_FROM`.
@@ -411,7 +411,7 @@ Resend also supports SMTP: use `smtp.resend.com`, username `resend`, and an API 
 SES, use the regional SMTP endpoint and SES SMTP credentials; these are different from ordinary AWS
 access keys. Verify the sender/domain with the provider before testing delivery. Keep credentials in
 `.env`, never in tracked files. `smtps://` uses implicit TLS; `smtp://` is also supported but requires
-STARTTLS. Anviq Agents rejects configuration that disables TLS or certificate verification.
+STARTTLS. Sekundo rejects configuration that disables TLS or certificate verification.
 
 Local source development can use the offline email emulator instead. It captures email without
 contacting a provider:
@@ -445,13 +445,13 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT` on the worker to enable optional OpenTelemetry
 to the base endpoint and honors standard `OTEL_EXPORTER_OTLP_HEADERS` (comma-separated
 `key=value` pairs) and `OTEL_SERVICE_NAME` (default `anviq-worker`). Compose workers
 read these settings from `.env`. With an empty or unset endpoint, no tracing SDK loads
-or initializes. No collector or hosted service is required to run Anviq Agents.
+or initializes. No collector or hosted service is required to run Sekundo.
 
 Traces contain a `anviq.agent.run` span with `pi.ai.request` model-call spans and
 `pi.agent.tool` steps, including duration, token usage, cost when known, and success/error
 status. Each span carries `anviq.bot.id`, `anviq.run.id`, and `anviq.routine.id`
 when the run belongs to a routine. Helper model calls inherit the same correlation.
-Pi 0.87.1 exposes built-in telemetry through its newer harness; Anviq Agents' legacy Agent
+Pi 0.87.1 exposes built-in telemetry through its newer harness; Sekundo' legacy Agent
 adapter maps its model and tool lifecycle through the same Pi telemetry contract.
 
 Prompt, response, tool arguments and tool results are excluded by default.
@@ -604,7 +604,7 @@ ANVIQ_LOCAL_MAX_TOKENS=4096
 ANVIQ_LOCAL_VISION_MODELS=qwen3-vl
 ```
 
-The loopback default is suitable when running Anviq Agents from a source checkout. From containers,
+The loopback default is suitable when running Sekundo from a source checkout. From containers,
 prefer a stable LAN RFC1918 address (not Compose service DNS alone). On Docker Desktop,
 `host.docker.internal` also works.
 On Docker Desktop, a bot computer shell can often reach services bound to host `127.0.0.1`
@@ -612,7 +612,7 @@ through that same hostname. Do not run sensitive unauthenticated services on loo
 bots run, or firewall / block that path. Linux does not get `host.docker.internal` the same
 way by default.
 Only configure an endpoint you control: prompts, attachments, and tool results sent to that model
-leave Anviq Agents through this URL. Leave `ANVIQ_LOCAL_MODELS` blank to disable the provider.
+leave Sekundo through this URL. Leave `ANVIQ_LOCAL_MODELS` blank to disable the provider.
 
 ### Ollama Cloud
 
@@ -707,7 +707,7 @@ for it to find the origins to add.
 ### Menu links
 
 `ANVIQ_NAV_LINKS` adds items to the account menu that open a page from the same domain inside the
-web app, such as an internal tool your reverse proxy serves next to Anviq Agents. Set it on the API:
+web app, such as an internal tool your reverse proxy serves next to Sekundo. Set it on the API:
 
 ```bash
 ANVIQ_NAV_LINKS='[{"id":"clients","label":"Clients","path":"/ext/clients/"}]'
@@ -718,7 +718,7 @@ single `/` and must not be under `/app`, `/api`, `/rpc`, `/novnc` or `/health`. 
 catch-all in your proxy, for example `handle /ext/* { reverse_proxy office:8080 }` in
 `Caddyfile.prod`. A malformed value stops the API from starting.
 
-Pages open sandboxed with an opaque origin, so they cannot read Anviq Agents' pages or act with the
+Pages open sandboxed with an opaque origin, so they cannot read Sekundo' pages or act with the
 signed-in user's session; that also blocks their own cookies and storage. Add `"trusted": true` to a
 link only for a service you control: a trusted page runs with the signed-in user's access, like a
 script allowed by `ANVIQ_CSP_SCRIPT_SRC`. The page must allow framing by the app
@@ -855,15 +855,15 @@ the default work as described for Parallel.
 Supermemory and Honcho can run on your own network. In **Settings → Memory**, choose **Local**
 and enter the instance's base URL. The operator must set `MCP_ALLOW_PRIVATE_ENDPOINT=true`; workspace owners can then save a local endpoint. It must
 be loopback or resolve to private addresses (a Compose service name, an RFC1918 or unique-local
-address, or a `.internal` name such as Railway's private network); Anviq Agents pins the resolved
+address, or a `.internal` name such as Railway's private network); Sekundo pins the resolved
 address for every request. Space members use the saved connection without seeing its key.
 
 For [Honcho](https://github.com/plastic-labs/honcho), enable `AUTH_USE_AUTH` on the Honcho
 server and use an admin JWT from its `scripts/generate_jwt.py --admin` as the key, so each Space
 gets its own workspace. A workspace-scoped JWT works when you enter that workspace. Honcho needs
 its own PostgreSQL with pgvector, an LLM provider, and an embedding provider; set
-`EMBEDDING_VECTOR_DIMENSIONS` before its first start. Anviq Agents stores only explicitly saved facts
-in Honcho; conversation summaries stay in Anviq Agents. Bots can forget a saved fact on Honcho v3.2 or
+`EMBEDDING_VECTOR_DIMENSIONS` before its first start. Sekundo stores only explicitly saved facts
+in Honcho; conversation summaries stay in Sekundo. Bots can forget a saved fact on Honcho v3.2 or
 later.
 
 Remote MCP servers and installed API / GraphQL connectors default to public HTTPS. The deployment
@@ -871,17 +871,17 @@ owner can attach one on localhost, the same LAN, or a Docker network. Set
 `MCP_ALLOW_PRIVATE_ENDPOINT=true` on the API and worker to allow these for every user. Cloud
 metadata addresses stay blocked. Leave the flag unset on public installs.
 
-Remote MCP servers that use OAuth normally register Anviq Agents with their provider on the first
+Remote MCP servers that use OAuth normally register Sekundo with their provider on the first
 **Connect OAuth**. Some providers only accept a client you create in their console. For those,
 enter the client ID (and secret, for a confidential client) under **Advanced** when adding the
 server, and add the **Redirect URI** shown there (`<your web origin>/mcp/oauth/callback`) to the
 client's allowed redirect URIs. The client is stored encrypted with the server's other
 credentials and survives **Disconnect**; switching to a different client drops the current grant.
-On first use the client is bound to the authorization server the MCP server pointed to, and Anviq Agents
+On first use the client is bound to the authorization server the MCP server pointed to, and Sekundo
 refuses to send it anywhere else afterwards. Replacing the client clears the binding.
 
 Stdio MCP servers can use OAuth too. They do not authorize themselves (the MCP spec has them
-read credentials from the environment), so Anviq Agents runs the flow for them. They are off unless
+read credentials from the environment), so Sekundo runs the flow for them. They are off unless
 the API and worker have `MCP_STDIO_ENABLED=true` and the command is listed in
 `MCP_STDIO_ALLOWED_COMMANDS`. When adding the server, enter the OAuth client, its
 **Authorization server** (the issuer, for example `https://accounts.google.com`) and the
@@ -897,12 +897,12 @@ through its environment variables:
   written to a private temporary directory when the process starts, and the variable receives
   the file's path. Use this for packages that read a credentials or token file path.
 
-Anviq Agents refreshes the grant and restarts the process shortly before an access token it passed
+Sekundo refreshes the grant and restarts the process shortly before an access token it passed
 expires, so a long-running process never keeps a dead token. A process that only receives the
 refresh token refreshes on its own. Temporary files are removed when the process stops.
 
 A server launched as `npx [-y] <package>[@version]` (or `npx -p <package> <bin>`) is not
-downloaded on every start. Anviq Agents installs the package once with `npm install` into
+downloaded on every start. Sekundo installs the package once with `npm install` into
 `MCP_PACKAGES_DIR` (default `DATA_DIR/mcp-packages`, shared by the API and worker), then runs
 its bin directly; `npx` must still be in `MCP_STDIO_ALLOWED_COMMANDS`. The install has its own
 timeout, `MCP_STDIO_INSTALL_TIMEOUT_MS` (default 180000), separate from the handshake timeout
@@ -927,14 +927,14 @@ Existing connections default to disabled. Reconnect former Qwen-list or deployme
 via **Settings → Models** and turn it on; the old environment list is no longer read.
 
 Enabled connections default to medium thinking. Web and desktop expose **Thinking** in a bot's
-advanced settings; mobile inherits the same backend policy. Anviq Agents sends standard
+advanced settings; mobile inherits the same backend policy. Sekundo sends standard
 `reasoning_effort` (`minimal`, `low`, `medium`, `high`, or `none` when off); the server owns
 model-specific translation. Leave **Supports thinking** off when the server lacks standard effort
 support. Existing token limits still apply; effort is not a separate reasoning-token budget.
 
 Do not commit `.env`. Never put `COMPOSIO_API_KEY`, OpenRouter keys, or provider tokens in git, logs, or chat.
 
-Optional messaging platforms (iMessage, Slack, WhatsApp, Telegram, Feishu/Lark) mount when their env credentials are set — see `.env.example`. The Lark adapter and official SDK load only when configured. Point a Feishu/Lark bot event subscription at `/api/v1/messaging/webhook/lark` (webhook/HTTP inbound only; do not enable long connection). Personal group linking stays iMessage-only; Slack channels use workspace installations below. Telegram can run several bots side by side (`TELEGRAM_BOT_TOKEN_<NAME>` plus `TELEGRAM_WEBHOOK_SECRET_TOKEN_<NAME>`), for example one per space, so the same person can chat with a different Anviq Agents bot through each.
+Optional messaging platforms (iMessage, Slack, WhatsApp, Telegram, Feishu/Lark) mount when their env credentials are set — see `.env.example`. The Lark adapter and official SDK load only when configured. Point a Feishu/Lark bot event subscription at `/api/v1/messaging/webhook/lark` (webhook/HTTP inbound only; do not enable long connection). Personal group linking stays iMessage-only; Slack channels use workspace installations below. Telegram can run several bots side by side (`TELEGRAM_BOT_TOKEN_<NAME>` plus `TELEGRAM_WEBHOOK_SECRET_TOKEN_<NAME>`), for example one per space, so the same person can chat with a different Sekundo bot through each.
 
 For Slack workspace installations, set `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, and
 `SLACK_SIGNING_SECRET` on the API and worker. Register the OAuth redirect URL
@@ -949,7 +949,7 @@ reinstall the Slack app after changing scopes. Socket Mode is not used.
 
 In Messaging settings, select **Connect** on the Slack row. The workspace answers as
 the first bot in your default space, whichever space is open. Each Slack workspace
-belongs to one Anviq Agents space and one installation owner; installing it from another
+belongs to one Sekundo space and one installation owner; installing it from another
 space is rejected. To DM that bot, use **Link DMs** and send the code in a DM to the
 Slack app. Teammates in the same space can link their own bots the same way.
 Invite the Slack app to channels and mention it to receive replies there. The
@@ -961,7 +961,7 @@ finishes. Channel listening settings currently live in the web/desktop interface
 Tokens are encrypted with the configured secret store. Workers resolve the
 installation for every outbound operation, including queued replies; disconnecting
 an installation stops further delivery and unlinks its personal DMs. Slack's signed
-`app_uninstalled` event also removes the installation. Disconnect removes Anviq Agents'
+`app_uninstalled` event also removes the installation. Disconnect removes Sekundo'
 local credentials; remove the app in Slack to revoke Slack's installation itself.
 The installation owner must retain space membership and an active bot. Workspace
 installations require a workspace-level bot token without Slack token rotation;
@@ -1002,22 +1002,22 @@ The Electron desktop app is a client of the same API. Docker remains the default
 Native file reads and workspace exports are limited to 8 MiB per file. A larger workspace file fails the checkpoint and preserves the previous saved workspace; local files remain on the computer. Writes are bounded by the 12 MiB encoded request limit.
 
 - **Published images** (`docker-compose.images.yml`) default to `SANDBOX_PROVIDER=docker` with a
-  local supervisor and published `ghcr.io/leovoss/anviq-agents/computer` image. No E2B account required.
+  local supervisor and published `ghcr.io/anviq-llc/sekundo/computer` image. No E2B account required.
   Optional: set `e2b`, `daytona`, `createos`, or `boat` plus the matching API key for remote computers.
 - **Docker** is the quick-start default for published images and for a source checkout / full local
   Compose stack. Workspace bots share a persistent Team Computer by default; Private computers are
   optional. Keep the supervisor private, as the included Compose files do.
-- **E2B** runs bot computers away from the Anviq Agents host and is a good choice for public or multi-user
-  production deployments. Anviq Agents checkpoints the portable workspace and browser-profile directory to
+- **E2B** runs bot computers away from the Sekundo host and is a good choice for public or multi-user
+  production deployments. Sekundo checkpoints the portable workspace and browser-profile directory to
   `DATA_DIR`; the E2B disk is a runtime cache, not the durable source of truth.
 - **Daytona** provides the same remote-computer contract through Daytona sandboxes. Configure
   `DAYTONA_API_KEY` and optionally `DAYTONA_API_URL` / `DAYTONA_TARGET` / `DAYTONA_SNAPSHOT`.
 - **CreateOS** provides the same remote-computer contract through CreateOS desktop sandboxes.
   Configure `CREATEOS_SANDBOX_API_KEY` and optionally `CREATEOS_SANDBOX_BASE_URL`,
-  `CREATEOS_SANDBOX_SHAPE`, or `CREATEOS_SANDBOX_ROOTFS`. Anviq Agents defaults to
+  `CREATEOS_SANDBOX_SHAPE`, or `CREATEOS_SANDBOX_ROOTFS`. Sekundo defaults to
   `https://api.sb.createos.sh`, `s-2vcpu-2gb`, and `desktop:1`.
 - **Boat** provides a managed Linux desktop through `BOAT_API_KEY` and optionally
-  `BOAT_API_URL`. Anviq Agents always creates or resumes sandboxes with `noEnv: true`, keeps the portable
+  `BOAT_API_URL`. Sekundo always creates or resumes sandboxes with `noEnv: true`, keeps the portable
   workspace under `/home/user/anviq-home`, and refreshes a two-hour TTL. Boat uses the shared Linux
   desktop runtime and protected port routes for concurrent bot desktops. Each bot has its own
   persistent Chrome profile; logins are not shared between bots.
@@ -1042,7 +1042,7 @@ For provider configuration and health checks, see the [provider setup guide](./s
 
 ## Content encryption
 
-Anviq Agents encrypts chat messages, thread events, compacted history summaries, memory documents and
+Sekundo encrypts chat messages, thread events, compacted history summaries, memory documents and
 their revisions, bot instructions, task prompts, skill content, scratchpad notes, ticket comments, and
 uploaded or generated files before they reach PostgreSQL or `DATA_DIR`.
 Names, ids, timestamps and other metadata stay readable. Credentials are always encrypted,
@@ -1778,9 +1778,9 @@ this repository that is:
 
 | Image | Contents |
 | --- | --- |
-| `ghcr.io/leovoss/anviq-agents/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
-| `ghcr.io/leovoss/anviq-agents/computer` | Linux desktop used as each bot computer |
-| `ghcr.io/leovoss/anviq-agents/updater` | the updater sidecar, plus the Docker CLI |
+| `ghcr.io/anviq-llc/sekundo/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
+| `ghcr.io/anviq-llc/sekundo/computer` | Linux desktop used as each bot computer |
+| `ghcr.io/anviq-llc/sekundo/updater` | the updater sidecar, plus the Docker CLI |
 
 `infra/compose/docker-compose.images.yml` is the no-checkout path for those app and computer tags
 plus Postgres. The supervisor runs from the app image on the internal network only (not a separate
@@ -2024,9 +2024,9 @@ built for that domain (the app's associated domain comes from `EXPO_PUBLIC_API_U
 time). To let a build use this server's passkeys, set:
 
 ```bash
-# iOS and the macOS desktop app (dev.anviq.desktop): <Apple Team ID>.<bundle id>, comma-separated.
+# iOS and the macOS desktop app (dev.sekundo.desktop): <Apple Team ID>.<bundle id>, comma-separated.
 # Served as /.well-known/apple-app-site-association.
-PASSKEY_APPLE_APP_IDS=ABCDE12345.com.anviq.app,ABCDE12345.dev.anviq.desktop
+PASSKEY_APPLE_APP_IDS=ABCDE12345.com.sekundo.app,ABCDE12345.dev.sekundo.desktop
 # Android: SHA-256 fingerprints of the app signing certificates, comma-separated.
 # Served as /.well-known/assetlinks.json and accepted as passkey origins.
 PASSKEY_ANDROID_CERT_SHA256=AA:BB:...:FF

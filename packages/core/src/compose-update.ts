@@ -13,7 +13,7 @@ import {
  * `OFFICIAL_REPO_URL` names the same repository, so the source commit selected from a release is
  * guaranteed to have been eligible for this repository's publishing workflow.
  */
-export const PUBLISHED_IMAGE_REPO = "leovoss/anviq-agents";
+export const PUBLISHED_IMAGE_REPO = "anviq-llc/sekundo";
 
 /** The published server image. One image runs api, worker, and web. */
 export const OFFICIAL_SERVER_IMAGE = `ghcr.io/${PUBLISHED_IMAGE_REPO}/app`;
@@ -41,7 +41,7 @@ export const COMPOSE_PROJECT_NAME_OVERRIDE_ENV = "ANVIQ_COMPOSE_PROJECT_NAME";
 /**
  * The services a recreate replaces. `updater` is deliberately absent: it is the process running
  * the update, and recreating it would kill the run half way through. `postgres` and `caddy` are
- * absent because neither uses the Anviq Agents image.
+ * absent because neither uses the Sekundo image.
  */
 export const RECREATED_SERVICES = ["api", "worker", "web"] as const;
 

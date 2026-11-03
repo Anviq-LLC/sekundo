@@ -19,7 +19,7 @@ export function WelcomePage() {
             />
           </div>
           <h1 className="text-[56px] leading-none tracking-[-0.03em] text-foreground sm:text-[76px]">
-            Anviq Agents
+            Sekundo
           </h1>
         </div>
         <p className="max-w-[600px] text-center text-[27px] leading-[1.4] text-foreground/75">

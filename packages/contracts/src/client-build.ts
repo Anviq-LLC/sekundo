@@ -18,7 +18,7 @@ export type MinimumClientBuilds = Partial<Record<ClientKind, string>>;
 
 export const IOS_APP_STORE_URL = "https://apps.apple.com/app/anviq/id6801531099";
 export const ANDROID_APK_URL =
-  "https://github.com/leovoss/anviq-agents/releases/download/android/anviq.apk";
+  "https://github.com/anviq-llc/sekundo/releases/download/android/anviq.apk";
 
 const BUILD_ID = /^\d{14}$/;
 

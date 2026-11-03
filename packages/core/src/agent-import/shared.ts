@@ -195,7 +195,7 @@ function skillAssessment(
 
 /**
  * OpenClaw `metadata.openclaw.requires`/`os`; Hermes `platforms`, `prerequisites`,
- * `required_environment_variables`, `metadata.hermes.requires_toolsets`. Anviq Agents runs skills
+ * `required_environment_variables`, `metadata.hermes.requires_toolsets`. Sekundo runs skills
  * on Linux, so a platform list without it is another platform.
  */
 function skillRequirements(front: Record<string, unknown>): {

@@ -62,9 +62,9 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     sent || codeStep ? (
       <Trans>Check your email</Trans>
     ) : mode === "in" ? (
-      <Trans>Sign in to Anviq Agents</Trans>
+      <Trans>Sign in to Sekundo</Trans>
     ) : mode === "up" ? (
-      <Trans>Create your Anviq Agents</Trans>
+      <Trans>Create your Sekundo</Trans>
     ) : (
       <Trans>Reset your password</Trans>
     );

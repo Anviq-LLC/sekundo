@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="anviq_call_channel">Текущий звонок</string>
-  <string name="anviq_call_title">Звонок Anviq Agents</string>
+  <string name="anviq_call_title">Звонок Sekundo</string>
   <string name="anviq_call_text">Микрофон активен</string>
 </resources>

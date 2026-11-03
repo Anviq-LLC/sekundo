@@ -1,11 +1,11 @@
 {
   "name": "@anviq/desktop",
-  "productName": "Anviq",
+  "productName": "Sekundo",
   "version": "0.3.5",
   "author": {
-    "name": "Anviq Agents"
+    "name": "Sekundo"
   },
-  "license": "Apache-2.0",
+  "license": "SEE LICENSE IN LICENSE-ANVIQ.md",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
@@ -36,7 +36,7 @@
     "vitest": "4.1.12"
   },
   "build": {
-    "appId": "dev.anviq.desktop",
+    "appId": "dev.sekundo.desktop",
     "directories": {
       "output": "out",
       "buildResources": "assets"
@@ -60,7 +60,7 @@
       }
     ],
     "extraMetadata": {
-      "name": "anviq",
+      "name": "sekundo",
       "main": "dist/main.js"
     },
     "mac": {
@@ -70,7 +70,7 @@
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Anviq Agents uses the microphone for dictation and voice calls with your bots."
+        "NSMicrophoneUsageDescription": "Sekundo uses the microphone for dictation and voice calls with your bots."
       },
       "target": [
         "dmg",
@@ -107,7 +107,7 @@
       "verifyUpdateCodeSignature": true
     },
     "linux": {
-      "executableName": "anviq",
+      "executableName": "sekundo",
       "icon": "assets/icon.png",
       "target": [
         "AppImage"
@@ -116,8 +116,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "leovoss",
-        "repo": "anviq-agents"
+        "owner": "anviq-llc",
+        "repo": "sekundo"
       }
     ]
   }

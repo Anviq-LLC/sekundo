@@ -429,7 +429,7 @@ export function createRuntimeContextPolicy(
       (message) =>
         (message as Message & OriginalMetadata).anviqHistory &&
         !(message as Message & OriginalMetadata).anviqMessageId &&
-        (text(message).startsWith("Anviq-owned compacted context through message sequence ") ||
+        (text(message).startsWith("Sekundo-owned compacted context through message sequence ") ||
           text(message).startsWith(
             "Memory recalled from earlier conversations that fell outside the visible history.",
           )),

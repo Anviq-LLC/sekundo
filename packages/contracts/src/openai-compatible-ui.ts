@@ -14,7 +14,7 @@ export function compatibleConnectionName(baseUrl: string | undefined, fallback: 
 }
 
 export const OPENAI_COMPATIBLE_BASE_URL_HINT =
-  "Paste the OpenAI-compatible address from your server. Anviq Agents adds /v1 if needed.";
+  "Paste the OpenAI-compatible address from your server. Sekundo adds /v1 if needed.";
 
 /** Connect when base URL and model id are set. */
 export function openAiCompatibleConnectReady(input: {

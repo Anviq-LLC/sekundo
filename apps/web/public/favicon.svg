@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">Anviq Agents</title>
-  <rect width="512" height="512" rx="112" fill="#F2F2F0" />
-  <g transform="translate(52.15 45.40) scale(1.35)">
-    <path fill="#252825" d="M50 86H252C268 86 278 94 278 107V117C278 129 270 137 256 141L211 155C194 160 185 172 185 187C185 202 196 214 217 226H85C71 215 64 204 64 190C64 176 71 164 85 154L116 132H50C35 132 24 122 24 109C24 96 35 86 50 86Z" />
-    <path fill="#B54827" d="M236 86H252C268 86 278 94 278 107V117L260 123L236 106Z" />
-  </g>
-</svg>
+<svg role="img" aria-labelledby="title" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><title id="title">Sekundo</title><rect width="512" height="512" rx="112" fill="#F2F2F0"/><g transform="translate(256 256) scale(1) translate(-256 -256)"><path d="M352 188C340 150 304 130 262 130C206 130 170 158 170 198C170 240 206 258 256 270C306 282 346 300 346 346C346 388 308 414 254 414C208 414 170 392 158 350" fill="none" stroke="#252825" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/></g></svg>

@@ -501,7 +501,7 @@ export class TeamChatBridge {
       conversation.spaceId !== target.spaceId ||
       !conversation.thread
     ) {
-      throw new Error("Team chat conversation belongs to a different Anviq Agents target");
+      throw new Error("Team chat conversation belongs to a different Sekundo target");
     }
     return { ...conversation, thread: conversation.thread };
   }
@@ -688,7 +688,7 @@ export class TeamChatBridge {
     if (pending) return pending;
     const mirroring = (async () => {
       if (!conversation.thread)
-        throw new Error("Team chat conversation has no Anviq Agents thread");
+        throw new Error("Team chat conversation has no Sekundo thread");
       // Fetchers cannot survive a restart; reuse any completed per-file uploads.
       const stored = attachments
         ? await this.storeAttachments(
@@ -995,7 +995,7 @@ export class TeamChatBridge {
       const blocks = Array.isArray(response?.blocks) ? (response.blocks as MessageBlock[]) : [];
       const content =
         run.status === "failed"
-          ? `${target.name} could not complete the delegated request. Open Anviq Agents for details.`
+          ? `${target.name} could not complete the delegated request. Open Sekundo for details.`
           : teamChatResponseText(blocks, target.name, true);
       if (content) {
         await this.deps.send({
@@ -1245,7 +1245,7 @@ export class TeamChatBridge {
     };
   }): Promise<void> {
     const thread = message.externalConversation.thread;
-    if (!thread) throw new Error("Team chat conversation has no Anviq Agents thread");
+    if (!thread) throw new Error("Team chat conversation has no Sekundo thread");
     // In-flight routine wakes own the row via engagementReason; never start a
     // fallback TeamChat agent until that claim is cleared.
     if (isRoutingOwnershipReason(message.engagementReason)) {
@@ -1465,7 +1465,7 @@ export class TeamChatBridge {
     await this.sendOnce(message.id, {
       conversationId: message.externalConversation.conversationId,
       replyThreadId: message.replyThreadId,
-      content: `${this.target?.name ?? "The agent"} could not complete that request. Open Anviq Agents for details.`,
+      content: `${this.target?.name ?? "The agent"} could not complete that request. Open Sekundo for details.`,
       idempotencyKey: `external-message:${message.id}:failure`,
     });
   }

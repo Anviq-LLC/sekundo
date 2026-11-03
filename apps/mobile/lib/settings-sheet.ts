@@ -64,7 +64,7 @@ export function openFromSettingsSheet(router: { push(href: Href): void }, href: 
   router.push(href);
 }
 
-/** Whether a link (`anviq:///models`, `anviq://models` or `/models`) opens a settings page. */
+/** Whether a link (`sekundo:///models`, `sekundo://models` or `/models`) opens a settings page. */
 export function isSettingsLink(link: string): boolean {
   const screen = link
     .replace(/^[a-z][a-z\d+.-]*:\/\//i, "")

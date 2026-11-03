@@ -65,7 +65,7 @@ export function rewrittenNovncHeaders(headers: IncomingHttpHeaders): IncomingHtt
  * screen's state to the app. Extension content scripts run inside the sandboxed document too;
  * one reading storage throws a SecurityError that noVNC's global error handler would otherwise
  * show in place of the screen. The app cannot see into the frame, so the page posts "loading" as
- * soon as it runs and then follows noVNC's connection classes (which Anviq Agents' own embed page
+ * soon as it runs and then follows noVNC's connection classes (which Sekundo' own embed page
  * sets as well) and its status bar.
  */
 export function injectNovncStorageShim(html: string, { viewOnly = false } = {}) {
@@ -121,7 +121,7 @@ export function injectNovncStorageShim(html: string, { viewOnly = false } = {}) 
     } catch {}
   });
   let last = "";
-  // Pages that never set noVNC's classes (older Anviq Agents embed images) still build their viewer
+  // Pages that never set noVNC's classes (older Sekundo embed images) still build their viewer
   // canvas, which is as far as they can be followed.
   let classed = false;
   const sync = () => {

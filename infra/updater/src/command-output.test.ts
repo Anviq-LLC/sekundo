@@ -48,7 +48,7 @@ async function plan(route = "/plan", currentTag = "v1.0.0") {
   return app.request(route, {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({ repoUrl: "https://github.com/leovoss/anviq-agents", branch: "main" }),
+    body: JSON.stringify({ repoUrl: "https://github.com/anviq-llc/sekundo", branch: "main" }),
   });
 }
 

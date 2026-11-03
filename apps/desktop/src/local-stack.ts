@@ -288,8 +288,8 @@ export function stackFailureMessage(
       return "Docker Compose is missing. Install Docker Desktop or the docker-compose-plugin, then retry.";
     case "other":
       return phase === "pulling"
-        ? "Downloading Anviq Agents images failed. Check the output below, then retry."
-        : "Anviq Agents services did not start. Check the output below, then retry.";
+        ? "Downloading Sekundo images failed. Check the output below, then retry."
+        : "Sekundo services did not start. Check the output below, then retry.";
   }
 }
 

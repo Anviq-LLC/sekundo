@@ -292,7 +292,7 @@ services:
   # container gets the owner login: the API and worker connect as anviq_app, which row-level
   # security binds, so code running in either cannot find a login that bypasses it.
   migrate:
-    image: ${ANVIQ_IMAGE:-ghcr.io/leovoss/anviq-agents/app}:${ANVIQ_IMAGE_TAG:-local}
+    image: ${ANVIQ_IMAGE:-ghcr.io/anviq-llc/sekundo/app}:${ANVIQ_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -324,7 +324,7 @@ services:
     # The default tag is `local`, which no registry serves, so a fresh install builds from the
     # checkout via `up -d --build` instead of failing on a `pull` of an image that does not exist
     # yet. Once a release is published, pin ANVIQ_IMAGE_TAG to it and the pull path takes over.
-    image: ${ANVIQ_IMAGE:-ghcr.io/leovoss/anviq-agents/app}:${ANVIQ_IMAGE_TAG:-local}
+    image: ${ANVIQ_IMAGE:-ghcr.io/anviq-llc/sekundo/app}:${ANVIQ_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -418,7 +418,7 @@ services:
       start_interval: 1s
 
   worker:
-    image: ${ANVIQ_IMAGE:-ghcr.io/leovoss/anviq-agents/app}:${ANVIQ_IMAGE_TAG:-local}
+    image: ${ANVIQ_IMAGE:-ghcr.io/anviq-llc/sekundo/app}:${ANVIQ_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -460,7 +460,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${ANVIQ_IMAGE:-ghcr.io/leovoss/anviq-agents/app}:${ANVIQ_IMAGE_TAG:-local}
+    image: ${ANVIQ_IMAGE:-ghcr.io/anviq-llc/sekundo/app}:${ANVIQ_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -522,7 +522,7 @@ services:
     profiles: [updater]
     # Pinned separately from the application image: the updater does not recreate itself, so moving
     # its own version is an operator action, not something an update can do underneath itself.
-    image: ${ANVIQ_UPDATER_IMAGE:-ghcr.io/leovoss/anviq-agents/updater}:${ANVIQ_UPDATER_IMAGE_TAG:-local}
+    image: ${ANVIQ_UPDATER_IMAGE:-ghcr.io/anviq-llc/sekundo/updater}:${ANVIQ_UPDATER_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/updater/Dockerfile
@@ -543,7 +543,7 @@ services:
       ANVIQ_UPDATER_TOKEN: ${ANVIQ_UPDATER_TOKEN:-}
       ANVIQ_UPDATER_HOST: "0.0.0.0"
       ANVIQ_UPDATER_PORT: "7092"
-      ANVIQ_IMAGE: ${ANVIQ_IMAGE:-ghcr.io/leovoss/anviq-agents/app}
+      ANVIQ_IMAGE: ${ANVIQ_IMAGE:-ghcr.io/anviq-llc/sekundo/app}
       # `-p` is available to Compose interpolation but is not injected into containers unless it is
       # declared here. The sidecar must target the project the operator actually started.
       COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-anviq-prod}

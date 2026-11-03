@@ -1,5 +1,5 @@
-appId: com.anviq.app
-name: Anviq Agents split view on a wide window
+appId: com.sekundo.app
+name: Sekundo split view on a wide window
 tags:
   - screenshots
 ---
@@ -9,7 +9,7 @@ tags:
     permissions:
       notifications: deny
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents|Pixel Launcher isn't responding"
+    visible: "Sign up for Sekundo|Pixel Launcher isn't responding"
     timeout: 30000
 - runFlow:
     when:
@@ -17,7 +17,7 @@ tags:
     commands:
       - tapOn: "Close app"
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents"
+    visible: "Sign up for Sekundo"
     timeout: 30000
 - tapOn: "Sign in"
 - runFlow: helpers/server.yaml

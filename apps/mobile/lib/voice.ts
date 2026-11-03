@@ -397,7 +397,7 @@ async function renderUtterance(
         method: "POST",
         headers: {
           "content-type": "application/json",
-          origin: "anviq://",
+          origin: "sekundo://",
           ...requestContext.headers,
         },
         body: JSON.stringify({

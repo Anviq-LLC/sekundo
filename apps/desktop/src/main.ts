@@ -642,7 +642,7 @@ async function runMenuUpdateCheck() {
       : dialog.showMessageBox(options);
   if (state.phase === "ready") {
     const { response } = await alert({
-      message: `Anviq Agents ${state.availableVersion} is ready to install.`,
+      message: `Sekundo ${state.availableVersion} is ready to install.`,
       buttons: ["Restart", "Later"],
       defaultId: 0,
       cancelId: 1,
@@ -666,7 +666,7 @@ async function runMenuUpdateCheck() {
     });
   } else if (state.phase === "idle") {
     await alert({
-      message: "Anviq Agents is up to date.",
+      message: "Sekundo is up to date.",
       detail: `Version ${state.currentVersion}`,
     });
   }
@@ -705,7 +705,7 @@ function installApplicationMenu() {
   };
   const changeServer: Electron.MenuItemConstructorOptions = {
     id: "change-anviq-server",
-    label: "Change Anviq Agents Server…",
+    label: "Change Sekundo Server…",
     accelerator: "CmdOrCtrl+Shift+K",
     click: () => showSetupWindow(),
   };
@@ -791,7 +791,7 @@ function installApplicationMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-/** Setup IPC must only answer the setup window, never a connected Anviq Agents server. */
+/** Setup IPC must only answer the setup window, never a connected Sekundo server. */
 function fromSetupWindow(event: Electron.IpcMainInvokeEvent) {
   return (
     setupWindow !== null && !setupWindow.isDestroyed() && event.sender === setupWindow.webContents
@@ -818,7 +818,7 @@ async function probeServer(rawUrl: string, signal?: AbortSignal): Promise<Deskto
         ok: false,
         status: response.status,
         url,
-        error: "That address redirects elsewhere. Enter the final Anviq Agents server address.",
+        error: "That address redirects elsewhere. Enter the final Sekundo server address.",
       };
     }
     if (!response.ok) {
@@ -835,7 +835,7 @@ async function probeServer(rawUrl: string, signal?: AbortSignal): Promise<Deskto
         ok: false,
         status: response.status,
         url,
-        error: "That address did not respond like a Anviq Agents server.",
+        error: "That address did not respond like a Sekundo server.",
       };
     }
     return {
@@ -1433,7 +1433,7 @@ app.whenReady().then(async () => {
         if (managedUrl === null || !(await localStack.matchesDesiredStack())) {
           return {
             ok: false,
-            error: "The app-managed Anviq Agents services are not ready. Retry setup.",
+            error: "The app-managed Sekundo services are not ready. Retry setup.",
           };
         }
         openSetup = { mode: "new", serverUrl: managedUrl };

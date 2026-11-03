@@ -151,7 +151,7 @@ describe("passkey sign-in", () => {
     expect(options?.path).toBe("/api/auth/passkey/generate-authenticate-options");
     expect(get).toHaveBeenCalledWith({ challenge: "challenge", rpId: "anviq.example.test" });
     expect(verify?.path).toBe("/api/auth/passkey/verify-authentication");
-    expect(verify?.headers).toMatchObject({ origin: "anviq://", cookie: CHALLENGE });
+    expect(verify?.headers).toMatchObject({ origin: "sekundo://", cookie: CHALLENGE });
     expect(verify?.headers).not.toHaveProperty("authorization");
     // iOS would otherwise merge the jar's copy of the cookie with ours (CHALLENGE_NOT_FOUND).
     expect([options?.credentials, verify?.credentials]).toEqual(["omit", "omit"]);
@@ -245,7 +245,7 @@ describe("passkey registration", () => {
       .mockResolvedValueOnce(
         challengeResponse({
           challenge: "register",
-          rp: { id: "anviq.example.test", name: "Anviq Agents" },
+          rp: { id: "anviq.example.test", name: "Sekundo" },
         }),
       )
       .mockResolvedValueOnce({ response: Response.json({}), body: { id: "passkey-1" } });
@@ -256,13 +256,13 @@ describe("passkey registration", () => {
     expect(options?.headers).toMatchObject({ authorization: "Bearer current-session" });
     expect(create).toHaveBeenCalledWith({
       challenge: "register",
-      rp: { id: "anviq.example.test", name: "Anviq Agents" },
+      rp: { id: "anviq.example.test", name: "Sekundo" },
     });
     expect(verify?.path).toBe("/api/auth/passkey/verify-registration");
     expect(verify?.headers).toMatchObject({
       authorization: "Bearer current-session",
       cookie: CHALLENGE,
-      origin: "anviq://",
+      origin: "sekundo://",
     });
     expect([options?.credentials, verify?.credentials]).toEqual(["omit", "omit"]);
     expect(verify?.body).toEqual({ response: credential });
@@ -282,7 +282,7 @@ describe("passkey registration", () => {
     vi.mocked(fetchMobileJson).mockResolvedValueOnce(
       challengeResponse({
         challenge: "register",
-        rp: { id: "anviq.example.test", name: "Anviq Agents" },
+        rp: { id: "anviq.example.test", name: "Sekundo" },
       }),
     );
     vi.mocked(create).mockRejectedValue({ code: "ERR_USER_CANCELLED" });
@@ -387,7 +387,7 @@ describe("one-time passkey offer", () => {
       .mockResolvedValueOnce(
         challengeResponse({
           challenge: "register",
-          rp: { id: "anviq.example.test", name: "Anviq Agents" },
+          rp: { id: "anviq.example.test", name: "Sekundo" },
         }),
       )
       .mockResolvedValueOnce({ response: Response.json({}), body: {} });

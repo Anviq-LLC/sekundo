@@ -386,7 +386,7 @@ export function linkFaviconOrigin(href: string): string | undefined {
 }
 
 /**
- * Where link icons come from. Apps load them through the Anviq Agents API, which fetches and caches
+ * Where link icons come from. Apps load them through the Sekundo API, which fetches and caches
  * them, so a device never contacts the linked site or an icon service. `globe` is the native
  * fallback glyph; web draws its own.
  */

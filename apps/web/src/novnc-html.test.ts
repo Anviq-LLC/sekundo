@@ -353,7 +353,7 @@ describe("noVNC frame state report", () => {
     expect(p.posted.at(-1)).toEqual({ anviqScreen: "failed" });
   });
 
-  it("treats a Anviq Agents embed page that built its viewer as connecting", () => {
+  it("treats a Sekundo embed page that built its viewer as connecting", () => {
     const p = page({ canvas: true });
     p.mutate();
     expect(p.posted).toEqual([{ anviqScreen: "loading" }, { anviqScreen: "connecting" }]);

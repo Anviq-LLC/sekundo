@@ -1,4 +1,4 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Onboarding
 ---
 - runFlow:
@@ -9,12 +9,12 @@ name: Onboarding
     visible: "Personal|Tap \\+ to create a bot"
     timeout: 20000
 - takeScreenshot: 01-empty-inbox
-- openLink: "anviq:///artifacts"
+- openLink: "sekundo:///artifacts"
 - extendedWaitUntil:
     visible: "No artifacts yet|Artifacts"
     timeout: 15000
 - takeScreenshot: 02-empty-artifacts
-- openLink: "anviq:///"
+- openLink: "sekundo:///"
 - extendedWaitUntil:
     visible: "Create"
     timeout: 15000

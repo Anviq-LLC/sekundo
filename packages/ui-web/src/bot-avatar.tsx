@@ -364,7 +364,7 @@ export function BotShapePreview({
   );
 }
 
-/** The Anviq anvil with two eyes. `eyeClassName` must match the circle behind it. */
+/** The Sekundo anvil with two eyes. `eyeClassName` must match the circle behind it. */
 export function AnviqMark({
   className,
   eyeClassName = "fill-card",
@@ -391,7 +391,7 @@ export function Wordmark({ className }: { className?: string }) {
         <AnviqMark className="h-[18px] w-[32px]" />
       </div>
       <span className="font-[Aeonik,ui-sans-serif] text-[28px] tracking-tight text-foreground">
-        Anviq Agents
+        Sekundo
       </span>
     </div>
   );

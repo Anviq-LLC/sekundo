@@ -96,7 +96,7 @@ describe("billing checkout return", () => {
     const { app, syncForActor } = mount(() => null, { actor: null });
     const res = await app.request(`${BILLING_RETURN_PATH}?client=mobile`);
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("anviq://billing");
+    expect(res.headers.get("location")).toBe("sekundo://billing");
     expect(syncForActor).not.toHaveBeenCalled();
   });
 

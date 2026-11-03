@@ -526,7 +526,7 @@ async function postAuth(path: string, input: Record<string, string>) {
     `${currentApiBase()}/api/auth/${path}`,
     {
       method: "POST",
-      headers: { "content-type": "application/json", origin: "anviq://" },
+      headers: { "content-type": "application/json", origin: "sekundo://" },
       body: JSON.stringify(input),
     },
     {},
@@ -591,7 +591,7 @@ export type PasswordResetCapabilities = AuthCapabilities;
 export async function passwordResetCapabilities(): Promise<PasswordResetCapabilities> {
   const { response, body } = await fetchMobileJson<unknown>(
     `${currentApiBase()}/api/auth/capabilities`,
-    { headers: { origin: "anviq://" } },
+    { headers: { origin: "sekundo://" } },
   );
   if (!response.ok) throw new Error(t("Could not load sign-in options"));
   return authCapabilitiesSchema.or(legacyAuthCapabilitiesSchema).parse(body);
@@ -602,7 +602,7 @@ export async function requestPasswordReset(email: string, redirectTo: string): P
     `${currentApiBase()}/api/auth/request-password-reset`,
     {
       method: "POST",
-      headers: { "content-type": "application/json", origin: "anviq://" },
+      headers: { "content-type": "application/json", origin: "sekundo://" },
       body: JSON.stringify({ email, redirectTo }),
     },
     {},
@@ -624,7 +624,7 @@ export async function updateAccountName(name: string): Promise<void> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        origin: "anviq://",
+        origin: "sekundo://",
         ...(await authHeaders()),
       },
       body: JSON.stringify({ name: nextName }),
@@ -659,7 +659,7 @@ async function replaceSessionAfterPasswordChange(currentPassword: string, newPas
       method: "POST",
       headers: {
         "content-type": "application/json",
-        origin: "anviq://",
+        origin: "sekundo://",
         ...headers,
       },
       body: JSON.stringify({ currentPassword, newPassword, revokeOtherSessions: true }),
@@ -734,7 +734,7 @@ export async function signOut() {
     await withAbort(
       fetch(`${currentApiBase()}/api/auth/sign-out`, {
         method: "POST",
-        headers: { "content-type": "application/json", origin: "anviq://", ...headers },
+        headers: { "content-type": "application/json", origin: "sekundo://", ...headers },
         body: "{}",
         signal: controller.signal,
       }),
@@ -757,7 +757,7 @@ export async function deleteAccount(password?: string, token?: string) {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        origin: "anviq://",
+        origin: "sekundo://",
         ...(await authHeaders()),
       },
       body: JSON.stringify({ password, token }),
@@ -872,7 +872,7 @@ async function request(
         method: "POST",
         headers: {
           "content-type": "application/json",
-          origin: "anviq://",
+          origin: "sekundo://",
           ...requestHeaders,
           ...correlation,
         },
@@ -1279,7 +1279,7 @@ export async function subscribeThread(
     headers: {
       "content-type": "application/json",
       accept: "text/event-stream",
-      origin: "anviq://",
+      origin: "sekundo://",
       ...context.headers,
     },
     body: JSON.stringify({ json: { ...target, cursor } }),
@@ -1710,7 +1710,7 @@ export { loadSessionToken };
 export async function fetchAccountSecurity(): Promise<AccountSecurity> {
   const { response, body } = await fetchMobileJson<unknown>(
     `${currentApiBase()}/api/auth/account-security`,
-    { headers: { origin: "anviq://", ...(await authHeaders()) } },
+    { headers: { origin: "sekundo://", ...(await authHeaders()) } },
     null,
   );
   // Older servers support password accounts and the original change/delete endpoints.
@@ -1730,7 +1730,7 @@ async function postSignedInAuth(path: string, payload: Record<string, string> = 
       method: "POST",
       headers: {
         "content-type": "application/json",
-        origin: "anviq://",
+        origin: "sekundo://",
         ...(await authHeaders()),
       },
       body: JSON.stringify(payload),

@@ -39,7 +39,7 @@ def _deliver(key, message, config_path, state_file):
     reminder = bool(message) and now - previous.get("sent_at", 0) >= 86400
     if not changed and not reminder:
         return
-    text = ("Anviq Agents alert: " + message) if message else ("Anviq Agents recovered: " + key)
+    text = ("Sekundo alert: " + message) if message else ("Sekundo recovered: " + key)
     try:
         config = json.loads(config_path.read_text())
     except FileNotFoundError:

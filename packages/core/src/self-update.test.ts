@@ -18,7 +18,7 @@ import {
 describe("normalizeRepoUrl", () => {
   it("accepts the official repository and https forks", () => {
     expect(normalizeRepoUrl(OFFICIAL_REPO_URL)).toEqual({
-      url: "https://github.com/leovoss/anviq-agents",
+      url: "https://github.com/anviq-llc/sekundo",
     });
     expect(normalizeRepoUrl("  https://github.com/me/anviq.git/  ")).toEqual({
       url: "https://github.com/me/anviq.git",
@@ -69,18 +69,18 @@ describe("normalizeRepoUrl", () => {
 
 describe("repoIdentity", () => {
   it("treats every spelling of the same remote as one repository", () => {
-    const identity = "github.com/leovoss/anviq-agents";
-    expect(repoIdentity("https://github.com/leovoss/anviq-agents")).toBe(identity);
-    expect(repoIdentity("https://github.com/leovoss/anviq-agents.git")).toBe(identity);
-    expect(repoIdentity("git@github.com:leovoss/anviq-agents.git")).toBe(identity);
-    expect(repoIdentity("ssh://git@github.com/Leovoss/Anviq-agents")).toBe(identity);
+    const identity = "github.com/anviq-llc/sekundo";
+    expect(repoIdentity("https://github.com/anviq-llc/sekundo")).toBe(identity);
+    expect(repoIdentity("https://github.com/anviq-llc/sekundo.git")).toBe(identity);
+    expect(repoIdentity("git@github.com:anviq-llc/sekundo.git")).toBe(identity);
+    expect(repoIdentity("ssh://git@github.com/anviq-llc/sekundo")).toBe(identity);
     expect(repoIdentity("not a url")).toBeNull();
   });
 
   it("only calls the real upstream official", () => {
-    expect(isOfficialRepoUrl("git@github.com:leovoss/anviq-agents.git")).toBe(true);
+    expect(isOfficialRepoUrl("git@github.com:anviq-llc/sekundo.git")).toBe(true);
     expect(isOfficialRepoUrl("https://github.com/attacker/anviq")).toBe(false);
-    expect(isOfficialRepoUrl("https://githubb.com/leovoss/anviq-agents")).toBe(false);
+    expect(isOfficialRepoUrl("https://githubb.com/anviq-llc/sekundo")).toBe(false);
   });
 });
 

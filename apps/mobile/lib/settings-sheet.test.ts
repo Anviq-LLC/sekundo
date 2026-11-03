@@ -67,39 +67,39 @@ describe("settings links", () => {
   });
 
   it("reads the page from any link form", () => {
-    expect(isSettingsLink("anviq:///models")).toBe(true);
+    expect(isSettingsLink("sekundo:///models")).toBe(true);
     // Picker sessions only exist after an in-sheet push, never from a link.
-    expect(isSettingsLink("anviq:///model-picker")).toBe(false);
-    expect(isSettingsLink("anviq:///model-connection")).toBe(false);
-    expect(isSettingsLink("anviq://voice")).toBe(true);
-    expect(isSettingsLink("anviq:///account?focus=usage")).toBe(true);
-    expect(isSettingsLink("anviq://integrations/")).toBe(true);
+    expect(isSettingsLink("sekundo:///model-picker")).toBe(false);
+    expect(isSettingsLink("sekundo:///model-connection")).toBe(false);
+    expect(isSettingsLink("sekundo://voice")).toBe(true);
+    expect(isSettingsLink("sekundo:///account?focus=usage")).toBe(true);
+    expect(isSettingsLink("sekundo://integrations/")).toBe(true);
     expect(isSettingsLink("/change-password")).toBe(true);
-    expect(isSettingsLink("anviq:///thread?botId=bot-1")).toBe(false);
-    expect(isSettingsLink("anviq://group-thread?groupId=group-1")).toBe(false);
+    expect(isSettingsLink("sekundo:///thread?botId=bot-1")).toBe(false);
+    expect(isSettingsLink("sekundo://group-thread?groupId=group-1")).toBe(false);
     expect(isSettingsLink("/new")).toBe(false);
     expect(isSettingsLink("/artifacts")).toBe(false);
-    expect(isSettingsLink("anviq:///artifacts")).toBe(false);
-    expect(isSettingsLink("anviq://")).toBe(false);
-    expect(isSettingsLink("anviq:///accounts")).toBe(false);
+    expect(isSettingsLink("sekundo:///artifacts")).toBe(false);
+    expect(isSettingsLink("sekundo://")).toBe(false);
+    expect(isSettingsLink("sekundo:///accounts")).toBe(false);
   });
 
   it("closes the sheet before a link to another screen, and keeps settings links in it", () => {
     const close = vi.fn();
     const unregister = registerSettingsSheet(close);
 
-    expect(redirectSystemPath({ path: "anviq:///voice", initial: false })).toBe("anviq:///voice");
-    expect(redirectSystemPath({ path: "anviq:///account?focus=usage", initial: false })).toBe(
-      "anviq:///account?focus=usage",
+    expect(redirectSystemPath({ path: "sekundo:///voice", initial: false })).toBe("sekundo:///voice");
+    expect(redirectSystemPath({ path: "sekundo:///account?focus=usage", initial: false })).toBe(
+      "sekundo:///account?focus=usage",
     );
     expect(close).not.toHaveBeenCalled();
 
-    expect(redirectSystemPath({ path: "anviq:///thread?botId=bot-1", initial: false })).toBe(
-      "anviq:///thread?botId=bot-1",
+    expect(redirectSystemPath({ path: "sekundo:///thread?botId=bot-1", initial: false })).toBe(
+      "sekundo:///thread?botId=bot-1",
     );
     expect(close).toHaveBeenCalledTimes(1);
-    expect(redirectSystemPath({ path: "anviq:///artifacts", initial: false })).toBe(
-      "anviq:///artifacts",
+    expect(redirectSystemPath({ path: "sekundo:///artifacts", initial: false })).toBe(
+      "sekundo:///artifacts",
     );
     expect(close).toHaveBeenCalledTimes(2);
     unregister();

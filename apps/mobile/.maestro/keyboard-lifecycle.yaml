@@ -1,4 +1,4 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Keyboard lifecycle regression
 tags:
   - screenshots
@@ -10,7 +10,7 @@ tags:
 
 # A cold API 34 emulator can show a launcher ANR over the healthy app.
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents|Pixel Launcher isn't responding"
+    visible: "Sign up for Sekundo|Pixel Launcher isn't responding"
     timeout: 30000
 - runFlow:
     when:
@@ -18,7 +18,7 @@ tags:
     commands:
       - tapOn: "Close app"
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents"
+    visible: "Sign up for Sekundo"
     timeout: 30000
 - takeScreenshot: "02-sign-up"
 - tapOn: "Sign in"
@@ -27,7 +27,7 @@ tags:
       notVisible:
         id: "server-address"
     commands:
-      - assertVisible: "Sign in to Anviq Agents"
+      - assertVisible: "Sign in to Sekundo"
       - takeScreenshot: "01-sign-in"
       - tapOn: "Use a custom server"
 - assertVisible: "Server"
@@ -47,7 +47,7 @@ tags:
 - extendedWaitUntil:
     visible: "Researcher"
     timeout: 30000
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: "Message Researcher"
     timeout: 15000
@@ -82,13 +82,13 @@ tags:
 - assertVisible: "Send"
 - takeScreenshot: "keyboard-restarted"
 - hideKeyboard
-- openLink: "anviq:///account"
+- openLink: "sekundo:///account"
 - scrollUntilVisible:
     element: "Sign out"
     direction: DOWN
 - tapOn: "Sign out"
 - extendedWaitUntil:
-    visible: "Sign in to Anviq Agents"
+    visible: "Sign in to Sekundo"
     timeout: 15000
 - tapOn: "Email"
 - inputText: ${ANVIQ_SCREENSHOT_EMAIL}
@@ -99,7 +99,7 @@ tags:
 - extendedWaitUntil:
     visible: "Researcher"
     timeout: 15000
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: "Message Researcher"
     timeout: 15000

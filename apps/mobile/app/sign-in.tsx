@@ -246,9 +246,9 @@ export default function SignIn() {
                 {resetSent || codeStep
                   ? t("Check your email")
                   : mode === "in"
-                    ? t("Sign in to Anviq Agents")
+                    ? t("Sign in to Sekundo")
                     : mode === "up"
-                      ? t("Sign up for Anviq Agents")
+                      ? t("Sign up for Sekundo")
                       : t("Reset your password")}
               </Text>
               {resetSent ? (

@@ -1,6 +1,6 @@
 # Content encryption at rest
 
-Anviq Agents encrypts user content before it reaches PostgreSQL or the artifact
+Sekundo encrypts user content before it reaches PostgreSQL or the artifact
 directory, so a copied database dump, backup or disk does not reveal it.
 
 ## What is encrypted
@@ -230,7 +230,7 @@ or removes the server from its policy, the organization's content cannot be read
 becomes readable again when access returns. Space keys are cached for up to ten minutes, and the
 setting is read once a minute, so revoking takes effect within that window.
 
-Anviq still runs the process that decrypts, so a server operator with shell access to a running
+Sekundo still runs the process that decrypts, so a server operator with shell access to a running
 host could capture content while it is in use. To keep the operator out of running data as well,
 deploy the stack in the company's own cloud account and keep the operator out of it.
 

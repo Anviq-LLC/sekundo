@@ -34,7 +34,7 @@ env:
   # docker/metadata-action otherwise truncates commit tags to seven collision-prone characters.
   DOCKER_METADATA_SHORT_SHA_LENGTH: 40
   # Image references must be lowercase, and the GitHub owner name is not.
-  IMAGE_NAMESPACE: ghcr.io/leovoss/anviq-agents
+  IMAGE_NAMESPACE: ghcr.io/anviq-llc/sekundo
 
 concurrency:
   group: publish-server-image-${{ github.event.pull_request.number || github.run_id }}

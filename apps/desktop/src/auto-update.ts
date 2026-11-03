@@ -74,7 +74,7 @@ export function classifyUpdaterFailure(error: unknown): UpdaterFailure {
   if (SIGNATURE.some((needle) => text.includes(needle))) {
     return {
       kind: "signature",
-      message: "This update could not be verified. Reinstall Anviq Agents from a trusted download.",
+      message: "This update could not be verified. Reinstall Sekundo from a trusted download.",
     };
   }
   return {

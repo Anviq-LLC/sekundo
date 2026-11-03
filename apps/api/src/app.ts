@@ -183,7 +183,7 @@ import { mountWebhookHttpRoutes } from "./webhook.js";
  * The loopback entries are the Expo web dev server.
  */
 export const MOBILE_AUTH_ORIGINS = [
-  "anviq://",
+  "sekundo://",
   "http://localhost:8081",
   "http://127.0.0.1:8081",
   "http://localhost:19006",
@@ -884,7 +884,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
         );
         return c.redirect(new URL("/app?settings=messaging", env.webOrigin).toString());
       } catch {
-        return c.text("Slack connection failed. Return to Anviq Agents and try again.", 400);
+        return c.text("Slack connection failed. Return to Sekundo and try again.", 400);
       }
     });
   }
@@ -1379,7 +1379,7 @@ export function isTrustedOrigin(
   env: Pick<AppEnv, "webOrigin" | "apiUrl" | "authUrl">,
 ) {
   if (!origin) return true;
-  if (origin.startsWith("anviq://")) return true;
+  if (origin.startsWith("sekundo://")) return true;
   const allowed = new Set(
     [env.webOrigin, env.apiUrl, env.authUrl, ...MOBILE_AUTH_ORIGINS].flatMap(originVariants),
   );
@@ -1387,7 +1387,7 @@ export function isTrustedOrigin(
 }
 
 function originVariants(origin: string): string[] {
-  if (!origin || origin === "anviq://") return [];
+  if (!origin || origin === "sekundo://") return [];
   const variants = [origin, ...loopbackTwinOrigins(origin)];
   try {
     const url = new URL(origin);

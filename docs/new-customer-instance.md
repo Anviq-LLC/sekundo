@@ -15,7 +15,7 @@ shared between customers.
 
 ```bash
 mkdir -p /opt/anviq && cd /opt/anviq
-curl -fsSLO https://raw.githubusercontent.com/leovoss/anviq-agents/main/infra/compose/install-images.sh
+curl -fsSLO https://raw.githubusercontent.com/anviq-llc/sekundo/main/infra/compose/install-images.sh
 bash install-images.sh --prepare-only
 ```
 
@@ -28,7 +28,7 @@ WEB_ORIGIN=https://agents.customer.example
 API_URL=https://agents.customer.example
 ANVIQ_HOST=agents.customer.example
 SMTP_URL=smtps://user:password@smtp.customer.example:465
-EMAIL_FROM=Anviq Agents <no-reply@customer.example>
+EMAIL_FROM=Sekundo <no-reply@customer.example>
 SANDBOX_COMPUTER_EGRESS=restricted
 ```
 
@@ -46,7 +46,7 @@ ANVIQ_COMPUTER_IMAGE_TAG=sha-<full commit>
 ```
 
 Every push to `main` publishes a `sha-<full commit>` tag. Find the commit with
-`git ls-remote https://github.com/Leovoss/anviq-agents main`, and check that the build finished in
+`git ls-remote https://github.com/anviq-llc/sekundo main`, and check that the build finished in
 the repository's Actions tab before using it. A release tag such as `v1.0.0` works the same way
 once one has been pushed. Pinning keeps the customer on the version you tested until you change
 the tag.
@@ -63,14 +63,14 @@ bash install-images.sh
 When the server already runs Traefik with the Docker provider, add the overlay instead:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/leovoss/anviq-agents/main/infra/compose/docker-compose.traefik.yml
+curl -fsSLO https://raw.githubusercontent.com/anviq-llc/sekundo/main/infra/compose/docker-compose.traefik.yml
 docker compose --env-file .env -f docker-compose.images.yml -f docker-compose.traefik.yml up -d
 ```
 
 Then apply the host firewall rules for bot computers once:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/leovoss/anviq-agents/main/infra/compose/restrict-computer-egress.sh
+curl -fsSLO https://raw.githubusercontent.com/anviq-llc/sekundo/main/infra/compose/restrict-computer-egress.sh
 sudo bash restrict-computer-egress.sh
 ```
 

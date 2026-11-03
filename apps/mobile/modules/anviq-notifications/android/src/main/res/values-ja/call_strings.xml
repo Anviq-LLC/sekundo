@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="anviq_call_channel">通話中</string>
-  <string name="anviq_call_title">Anviq Agentsの通話</string>
+  <string name="anviq_call_title">Sekundoの通話</string>
   <string name="anviq_call_text">マイクがオンです</string>
 </resources>

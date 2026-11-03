@@ -10,7 +10,7 @@ describe("desktop child windows", () => {
 
   it("opens ordinary external links outside Electron", () => {
     expect(
-      shouldOpenInAppPopup(appOrigin, "https://github.com/leovoss/anviq-agents/pull/395", "_blank"),
+      shouldOpenInAppPopup(appOrigin, "https://github.com/anviq-llc/sekundo/pull/395", "_blank"),
     ).toBe(false);
   });
 

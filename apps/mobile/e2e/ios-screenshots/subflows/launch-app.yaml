@@ -1,10 +1,10 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 ---
 # Restart without clearing app data, so a dev client's bundler URL stays put.
 - launchApp:
     stopApp: true
 - extendedWaitUntil:
-    visible: "Account|Sign up for Anviq Agents|Sign in to Anviq Agents"
+    visible: "Account|Sign up for Sekundo|Sign in to Sekundo"
     timeout: 40000
 - runFlow:
     when:
@@ -17,5 +17,5 @@ appId: com.anviq.app
           timeout: 15000
       - tapOn: "Sign out"
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents|Sign in to Anviq Agents"
+    visible: "Sign up for Sekundo|Sign in to Sekundo"
     timeout: 20000

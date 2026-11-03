@@ -257,7 +257,7 @@ const subscriptionCatalog: ModelCatalogEntry[] = [
     id: "gpt-6.1-sol",
     label: "GPT-6.1 Sol",
     billing:
-      "Sign in with ChatGPT Plus or Pro. Uses your OpenAI subscription. Anviq Agents does not pay.",
+      "Sign in with ChatGPT Plus or Pro. Uses your OpenAI subscription. Sekundo does not pay.",
     auth: "oauth",
     oauthLabel: "Sign in with ChatGPT",
     authHint: "ChatGPT Plus/Pro",
@@ -272,7 +272,7 @@ const subscriptionCatalog: ModelCatalogEntry[] = [
     id: "grok-4.6",
     label: "grok-4.6",
     billing:
-      "Sign in with SuperGrok or X Premium, or paste an xAI API key. Anviq Agents does not pay.",
+      "Sign in with SuperGrok or X Premium, or paste an xAI API key. Sekundo does not pay.",
     auth: "both",
     oauthLabel: "Sign in with SuperGrok or X Premium",
     authHint: "SuperGrok / key",

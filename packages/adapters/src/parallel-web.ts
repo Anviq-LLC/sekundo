@@ -16,7 +16,7 @@ import { clampMaxChars, clampMaxResults } from "./web-limits.js";
 import { assertSafeWebUrl, withAbort } from "./web-ssrf.js";
 
 const ENDPOINT = "https://search.parallel.ai/mcp";
-const USER_AGENT = "Anviq/0.1 (+https://github.com/leovoss/anviq-agents; web tools)";
+const USER_AGENT = "Sekundo/0.1 (+https://github.com/anviq-llc/sekundo; web tools)";
 const MAX_SNIPPET_CHARS = 8_000;
 const pageSchema = z.object({
   url: z.string().max(8_192),

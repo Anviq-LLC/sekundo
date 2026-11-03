@@ -146,7 +146,7 @@ COPY --chmod=755 anviq-browser /usr/local/bin/anviq-browser
 COPY --chmod=755 anviq-focus-or-launch /usr/local/bin/anviq-focus-or-launch
 COPY --chmod=755 anviq-page-browser /usr/local/bin/anviq-page-browser
 COPY --chmod=644 anviq-browser.desktop /usr/share/applications/anviq-browser.desktop
-# Anviq Agents keeps credentials itself; the browser's save prompts would cover pages.
+# Sekundo keeps credentials itself; the browser's save prompts would cover pages.
 COPY --chmod=644 browser-policy.json /etc/chromium/policies/managed/anviq-browser.json
 COPY --chmod=644 browser-policy.json /etc/brave/policies/managed/anviq-browser.json
 COPY --chmod=644 fluxbox.init /etc/anviq/fluxbox/init

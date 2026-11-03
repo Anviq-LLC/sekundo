@@ -1,7 +1,7 @@
 {
   "name": "@anviq/worker",
   "version": "0.1.0",
-  "license": "Apache-2.0",
+  "license": "SEE LICENSE IN LICENSE-ANVIQ.md",
   "type": "module",
   "scripts": {
     "dev": "node ../../scripts/dev-watch.mjs src/index.ts",

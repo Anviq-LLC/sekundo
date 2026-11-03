@@ -40,14 +40,14 @@ beforeEach(() => {
   });
   vi.mocked(openAuthSessionAsync).mockResolvedValue({
     type: "success",
-    url: `anviq://sign-in?cookie=${encodeURIComponent("better-auth.session_token=new-session; Path=/; HttpOnly")}`,
+    url: `sekundo://sign-in?cookie=${encodeURIComponent("better-auth.session_token=new-session; Path=/; HttpOnly")}`,
   });
 });
 afterEach(() => vi.restoreAllMocks());
 it("uses the Expo proxy, validates the session, and saves the existing session store", async () => {
   await expect(continueWithSso()).resolves.toBe(true);
   const [url, callback] = vi.mocked(openAuthSessionAsync).mock.calls[0]!;
-  expect(callback).toBe("anviq://sign-in");
+  expect(callback).toBe("sekundo://sign-in");
   expect(new URL(url).pathname).toBe("/api/auth/expo-authorization-proxy");
   expect(new URL(url).searchParams.get("oauthState")).toBe("encrypted-state");
   expect(replaceSessionTokenIfCurrent).toHaveBeenCalledWith(1, "new-session");
@@ -63,8 +63,8 @@ it.each([WebBrowserResultType.CANCEL, WebBrowserResultType.DISMISS])(
 );
 it.each([
   "https://attacker.example.test/?cookie=token",
-  "anviq://sign-in?error=account_not_linked",
-  "anviq://sign-in",
+  "sekundo://sign-in?error=account_not_linked",
+  "sekundo://sign-in",
 ])("rejects invalid callbacks", async (url) => {
   vi.mocked(openAuthSessionAsync).mockResolvedValue({ type: "success", url });
   await expect(continueWithSso()).rejects.toThrow();
@@ -77,7 +77,7 @@ it.each(["server", "session"])("drops results when the %s changes", async (chang
     else vi.mocked(currentSessionGeneration).mockReturnValue(2);
     return {
       type: "success",
-      url: `anviq://sign-in?cookie=${encodeURIComponent("better-auth.session_token=new-session; Path=/; HttpOnly")}`,
+      url: `sekundo://sign-in?cookie=${encodeURIComponent("better-auth.session_token=new-session; Path=/; HttpOnly")}`,
     };
   });
   await expect(continueWithSso()).rejects.toThrow();
@@ -96,14 +96,14 @@ it("requires reauthentication to return the same account", async () => {
     .mockResolvedValueOnce({ response: Response.json({}), body: { user: { id: "other-user" } } });
   vi.mocked(openAuthSessionAsync).mockResolvedValue({
     type: "success",
-    url: `anviq://account?cookie=${encodeURIComponent("better-auth.session_token=new-session; Path=/; HttpOnly")}`,
+    url: `sekundo://account?cookie=${encodeURIComponent("better-auth.session_token=new-session; Path=/; HttpOnly")}`,
   });
   await expect(continueWithSso("reauthenticate")).rejects.toThrow();
   expect(authHeaders).toHaveBeenCalled();
   expect(replaceSessionTokenIfCurrent).not.toHaveBeenCalled();
 });
 it("starts authenticated linking without replacing the session", async () => {
-  vi.mocked(openAuthSessionAsync).mockResolvedValue({ type: "success", url: "anviq://account" });
+  vi.mocked(openAuthSessionAsync).mockResolvedValue({ type: "success", url: "sekundo://account" });
   await expect(continueWithSso("link")).resolves.toBe(true);
   expect(vi.mocked(fetchMobileJson).mock.calls[0]?.[0]).toContain("/link-social");
   expect(vi.mocked(fetchMobileJson).mock.calls[0]?.[1]?.headers).toMatchObject({

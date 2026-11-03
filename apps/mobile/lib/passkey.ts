@@ -126,7 +126,7 @@ export function signInWithPasskey(): Promise<boolean> {
     if (!passkeys) throw new Error(t("Could not continue"));
     const options = await fetchMobileJson<RequestOptions>(
       `${flow.apiBase}/api/auth/passkey/generate-authenticate-options`,
-      { ...WITHOUT_COOKIE_JAR, headers: { origin: "anviq://" } },
+      { ...WITHOUT_COOKIE_JAR, headers: { origin: "sekundo://" } },
       {} as RequestOptions,
     );
     if (!options.response.ok || options.invalidJson)
@@ -147,7 +147,7 @@ export function signInWithPasskey(): Promise<boolean> {
       {
         ...WITHOUT_COOKIE_JAR,
         method: "POST",
-        headers: { "content-type": "application/json", origin: "anviq://", cookie },
+        headers: { "content-type": "application/json", origin: "sekundo://", cookie },
         body: JSON.stringify({ response: credential }),
       },
       {},
@@ -177,7 +177,7 @@ export function addPasskey(): Promise<boolean> {
     flow.requireCurrent();
     const options = await fetchMobileJson<CreationOptions>(
       `${flow.apiBase}/api/auth/passkey/generate-register-options`,
-      { ...WITHOUT_COOKIE_JAR, headers: { origin: "anviq://", ...headers } },
+      { ...WITHOUT_COOKIE_JAR, headers: { origin: "sekundo://", ...headers } },
       {} as CreationOptions,
     );
     if (!options.response.ok || options.invalidJson)
@@ -201,7 +201,7 @@ export function addPasskey(): Promise<boolean> {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          origin: "anviq://",
+          origin: "sekundo://",
           cookie,
           ...headers,
         },
@@ -221,7 +221,7 @@ async function passkeyRequest<T>(path: string, body?: unknown): Promise<T> {
     {
       method: body === undefined ? "GET" : "POST",
       headers: {
-        origin: "anviq://",
+        origin: "sekundo://",
         ...(body === undefined ? {} : { "content-type": "application/json" }),
         ...(await authHeaders()),
       },
@@ -269,7 +269,7 @@ async function passkeyOfferDue(userId: string): Promise<boolean> {
     session?: { createdAt?: string };
   } | null>(
     `${currentApiBase()}/api/auth/get-session`,
-    { headers: { origin: "anviq://", ...(await authHeaders()) } },
+    { headers: { origin: "sekundo://", ...(await authHeaders()) } },
     null,
   );
   if (!response.ok || body?.user?.id !== userId || !body.user.createdAt || !body.session?.createdAt)

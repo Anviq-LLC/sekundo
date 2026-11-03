@@ -482,10 +482,10 @@ export function AgentImportForm({
   };
   const skipReason = (reason: AgentImportSkipReason) =>
     ({
-      runtime: t`Not used by Anviq Agents`,
+      runtime: t`Not used by Sekundo`,
       invalid_skill: t`Not a valid skill`,
       builtin: t`Built-in`,
-      unsupported: t`Not supported in Anviq Agents`,
+      unsupported: t`Not supported in Sekundo`,
       connected: t`Already connected`,
       invalid_file: t`Could not read these files`,
       default: defaultNote,

@@ -70,7 +70,7 @@ describe("native app association", () => {
         relation: ["delegate_permission/common.get_login_creds"],
         target: {
           namespace: "android_app",
-          package_name: "com.anviq.app",
+          package_name: "com.sekundo.app",
           sha256_cert_fingerprints: [fingerprint],
         },
       },

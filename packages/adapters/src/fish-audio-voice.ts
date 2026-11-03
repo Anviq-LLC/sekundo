@@ -61,7 +61,7 @@ export class FishAudioVoiceProvider implements VoiceProvider {
     });
   }
 
-  /** Return user-owned then bounded public Fish Audio voices as Anviq Agents choices. */
+  /** Return user-owned then bounded public Fish Audio voices as Sekundo choices. */
   async listVoices(apiKey: string, context: AdapterContext): Promise<VoiceInfo[]> {
     const controller = new AbortController();
     const signal = voiceDeadline(

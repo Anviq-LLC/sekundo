@@ -160,7 +160,7 @@ describe("passwordResetEmail", () => {
 
     expect(message).toMatchObject({
       to: "ada@example.test",
-      subject: "Reset your Anviq Agents password",
+      subject: "Reset your Sekundo password",
     });
     expect(message.text).toContain("https://anviq.test/reset-password?token=secret&next=1");
     expect(message.html).toContain("&lt;Ada &amp; &quot;team&quot;&gt;");
@@ -174,7 +174,7 @@ describe("signInCodeEmail", () => {
     const message = await signInCodeEmail("ada@example.test", "042517");
     expect(message).toMatchObject({
       to: "ada@example.test",
-      subject: "Your Anviq Agents sign-in code",
+      subject: "Your Sekundo sign-in code",
     });
     expect(message.text).toContain("042517");
     expect(message.html).toContain("042517");

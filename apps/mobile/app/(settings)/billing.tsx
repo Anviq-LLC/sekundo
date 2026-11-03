@@ -96,7 +96,7 @@ export default function BillingScreen() {
               : plan === "byok"
                 ? t("Your subscription or API key")
                 : plan === "credits"
-                  ? t("Anviq Agents credits")
+                  ? t("Sekundo credits")
                   : t("None")
           }
         />
@@ -190,7 +190,7 @@ export default function BillingScreen() {
           ) : null}
           {status.canManage && status.funding === "byok" && (status.balanceUsd ?? 0) > 0 ? (
             <SettingsRow
-              title={t("Use Anviq Agents credits")}
+              title={t("Use Sekundo credits")}
               disabled={pending || !status.creditPurchasesEnabled}
               onPress={() =>
                 void action(async () => {

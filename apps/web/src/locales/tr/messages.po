@@ -722,8 +722,8 @@ msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Bu sağlayıcı için abonelik girişi değil, bir API anahtarı saklanıyor."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "An existing Honcho peer to read from. Anviq Agents never writes to it."
-msgstr "Verilerin okunacağı mevcut bir Honcho eşi. Anviq Agents bu eşe asla veri yazmaz."
+msgid "An existing Honcho peer to read from. Sekundo never writes to it."
+msgstr "Verilerin okunacağı mevcut bir Honcho eşi. Sekundo bu eşe asla veri yazmaz."
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -768,11 +768,11 @@ msgstr ""
 
 #: src/components/ModelCredits.tsx
 #: src/pages/Onboarding.tsx
-msgid "Anviq Agents credits"
+msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "anviq-shared and IDs starting with bot- are reserved for Anviq Agents."
+msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -1306,7 +1306,7 @@ msgstr "Klasör seç"
 
 #: src/components/ModelCredits.tsx
 #: src/components/SubscriptionGate.tsx
-msgid "Choose how to use Anviq Agents"
+msgid "Choose how to use Sekundo"
 msgstr ""
 
 #: src/lib/localized-provider-hint.ts
@@ -1611,8 +1611,8 @@ msgstr "Önce bu modelin sağlayıcısını bağla."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose Anviq Agents credits in Billing."
-msgstr "Modeller bölümünde kendi API anahtarınızı bağlayın veya Faturalandırma'da Anviq Agents kredilerini seçin."
+msgid "Connect your own API key in Models or choose Sekundo credits in Billing."
+msgstr "Modeller bölümünde kendi API anahtarınızı bağlayın veya Faturalandırma'da Sekundo kredilerini seçin."
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2278,8 +2278,8 @@ msgid "Create space"
 msgstr ""
 
 #: src/pages/Auth.tsx
-msgid "Create your Anviq Agents"
-msgstr "Anviq Agents hesabını oluştur"
+msgid "Create your Sekundo"
+msgstr "Sekundo hesabını oluştur"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -3114,7 +3114,7 @@ msgid "How to check"
 msgstr "Nasıl kontrol edilir"
 
 #: src/components/SignupSurvey.tsx
-msgid "How will you use Anviq Agents?"
+msgid "How will you use Sekundo?"
 msgstr ""
 
 #: src/pages/shell/computer-release-actions.tsx
@@ -4127,8 +4127,8 @@ msgid "Not imported"
 msgstr "İçe aktarılmadı"
 
 #: src/pages/shell/import-status.ts
-msgid "Not in Anviq Agents' catalog"
-msgstr "Anviq Agents kataloğunda yok"
+msgid "Not in Sekundo' catalog"
+msgstr "Sekundo kataloğunda yok"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Not in the plugin catalog"
@@ -4140,12 +4140,12 @@ msgstr "Şimdi değil"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
-msgid "Not supported in Anviq Agents"
-msgstr "Anviq Agents'da desteklenmiyor"
+msgid "Not supported in Sekundo"
+msgstr "Sekundo'da desteklenmiyor"
 
 #: src/pages/shell/agent-import.tsx
-msgid "Not used by Anviq Agents"
-msgstr "Anviq Agents tarafından kullanılmıyor"
+msgid "Not used by Sekundo"
+msgstr "Sekundo tarafından kullanılmıyor"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not working"
@@ -4389,8 +4389,8 @@ msgid "Paste a replacement key"
 msgstr "Yeni bir anahtar yapıştır"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
-msgid "Paste the OpenAI-compatible address from your server. Anviq Agents adds /v1 if needed."
-msgstr "Sunucundaki OpenAI uyumlu adresi yapıştır. Gerekirse Anviq Agents /v1 ekler."
+msgid "Paste the OpenAI-compatible address from your server. Sekundo adds /v1 if needed."
+msgstr "Sunucundaki OpenAI uyumlu adresi yapıştır. Gerekirse Sekundo /v1 ekler."
 
 #: src/pages/shell/agent-import.tsx
 msgid "Paste the reply"
@@ -4955,8 +4955,8 @@ msgid "Retry screen"
 msgstr ""
 
 #: src/pages/McpOAuthCallback.tsx
-msgid "Return to Anviq Agents"
-msgstr "Anviq Agents'ya dön"
+msgid "Return to Sekundo"
+msgstr "Sekundo'ya dön"
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -5399,8 +5399,8 @@ msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "<0>{0}</0> adresinde oturum açın, ardından kodu buraya yapıştırın."
 
 #: src/pages/Auth.tsx
-msgid "Sign in to Anviq Agents"
-msgstr "Anviq Agents'da oturum aç"
+msgid "Sign in to Sekundo"
+msgstr "Sekundo'da oturum aç"
 
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
@@ -5640,8 +5640,8 @@ msgid "Subscribe for ${0} / month"
 msgstr "Aylık ${0} ile abone ol"
 
 #: src/components/ModelCredits.tsx
-msgid "Subscribe to Anviq Agents credits"
-msgstr "Anviq Agents kredilerine abone ol"
+msgid "Subscribe to Sekundo credits"
+msgstr "Sekundo kredilerine abone ol"
 
 #: src/components/ModelCredits.tsx
 msgid "Subscribe with your own AI"
@@ -5955,8 +5955,8 @@ msgid "This server is already connected. Disconnect it first to authorize again.
 msgstr "Bu sunucu zaten bağlı. Yeniden yetkilendirmek için önce bağlantısını kes."
 
 #: src/pages/model-settings/connection-controls.tsx
-msgid "This subscription sign-in is not available in Anviq Agents yet. Use a deployment credential or choose another provider."
-msgstr "Bu abonelik girişi Anviq Agents'da henüz kullanılamıyor. Bir dağıtım kimlik bilgisi kullan veya başka bir sağlayıcı seç."
+msgid "This subscription sign-in is not available in Sekundo yet. Use a deployment credential or choose another provider."
+msgstr "Bu abonelik girişi Sekundo'da henüz kullanılamıyor. Bir dağıtım kimlik bilgisi kullan veya başka bir sağlayıcı seç."
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
@@ -6215,7 +6215,7 @@ msgid "Use a found model"
 msgstr "Bulunan bir modeli kullan"
 
 #: src/components/ModelCredits.tsx
-msgid "Use Anviq Agents credits"
+msgid "Use Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
@@ -6380,7 +6380,7 @@ msgid "Weekends"
 msgstr "Hafta sonları"
 
 #: src/components/SignupSurvey.tsx
-msgid "Welcome to Anviq Agents"
+msgid "Welcome to Sekundo"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -6388,7 +6388,7 @@ msgid "What about its memories?"
 msgstr "Hafızası ne olsun?"
 
 #: src/components/SignupSurvey.tsx
-msgid "What do you most want Anviq Agents to help with?"
+msgid "What do you most want Sekundo to help with?"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx

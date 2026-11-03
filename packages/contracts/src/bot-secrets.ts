@@ -111,7 +111,7 @@ const RESERVED_COMMAND_VARIABLE_NAMES = new Set([
   "SSH_ASKPASS",
   "SSH_ASKPASS_REQUIRE",
 ]);
-// Whole families a single variable name cannot enumerate: dynamic-loader injection, Anviq Agents' own
+// Whole families a single variable name cannot enumerate: dynamic-loader injection, Sekundo' own
 // namespace, git's config file set, and npm's configuration overrides.
 const RESERVED_COMMAND_VARIABLE_PREFIXES = ["LD_", "DYLD_", "ANVIQ_", "GIT_CONFIG_", "NPM_CONFIG_"];
 

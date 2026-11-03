@@ -1,17 +1,17 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Compose
 ---
 - runFlow:
     file: ../subflows/sign-in.yaml
     env:
       ANVIQ_ACTIVE_EMAIL: ${ANVIQ_SCREENSHOT_EMAIL}
-- openLink: "anviq:///new-space"
+- openLink: "sekundo:///new-space"
 - extendedWaitUntil:
     visible: "Customer support|Create space"
     timeout: 15000
 - takeScreenshot: 02-new-space
 - tapOn: "Cancel"
-- openLink: "anviq:///new-group"
+- openLink: "sekundo:///new-group"
 - extendedWaitUntil:
     visible: "Search bots"
     timeout: 15000
@@ -21,4 +21,4 @@ name: Compose
 - tapOn: "Next"
 - assertVisible: "Skip"
 - takeScreenshot: 04-new-group-name
-- openLink: "anviq:///"
+- openLink: "sekundo:///"

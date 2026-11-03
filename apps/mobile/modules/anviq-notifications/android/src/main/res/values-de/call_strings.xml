@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="anviq_call_channel">Laufender Anruf</string>
-  <string name="anviq_call_title">Anviq-Anruf</string>
+  <string name="anviq_call_title">Sekundo-Anruf</string>
   <string name="anviq_call_text">Mikrofon ist aktiv</string>
 </resources>

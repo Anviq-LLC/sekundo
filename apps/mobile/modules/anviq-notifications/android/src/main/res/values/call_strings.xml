@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="anviq_call_channel">Ongoing call</string>
-  <string name="anviq_call_title">Anviq Agents call</string>
+  <string name="anviq_call_title">Sekundo call</string>
   <string name="anviq_call_text">Microphone is active</string>
 </resources>

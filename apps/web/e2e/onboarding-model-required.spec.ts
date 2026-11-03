@@ -54,7 +54,7 @@ test("Ollama Cloud onboarding requires a key before continuing", async ({ page }
   await expect(continueButton).toBeDisabled();
 });
 
-test("Anviq Agents credits are chosen like a provider, with nothing else to fill in", async ({
+test("Sekundo credits are chosen like a provider, with nothing else to fill in", async ({
   page,
 }, testInfo) => {
   await page.route("**/rpc/me", async (route) => {
@@ -75,7 +75,7 @@ test("Anviq Agents credits are chosen like a provider, with nothing else to fill
     timeout: 20_000,
   });
   await page.getByRole("combobox", { name: "Provider" }).click();
-  await page.getByRole("option", { name: "Anviq Agents credits", exact: true }).click();
+  await page.getByRole("option", { name: "Sekundo credits", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "Model", exact: true })).toHaveCount(0);
   await expect(page.getByLabel(/API key/)).toHaveCount(0);
   await captureScreenshot(page, testInfo, "onboarding-anviq-credits");

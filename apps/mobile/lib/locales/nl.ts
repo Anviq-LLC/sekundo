@@ -101,8 +101,8 @@ export const NL_MESSAGES: Record<string, string> = {
   "Your model provider": "Jouw modelaanbieder",
   "Connect a model in Settings before running bots.":
     "Verbind een model in Instellingen voordat je bots uitvoert.",
-  "Connect your own API key in Models or choose Anviq Agents credits in Billing.":
-    "Verbind je eigen API-sleutel bij Modellen of kies Anviq-tegoed bij Facturatie.",
+  "Connect your own API key in Models or choose Sekundo credits in Billing.":
+    "Verbind je eigen API-sleutel bij Modellen of kies Sekundo-tegoed bij Facturatie.",
   "The model provider returned an error.": "De modelaanbieder heeft een fout teruggegeven.",
   "{provider} is rate limiting requests. Try again shortly.":
     "{provider} beperkt het aantal verzoeken. Probeer het zo nog eens.",
@@ -168,8 +168,8 @@ export const NL_MESSAGES: Record<string, string> = {
   "Chat Settings": "Chatinstellingen",
   "Configure a plugin catalog on the server to connect apps.":
     "Configureer een plugincatalogus op de server om apps te koppelen.",
-  "Paste the OpenAI-compatible address from your server. Anviq Agents adds /v1 if needed.":
-    "Plak het OpenAI-compatibele adres van je server. Anviq Agents voegt zo nodig /v1 toe.",
+  "Paste the OpenAI-compatible address from your server. Sekundo adds /v1 if needed.":
+    "Plak het OpenAI-compatibele adres van je server. Sekundo voegt zo nodig /v1 toe.",
   "Settings: General": "Instellingen: algemeen",
   "Settings: Usage": "Instellingen: gebruik",
   "Sign-in did not return a session": "De aanmelding gaf geen sessie terug",
@@ -209,9 +209,9 @@ export const NL_MESSAGES: Record<string, string> = {
   "Reset your password": "Je wachtwoord opnieuw instellen",
   "Send reset link": "Herstellingslink verzenden",
   Server: "Server",
-  "Sign in to Anviq Agents": "Aanmelden bij Anviq Agents",
+  "Sign in to Sekundo": "Aanmelden bij Sekundo",
   "Sign up": "Registreren",
-  "Sign up for Anviq Agents": "Registreer je voor Anviq Agents",
+  "Sign up for Sekundo": "Registreer je voor Sekundo",
   "Use a custom server": "Gebruik een eigen server",
   "Use default server": "Gebruik de standaardserver",
   Activity: "Activiteit",
@@ -524,8 +524,8 @@ export const NL_MESSAGES: Record<string, string> = {
   "Supports images": "Ondersteunt afbeeldingen",
   "Supports thinking": "Ondersteunt denken",
   "Then paste the code here.": "Plak daarna de code hier.",
-  "This subscription sign-in is not available in Anviq Agents yet. Use a deployment credential or choose another provider.":
-    "Deze abonnementsaanmelding is nog niet beschikbaar in Anviq Agents. Gebruik een implementatiegegeven of kies een andere aanbieder.",
+  "This subscription sign-in is not available in Sekundo yet. Use a deployment credential or choose another provider.":
+    "Deze abonnementsaanmelding is nog niet beschikbaar in Sekundo. Gebruik een implementatiegegeven of kies een andere aanbieder.",
   "Use a found model": "Een gevonden model gebruiken",
   "Waiting for sign-in…": "Wachten op aanmelding…",
   "exact-model-id": "exact-model-id",
@@ -795,7 +795,7 @@ export const NL_MESSAGES: Record<string, string> = {
   "Enter a server URL": "Voer een server-URL in",
   "Public servers need https://. HTTP only works on your local network.":
     "Openbare servers vereisen https://. HTTP werkt alleen op je lokale netwerk.",
-  "That URL did not look like a Anviq Agents server": "Die URL leek geen Anviq-server",
+  "That URL did not look like a Sekundo server": "Die URL leek geen Anviq-server",
   "That URL is missing a host": "Die URL mist een host",
   "That doesn’t look like a URL": "Dat lijkt geen URL",
   "Use an http or https URL": "Gebruik een http- of https-URL",
@@ -865,7 +865,7 @@ export const NL_MESSAGES: Record<string, string> = {
   "AI models": "AI-modellen",
   Memory: "Geheugen",
   "Privacy policies": "Privacybeleid",
-  "Anviq Agents": "Anviq Agents",
+  "Sekundo": "Sekundo",
   "Withdraw all permissions": "Alle toestemmingen intrekken",
   "Withdraw all permissions?": "Alle toestemmingen intrekken?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":
@@ -981,13 +981,13 @@ export const NL_MESSAGES: Record<string, string> = {
   Subscribe: "Abonneren",
   "Monthly credits expire at renewal. Top-ups do not expire.":
     "Maandelijks tegoed vervalt bij verlenging. Los gekocht tegoed verloopt niet.",
-  "Use Anviq Agents credits": "Anviq-tegoed gebruiken",
+  "Use Sekundo credits": "Sekundo-tegoed gebruiken",
   "Choose a plan": "Kies een abonnement",
   "Change plan": "Abonnement wijzigen",
   Plan: "Abonnement",
   None: "Geen",
   "Free trial": "Gratis proefperiode",
-  "Anviq Agents credits": "Anviq-tegoed",
+  "Sekundo credits": "Sekundo-tegoed",
   "Free until": "Gratis tot",
   Ends: "Eindigt op",
   Renews: "Verlengt op",
@@ -1016,7 +1016,7 @@ export const NL_MESSAGES: Record<string, string> = {
   "Your free trial has started": "Je gratis proefperiode is begonnen",
   "Free until {date}": "Gratis tot {date}",
   "Connect your AI": "Verbind je AI",
-  "Start using Anviq Agents": "Aan de slag met Anviq Agents",
+  "Start using Sekundo": "Aan de slag met Sekundo",
   "1 unread": "1 ongelezen",
   "{count} unread": "{count} ongelezen",
   "{count} need attention": "{count} vragen aandacht",
@@ -1024,12 +1024,12 @@ export const NL_MESSAGES: Record<string, string> = {
   "{label}, below": "{label}, onder",
   Work: "Werk",
   Both: "Allebei",
-  "How will you use Anviq Agents?": "Hoe ga je Anviq Agents gebruiken?",
-  "What do you most want Anviq Agents to help with?":
-    "Waarmee wil je vooral hulp van Anviq Agents?",
+  "How will you use Sekundo?": "Hoe ga je Sekundo gebruiken?",
+  "What do you most want Sekundo to help with?":
+    "Waarmee wil je vooral hulp van Sekundo?",
   "How big is your team?": "Hoe groot is je team?",
   "How did you hear about us?": "Hoe heb je over ons gehoord?",
-  "Welcome to Anviq Agents": "Welkom bij Anviq Agents",
+  "Welcome to Sekundo": "Welkom bij Sekundo",
   Messaging: "Berichten",
   Unlink: "Ontkoppelen",
   "Connect a chat app": "Chat-app koppelen",

@@ -36,10 +36,10 @@ export const translateRunError: RunErrorTranslator = (message, values) => {
         message: "Connect a model in Settings before running bots.",
         values,
       });
-    case "Connect your own API key in Models or choose Anviq Agents credits in Billing.":
+    case "Connect your own API key in Models or choose Sekundo credits in Billing.":
       return i18n._({
-        id: "Connect your own API key in Models or choose Anviq Agents credits in Billing.",
-        message: "Connect your own API key in Models or choose Anviq Agents credits in Billing.",
+        id: "Connect your own API key in Models or choose Sekundo credits in Billing.",
+        message: "Connect your own API key in Models or choose Sekundo credits in Billing.",
         values,
       });
     case "The model provider returned an error.":

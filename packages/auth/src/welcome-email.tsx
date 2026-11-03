@@ -11,12 +11,12 @@ export function welcomeEmail(
 ): Promise<TransactionalEmail> {
   return message(
     user.email,
-    "Welcome to Anviq Agents",
+    "Welcome to Sekundo",
     <>
       <Text>Hi {displayName(user.name, "there")},</Text>
-      <Text>Thanks for signing up for Anviq Agents.</Text>
+      <Text>Thanks for signing up for Sekundo.</Text>
       <Text>Have any questions? Reply to this email.</Text>
-      <Text>The Anviq team</Text>
+      <Text>The Sekundo team</Text>
       <Hr style={{ borderColor: lightTokens.border, marginTop: "32px" }} />
       <Text style={{ color: lightTokens.mutedForeground, fontSize: "12px" }}>
         <Link href={unsubscribeUrl} style={{ color: lightTokens.mutedForeground }}>

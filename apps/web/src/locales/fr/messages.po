@@ -722,8 +722,8 @@ msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Une clé API est enregistrée pour ce fournisseur, et non une connexion par abonnement."
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "An existing Honcho peer to read from. Anviq Agents never writes to it."
-msgstr "Un pair Honcho existant à consulter. Anviq Agents n’y écrit jamais."
+msgid "An existing Honcho peer to read from. Sekundo never writes to it."
+msgstr "Un pair Honcho existant à consulter. Sekundo n’y écrit jamais."
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -768,11 +768,11 @@ msgstr ""
 
 #: src/components/ModelCredits.tsx
 #: src/pages/Onboarding.tsx
-msgid "Anviq Agents credits"
+msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "anviq-shared and IDs starting with bot- are reserved for Anviq Agents."
+msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -1306,7 +1306,7 @@ msgstr "Choisir un dossier"
 
 #: src/components/ModelCredits.tsx
 #: src/components/SubscriptionGate.tsx
-msgid "Choose how to use Anviq Agents"
+msgid "Choose how to use Sekundo"
 msgstr ""
 
 #: src/lib/localized-provider-hint.ts
@@ -1611,8 +1611,8 @@ msgstr "Connectez d’abord le fournisseur de ce modèle."
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose Anviq Agents credits in Billing."
-msgstr "Connectez votre propre clé API dans Modèles ou choisissez les crédits Anviq Agents dans Facturation."
+msgid "Connect your own API key in Models or choose Sekundo credits in Billing."
+msgstr "Connectez votre propre clé API dans Modèles ou choisissez les crédits Sekundo dans Facturation."
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2278,8 +2278,8 @@ msgid "Create space"
 msgstr "Créer un espace"
 
 #: src/pages/Auth.tsx
-msgid "Create your Anviq Agents"
-msgstr "Créez votre Anviq Agents"
+msgid "Create your Sekundo"
+msgstr "Créez votre Sekundo"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -3114,7 +3114,7 @@ msgid "How to check"
 msgstr "Comment vérifier"
 
 #: src/components/SignupSurvey.tsx
-msgid "How will you use Anviq Agents?"
+msgid "How will you use Sekundo?"
 msgstr ""
 
 #: src/pages/shell/computer-release-actions.tsx
@@ -4127,8 +4127,8 @@ msgid "Not imported"
 msgstr "Non importé"
 
 #: src/pages/shell/import-status.ts
-msgid "Not in Anviq Agents' catalog"
-msgstr "Absent du catalogue de Anviq Agents"
+msgid "Not in Sekundo' catalog"
+msgstr "Absent du catalogue de Sekundo"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Not in the plugin catalog"
@@ -4140,12 +4140,12 @@ msgstr "Pas maintenant"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
-msgid "Not supported in Anviq Agents"
-msgstr "Non pris en charge par Anviq Agents"
+msgid "Not supported in Sekundo"
+msgstr "Non pris en charge par Sekundo"
 
 #: src/pages/shell/agent-import.tsx
-msgid "Not used by Anviq Agents"
-msgstr "Non utilisé par Anviq Agents"
+msgid "Not used by Sekundo"
+msgstr "Non utilisé par Sekundo"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not working"
@@ -4389,8 +4389,8 @@ msgid "Paste a replacement key"
 msgstr "Collez une clé de remplacement"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
-msgid "Paste the OpenAI-compatible address from your server. Anviq Agents adds /v1 if needed."
-msgstr "Collez l'adresse compatible OpenAI de votre serveur. Anviq Agents ajoute /v1 si nécessaire."
+msgid "Paste the OpenAI-compatible address from your server. Sekundo adds /v1 if needed."
+msgstr "Collez l'adresse compatible OpenAI de votre serveur. Sekundo ajoute /v1 si nécessaire."
 
 #: src/pages/shell/agent-import.tsx
 msgid "Paste the reply"
@@ -4955,8 +4955,8 @@ msgid "Retry screen"
 msgstr "Réessayer l'écran"
 
 #: src/pages/McpOAuthCallback.tsx
-msgid "Return to Anviq Agents"
-msgstr "Retour à Anviq Agents"
+msgid "Return to Sekundo"
+msgstr "Retour à Sekundo"
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -5399,8 +5399,8 @@ msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "Connectez-vous sur <0>{0}</0>, puis collez le code ici."
 
 #: src/pages/Auth.tsx
-msgid "Sign in to Anviq Agents"
-msgstr "Connectez-vous à Anviq Agents"
+msgid "Sign in to Sekundo"
+msgstr "Connectez-vous à Sekundo"
 
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
@@ -5640,8 +5640,8 @@ msgid "Subscribe for ${0} / month"
 msgstr "S’abonner pour ${0} / mois"
 
 #: src/components/ModelCredits.tsx
-msgid "Subscribe to Anviq Agents credits"
-msgstr "S’abonner aux crédits Anviq Agents"
+msgid "Subscribe to Sekundo credits"
+msgstr "S’abonner aux crédits Sekundo"
 
 #: src/components/ModelCredits.tsx
 msgid "Subscribe with your own AI"
@@ -5955,8 +5955,8 @@ msgid "This server is already connected. Disconnect it first to authorize again.
 msgstr "Ce serveur est déjà connecté. Déconnectez-le d'abord pour l'autoriser à nouveau."
 
 #: src/pages/model-settings/connection-controls.tsx
-msgid "This subscription sign-in is not available in Anviq Agents yet. Use a deployment credential or choose another provider."
-msgstr "Cette connexion par abonnement n'est pas encore disponible dans Anviq Agents. Utilisez un identifiant de déploiement ou choisissez un autre fournisseur."
+msgid "This subscription sign-in is not available in Sekundo yet. Use a deployment credential or choose another provider."
+msgstr "Cette connexion par abonnement n'est pas encore disponible dans Sekundo. Utilisez un identifiant de déploiement ou choisissez un autre fournisseur."
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
@@ -6215,7 +6215,7 @@ msgid "Use a found model"
 msgstr "Utiliser un modèle trouvé"
 
 #: src/components/ModelCredits.tsx
-msgid "Use Anviq Agents credits"
+msgid "Use Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
@@ -6380,7 +6380,7 @@ msgid "Weekends"
 msgstr "Week-ends"
 
 #: src/components/SignupSurvey.tsx
-msgid "Welcome to Anviq Agents"
+msgid "Welcome to Sekundo"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
@@ -6388,7 +6388,7 @@ msgid "What about its memories?"
 msgstr "Qu'en est-il de ses mémoires ?"
 
 #: src/components/SignupSurvey.tsx
-msgid "What do you most want Anviq Agents to help with?"
+msgid "What do you most want Sekundo to help with?"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx

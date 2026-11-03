@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.1.0",
-  "license": "Apache-2.0",
+  "license": "SEE LICENSE IN LICENSE-ANVIQ.md",
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": "^22.22.2 || ^24.0.0 || >=26.0.0"

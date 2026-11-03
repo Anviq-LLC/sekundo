@@ -1,5 +1,8 @@
-Anviq Agents
+Sekundo
 Copyright 2026 Anviq LLC
+
+Sekundo is a white-label version of Anviq Agents
+(https://github.com/Anviq-LLC/anviq-agents), Copyright 2026 Anviq LLC.
 
 Anviq Agents is a fork of rakazo (https://github.com/elie222/rakazo),
 Copyright 2026 Rakazo contributors, licensed under the Apache License,
@@ -13,5 +16,5 @@ does not carry the upstream commit authors. Copyright in the upstream
 code stays with its authors, see the LICENSE file.
 
 Files created by Anviq LLC, and Anviq LLC's changes to upstream files,
-are described in LICENSE-ANVIQ.md and are not covered by the Apache
-License.
+including the Anviq Agents changes and the Sekundo changes, are described
+in LICENSE-ANVIQ.md and are not covered by the Apache License.

@@ -1,7 +1,7 @@
 {
   "name": "@anviq/adapters",
   "version": "0.1.0",
-  "license": "Apache-2.0",
+  "license": "SEE LICENSE IN LICENSE-ANVIQ.md",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
@@ -40,7 +40,7 @@
     "@anviq/core": "workspace:*",
     "@anviq/db": "workspace:*",
     "@anviq/logging": "workspace:*",
-    "@anviq/memory-engine": "github:Leovoss/anviq-memory#6ef2e07a7326f5005c2e2df2dd94c84fadf0c593",
+    "@anviq/memory-engine": "github:Anviq-LLC/anviq-memory#6ef2e07a7326f5005c2e2df2dd94c84fadf0c593",
     "@stripe/link-sdk": "0.15.0",
     "chat": "4.43.0",
     "chat-adapter-sendblue": "0.2.0",

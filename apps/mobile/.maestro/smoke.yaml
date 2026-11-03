@@ -1,17 +1,17 @@
-appId: com.anviq.app
-name: Anviq Agents mobile smoke
+appId: com.sekundo.app
+name: Sekundo mobile smoke
 ---
 - launchApp:
     clearState: true
 
-- assertVisible: "Sign up for Anviq Agents"
+- assertVisible: "Sign up for Sekundo"
 - assertVisible: "Name"
 - tapOn: "Sign in"
 - runFlow:
     when:
       true: ${typeof ANVIQ_MOBILE_API_URL !== "undefined" && ANVIQ_MOBILE_API_URL != null && ANVIQ_MOBILE_API_URL.trim() !== ""}
     file: helpers/server.yaml
-- assertVisible: "Sign in to Anviq Agents"
+- assertVisible: "Sign in to Sekundo"
 - tapOn: "Email"
 - inputText: ${ANVIQ_E2E_EMAIL}
 - tapOn: "Password"

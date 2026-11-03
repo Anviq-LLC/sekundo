@@ -15,7 +15,7 @@ export type ImportSetupTarget =
   | { kind: "routine"; routineId: string };
 
 /**
- * Needs Anviq Agents cannot check from its own data: what a skill declares, and a program or local
+ * Needs Sekundo cannot check from its own data: what a skill declares, and a program or local
  * paths a stdio server relies on. Such rows are never shown as done.
  */
 function isVerifiable(item: AgentImportSetupItem): boolean {

@@ -246,8 +246,8 @@ jobs:
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=2 "$app"
           grep -Fqx "provider: github" "$app/Contents/Resources/app-update.yml"
-          grep -Fqx "owner: leovoss" "$app/Contents/Resources/app-update.yml"
-          grep -Fqx "repo: anviq-agents" "$app/Contents/Resources/app-update.yml"
+          grep -Fqx "owner: anviq-llc" "$app/Contents/Resources/app-update.yml"
+          grep -Fqx "repo: sekundo" "$app/Contents/Resources/app-update.yml"
 
       - name: Verify packaged native dependencies
         if: runner.os == 'macOS'
@@ -312,7 +312,7 @@ jobs:
             throw "Windows update config is not bound to the signing publisher."
           }
           $feed = Get-Content -Raw $config
-          foreach ($expected in @("provider: github", "owner: leovoss", "repo: anviq-agents")) {
+          foreach ($expected in @("provider: github", "owner: anviq-llc", "repo: sekundo")) {
             if ($feed -notmatch "(?m)^$([regex]::Escape($expected))\r?$") {
               throw "Windows update config missing '$expected'."
             }
@@ -337,8 +337,8 @@ jobs:
           test -n "$config"
           test -f "$config"
           grep -Fqx "provider: github" "$config"
-          grep -Fqx "owner: leovoss" "$config"
-          grep -Fqx "repo: anviq-agents" "$config"
+          grep -Fqx "owner: anviq-llc" "$config"
+          grep -Fqx "repo: sekundo" "$config"
           test -f apps/desktop/out/latest-linux.yml
           grep -Fqx "version: $RELEASE_VERSION" apps/desktop/out/latest-linux.yml
 
@@ -428,7 +428,7 @@ jobs:
           RELEASE_TAG: ${{ needs.validate.outputs.tag }}
         run: >-
           gh release create "$RELEASE_TAG" release-artifacts/*
-          --draft --generate-notes --title "Anviq Agents $RELEASE_TAG" --verify-tag
+          --draft --generate-notes --title "Sekundo $RELEASE_TAG" --verify-tag
       - name: Publish the completed release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

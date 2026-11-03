@@ -275,7 +275,7 @@ async function ensureUser(apiUrl: string, email: string, password: string, name:
     headers: {
       authorization: `Bearer ${session.token}`,
       cookie: session.cookie,
-      origin: "anviq://",
+      origin: "sekundo://",
     },
   };
 }
@@ -287,7 +287,7 @@ async function postAuth(
 ) {
   const response = await fetch(`${apiUrl}/api/auth/${action}/email`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: "anviq://" },
+    headers: { "content-type": "application/json", origin: "sekundo://" },
     body: JSON.stringify(body),
   });
   const text = await response.text();

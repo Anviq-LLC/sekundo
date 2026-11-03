@@ -65,7 +65,7 @@ export class KeylessHttpWebProvider implements WebProvider {
     this.fetchTimeoutMs = options.fetchTimeoutMs ?? 15_000;
     this.maxBufferBytes = options.maxBufferBytes ?? 5 * 1024 * 1024;
     this.userAgent =
-      options.userAgent ?? "Anviq/0.1 (+https://github.com/leovoss/anviq-agents; web tools)";
+      options.userAgent ?? "Sekundo/0.1 (+https://github.com/anviq-llc/sekundo; web tools)";
   }
 
   describe() {

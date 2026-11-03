@@ -603,7 +603,7 @@ code-b
         toolCalls: [
           {
             name: "destination.write",
-            args: { collection: "notes", title: "Anviq Agents result", body: prompt },
+            args: { collection: "notes", title: "Sekundo result", body: prompt },
           },
         ],
         complete: true,

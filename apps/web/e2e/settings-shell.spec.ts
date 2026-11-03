@@ -218,7 +218,7 @@ test("Honcho memory settings empty and filled", async ({ page }, testInfo) => {
   await userPeer.fill("bot-123");
   await expect(userPeer).toHaveAttribute("aria-invalid", "true");
   await expect(
-    memory.getByText("anviq-shared and IDs starting with bot- are reserved for Anviq Agents."),
+    memory.getByText("anviq-shared and IDs starting with bot- are reserved for Sekundo."),
   ).toBeVisible();
   await expect(memory.getByRole("button", { name: "Connect", exact: true })).toBeDisabled();
   await captureScreenshot(page, testInfo, "memory-honcho-user-peer-reserved");

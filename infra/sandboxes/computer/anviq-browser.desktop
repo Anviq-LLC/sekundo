@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Anviq Agents Browser
-Comment=Chromium with Anviq Agents container flags and profile isolation
+Name=Sekundo Browser
+Comment=Chromium with Sekundo container flags and profile isolation
 Exec=/usr/local/bin/anviq-browser %U
 Terminal=false
 Categories=Network;WebBrowser;

@@ -216,7 +216,7 @@ function startPreview(env: NodeJS.ProcessEnv) {
 
 async function packagedExecutable() {
   const out = path.join(desktopRoot, "out");
-  const candidates = process.platform === "darwin" ? await findNamed(out, "Anviq.app") : [];
+  const candidates = process.platform === "darwin" ? await findNamed(out, "Sekundo.app") : [];
   if (process.platform === "darwin" && candidates[0]) {
     return path.join(candidates[0], "Contents/MacOS/Anviq");
   }
@@ -745,7 +745,7 @@ function environmentFingerprint(versions: { electron?: string; chrome?: string }
 
 async function measureBundles() {
   const web = await directorySize(path.join(webRoot, "dist"));
-  const applications = await findNamed(path.join(desktopRoot, "out"), "Anviq.app");
+  const applications = await findNamed(path.join(desktopRoot, "out"), "Sekundo.app");
   const desktop = applications[0] ? await directorySize(applications[0]) : null;
   return { web, desktop };
 }
@@ -809,7 +809,7 @@ function roundedSummary(values: number[]): NumericSummary {
 
 function renderMarkdown(report: PerformanceReport) {
   const summary = report.summary;
-  return `# Anviq Agents desktop performance — ${report.label}
+  return `# Sekundo desktop performance — ${report.label}
 
 - Commit: \`${report.environment.gitSha.slice(0, 12)}\`
 - Platform: ${report.environment.platform}/${report.environment.arch}

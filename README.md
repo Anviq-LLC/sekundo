@@ -1,11 +1,14 @@
-# Anviq Agents
+# Sekundo
 
-Anviq Agents runs persistent AI agents ("bots") that keep their own conversations, memory and routines
+Sekundo runs persistent AI agents ("bots") that keep their own conversations, memory and routines
 and work on a computer of their own: a browser, a terminal, files and a graphical desktop. One API
 serves a web app, an Electron desktop app and an Expo mobile app.
 
-Each customer runs on its own instance with its own database, keys and domain, operated by Anviq.
-Anviq Agents is in beta.
+Each customer runs on its own instance with its own database, keys and domain, operated by Sekundo.
+Sekundo is in beta.
+
+Sekundo is a white-label version of [Anviq Agents](https://github.com/Anviq-LLC/anviq-agents) by
+Anviq LLC.
 
 ## Requirements
 
@@ -18,8 +21,8 @@ Node.js 23.x and 25.x are not supported.
 ## Run locally
 
 ```bash
-git clone https://github.com/leovoss/anviq-agents.git
-cd anviq-agents
+git clone https://github.com/anviq-llc/sekundo.git
+cd sekundo
 cp .env.example .env
 ```
 
@@ -140,6 +143,7 @@ Report vulnerabilities as described in [SECURITY.md](./SECURITY.md), not in publ
 
 ## License
 
-Anviq Agents includes code from [rakazo](https://github.com/elie222/rakazo), licensed under the
-Apache License 2.0, see [LICENSE](./LICENSE). Anviq LLC's own additions are proprietary, see
+Sekundo is derived from Anviq Agents, which includes code from
+[rakazo](https://github.com/elie222/rakazo), licensed under the Apache License 2.0, see
+[LICENSE](./LICENSE). Everything else is owned by Anviq LLC and is proprietary, see
 [LICENSE-ANVIQ.md](./LICENSE-ANVIQ.md) and [NOTICE](./NOTICE).

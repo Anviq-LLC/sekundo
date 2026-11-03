@@ -1,4 +1,4 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 ---
 # Reuse an already-open server sheet, or open it from authentication.
 - runFlow:

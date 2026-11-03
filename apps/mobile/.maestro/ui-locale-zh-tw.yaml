@@ -1,9 +1,9 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Traditional Chinese language selection persists
 # Run against a signed-in test account on an English device.
 ---
 - launchApp
-- openLink: "anviq:///language"
+- openLink: "sekundo:///language"
 - extendedWaitUntil:
     visible: "Language"
     timeout: 10000
@@ -13,7 +13,7 @@ name: Traditional Chinese language selection persists
 - takeScreenshot: "ui-locale-zh-tw"
 - stopApp
 - launchApp
-- openLink: "anviq:///language"
+- openLink: "sekundo:///language"
 - extendedWaitUntil:
     visible: "語言"
     timeout: 10000

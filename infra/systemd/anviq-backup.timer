@@ -1,5 +1,5 @@
 [Unit]
-Description=Run the Anviq Agents production backup nightly
+Description=Run the Sekundo production backup nightly
 
 [Timer]
 OnCalendar=*-*-* 02:15:00 UTC

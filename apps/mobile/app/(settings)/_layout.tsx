@@ -70,7 +70,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="change-password" options={{ title: t("Change password") }} />
       <Stack.Screen
         name="signup-survey"
-        options={glassHeaderOptions(t("Welcome to Anviq Agents"))}
+        options={glassHeaderOptions(t("Welcome to Sekundo"))}
       />
       <Stack.Screen name="language" options={glassHeaderOptions(t("Language"))} />
       <Stack.Screen name="model-picker" options={glassHeaderOptions(t("Model"))} />

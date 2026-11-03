@@ -1,11 +1,11 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Thread error recovery
 ---
 - runFlow:
     file: ../subflows/sign-in.yaml
     env:
       ANVIQ_ACTIVE_EMAIL: ${ANVIQ_SCREENSHOT_EMAIL}
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: ".*weekly limit.*"
     timeout: 20000

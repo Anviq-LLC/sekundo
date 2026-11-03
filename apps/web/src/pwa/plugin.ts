@@ -17,8 +17,8 @@ export function webManifest() {
   }));
   return {
     id: "/",
-    name: "Anviq Agents",
-    short_name: "Anviq Agents",
+    name: "Sekundo",
+    short_name: "Sekundo",
     description: "Your team of always-on agents.",
     start_url: "/",
     scope: "/",

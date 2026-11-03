@@ -93,7 +93,7 @@ describe("notification tap routing", () => {
   it("opens the thread named by an Android deep link, including its thread id", () => {
     expect(
       notificationOpenTargetFromLink(
-        "anviq://thread?botId=bot-1&name=Ada%20Lovelace&spaceId=space-2&threadId=thread-9",
+        "sekundo://thread?botId=bot-1&name=Ada%20Lovelace&spaceId=space-2&threadId=thread-9",
       ),
     ).toEqual({
       pathname: "/thread",
@@ -106,7 +106,7 @@ describe("notification tap routing", () => {
     });
     expect(
       notificationOpenTargetFromLink(
-        "anviq://group-thread?groupId=group-1&name=Squad&spaceId=space-2&threadId=thread-9",
+        "sekundo://group-thread?groupId=group-1&name=Squad&spaceId=space-2&threadId=thread-9",
       ),
     ).toEqual({
       pathname: "/group-thread",
@@ -118,7 +118,7 @@ describe("notification tap routing", () => {
     expect(notificationOpenTarget(null)).toBeNull();
     expect(notificationOpenTarget({ kind: "completion" })).toBeNull();
     expect(notificationOpenTargetFromLink("https://example.com/thread?botId=bot-1")).toBeNull();
-    expect(notificationOpenTargetFromLink("anviq://account")).toBeNull();
+    expect(notificationOpenTargetFromLink("sekundo://account")).toBeNull();
     expect(notificationOpenTargetFromLink("not a url")).toBeNull();
   });
 

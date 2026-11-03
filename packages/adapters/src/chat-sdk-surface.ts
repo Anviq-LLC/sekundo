@@ -48,7 +48,7 @@ export interface MessagingPlatform {
   /**
    * The adapter's own thread-id prefix when it differs from `provider`, so
    * one adapter type can mount more than once (one Telegram bot per space:
-   * "telegram-work"). Anviq Agents only ever sees `provider`-prefixed thread ids;
+   * "telegram-work"). Sekundo only ever sees `provider`-prefixed thread ids;
    * the adapter keeps its native ones. Defaults to `provider`.
    */
   adapterName?: string;
@@ -523,7 +523,7 @@ export function providerOfThreadId(threadId: string): string {
   return threadId.split(":", 1)[0]?.split("~", 1)[0] ?? "";
 }
 
-/** Adapter-native thread id ("telegram:42") → Anviq Agents thread id ("telegram-work:42"). */
+/** Adapter-native thread id ("telegram:42") → Sekundo thread id ("telegram-work:42"). */
 function toProviderThreadId(mounted: MountedPlatform, threadId: string): string {
   const { provider } = mounted.platform;
   if (mounted.adapterName === provider) return threadId;
@@ -531,7 +531,7 @@ function toProviderThreadId(mounted: MountedPlatform, threadId: string): string 
   return threadId.startsWith(prefix) ? `${provider}:${threadId.slice(prefix.length)}` : threadId;
 }
 
-/** Anviq Agents thread id → the id the platform's adapter and Chat instance expect. */
+/** Sekundo thread id → the id the platform's adapter and Chat instance expect. */
 function toAdapterThreadId(mounted: MountedPlatform, threadId: string): string {
   const { provider } = mounted.platform;
   if (mounted.adapterName === provider) return threadId;

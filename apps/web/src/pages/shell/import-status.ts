@@ -44,8 +44,8 @@ export function useImportStatusText() {
         return t`Contains code to run`;
       case "unsupported":
         return value.reason === "not_in_catalog"
-          ? t`Not in Anviq Agents' catalog`
-          : t`Not supported in Anviq Agents`;
+          ? t`Not in Sekundo' catalog`
+          : t`Not supported in Sekundo`;
     }
   };
   return { need, status };

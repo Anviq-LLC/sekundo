@@ -91,7 +91,7 @@ const TELEGRAM_NAMED_TOKEN = /^TELEGRAM_BOT_TOKEN_([A-Z0-9]+)$/;
 /**
  * Extra Telegram bots from TELEGRAM_BOT_TOKEN_<NAME> plus
  * TELEGRAM_WEBHOOK_SECRET_TOKEN_<NAME>. Each is its own Telegram bot (own
- * token, own getUpdates slot), so one person can link a different Anviq Agents bot
+ * token, own getUpdates slot), so one person can link a different Sekundo bot
  * — typically one per space — to each. <NAME> is letters and digits only and
  * becomes the provider id `telegram-<name>` (lowercased), which also names
  * its webhook route. A name with no secret is skipped, like the default bot.

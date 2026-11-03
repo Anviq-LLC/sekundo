@@ -723,8 +723,8 @@ msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "此供應商儲存的是 API 金鑰，不是訂閱登入。"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "An existing Honcho peer to read from. Anviq Agents never writes to it."
-msgstr "用於讀取資料的現有 Honcho peer。Anviq Agents 絕不會向其寫入資料。"
+msgid "An existing Honcho peer to read from. Sekundo never writes to it."
+msgstr "用於讀取資料的現有 Honcho peer。Sekundo 絕不會向其寫入資料。"
 
 #: src/lib/agent-import-errors.ts
 msgid "An imported API key could not be checked. Try again."
@@ -769,12 +769,12 @@ msgstr "Anthropic API"
 
 #: src/components/ModelCredits.tsx
 #: src/pages/Onboarding.tsx
-msgid "Anviq Agents credits"
-msgstr "Anviq Agents 額度"
+msgid "Sekundo credits"
+msgstr "Sekundo 額度"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
-msgid "anviq-shared and IDs starting with bot- are reserved for Anviq Agents."
-msgstr "anviq-shared 與以 bot- 開頭的 ID 保留給 Anviq Agents 使用。"
+msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
+msgstr "anviq-shared 與以 bot- 開頭的 ID 保留給 Sekundo 使用。"
 
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
@@ -1307,8 +1307,8 @@ msgstr "選擇資料夾"
 
 #: src/components/ModelCredits.tsx
 #: src/components/SubscriptionGate.tsx
-msgid "Choose how to use Anviq Agents"
-msgstr "選擇 Anviq Agents 的使用方式"
+msgid "Choose how to use Sekundo"
+msgstr "選擇 Sekundo 的使用方式"
 
 #: src/lib/localized-provider-hint.ts
 msgid "Claude subscription"
@@ -1612,8 +1612,8 @@ msgstr "請先連結此模型的供應商。"
 
 #. js-lingui-explicit-id
 #: src/lib/run-error.ts
-msgid "Connect your own API key in Models or choose Anviq Agents credits in Billing."
-msgstr "請在「模型」中連接你自己的 API 金鑰，或在「帳務」中選擇 Anviq Agents 點數。"
+msgid "Connect your own API key in Models or choose Sekundo credits in Billing."
+msgstr "請在「模型」中連接你自己的 API 金鑰，或在「帳務」中選擇 Sekundo 點數。"
 
 #: src/components/ComputerDeviceSettings.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2279,8 +2279,8 @@ msgid "Create space"
 msgstr "建立空間"
 
 #: src/pages/Auth.tsx
-msgid "Create your Anviq Agents"
-msgstr "建立你的 Anviq Agents"
+msgid "Create your Sekundo"
+msgstr "建立你的 Sekundo"
 
 #: src/components/AskCard.tsx
 msgid "Created"
@@ -3115,8 +3115,8 @@ msgid "How to check"
 msgstr "如何檢查"
 
 #: src/components/SignupSurvey.tsx
-msgid "How will you use Anviq Agents?"
-msgstr "你會如何使用 Anviq Agents？"
+msgid "How will you use Sekundo?"
+msgstr "你會如何使用 Sekundo？"
 
 #: src/pages/shell/computer-release-actions.tsx
 msgid "I’m done"
@@ -4128,8 +4128,8 @@ msgid "Not imported"
 msgstr "未匯入"
 
 #: src/pages/shell/import-status.ts
-msgid "Not in Anviq Agents' catalog"
-msgstr "不在 Anviq Agents 目錄中"
+msgid "Not in Sekundo' catalog"
+msgstr "不在 Sekundo 目錄中"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Not in the plugin catalog"
@@ -4141,12 +4141,12 @@ msgstr "暫不"
 
 #: src/pages/shell/agent-import.tsx
 #: src/pages/shell/import-status.ts
-msgid "Not supported in Anviq Agents"
-msgstr "Anviq Agents 不支援"
+msgid "Not supported in Sekundo"
+msgstr "Sekundo 不支援"
 
 #: src/pages/shell/agent-import.tsx
-msgid "Not used by Anviq Agents"
-msgstr "Anviq Agents 不使用"
+msgid "Not used by Sekundo"
+msgstr "Sekundo 不使用"
 
 #: src/components/McpServerHealthLine.tsx
 msgid "Not working"
@@ -4390,8 +4390,8 @@ msgid "Paste a replacement key"
 msgstr "貼上替換金鑰"
 
 #: src/pages/model-settings/compatible-model-fields.tsx
-msgid "Paste the OpenAI-compatible address from your server. Anviq Agents adds /v1 if needed."
-msgstr "貼上伺服器的 OpenAI 相容地址。需要時 Anviq Agents 會補上 /v1。"
+msgid "Paste the OpenAI-compatible address from your server. Sekundo adds /v1 if needed."
+msgstr "貼上伺服器的 OpenAI 相容地址。需要時 Sekundo 會補上 /v1。"
 
 #: src/pages/shell/agent-import.tsx
 msgid "Paste the reply"
@@ -4956,8 +4956,8 @@ msgid "Retry screen"
 msgstr "重新連線螢幕"
 
 #: src/pages/McpOAuthCallback.tsx
-msgid "Return to Anviq Agents"
-msgstr "返回 Anviq Agents"
+msgid "Return to Sekundo"
+msgstr "返回 Sekundo"
 
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
@@ -5400,8 +5400,8 @@ msgid "Sign in at <0>{0}</0>, then paste the code here."
 msgstr "在 <0>{0}</0> 登入，然後將代碼貼到這裡。"
 
 #: src/pages/Auth.tsx
-msgid "Sign in to Anviq Agents"
-msgstr "登入 Anviq Agents"
+msgid "Sign in to Sekundo"
+msgstr "登入 Sekundo"
 
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
@@ -5641,8 +5641,8 @@ msgid "Subscribe for ${0} / month"
 msgstr "以每月 ${0} 訂閱"
 
 #: src/components/ModelCredits.tsx
-msgid "Subscribe to Anviq Agents credits"
-msgstr "訂閱 Anviq Agents 額度"
+msgid "Subscribe to Sekundo credits"
+msgstr "訂閱 Sekundo 額度"
 
 #: src/components/ModelCredits.tsx
 msgid "Subscribe with your own AI"
@@ -5956,8 +5956,8 @@ msgid "This server is already connected. Disconnect it first to authorize again.
 msgstr "此伺服器已連線。請先中斷再重新授權。"
 
 #: src/pages/model-settings/connection-controls.tsx
-msgid "This subscription sign-in is not available in Anviq Agents yet. Use a deployment credential or choose another provider."
-msgstr "此訂閱登入在 Anviq Agents 中尚不可用。請使用部署憑證或選擇其他供應商。"
+msgid "This subscription sign-in is not available in Sekundo yet. Use a deployment credential or choose another provider."
+msgstr "此訂閱登入在 Sekundo 中尚不可用。請使用部署憑證或選擇其他供應商。"
 
 #: src/pages/Artifacts.tsx
 msgid "This week"
@@ -6216,8 +6216,8 @@ msgid "Use a found model"
 msgstr "使用找到的模型"
 
 #: src/components/ModelCredits.tsx
-msgid "Use Anviq Agents credits"
-msgstr "使用 Anviq Agents 額度"
+msgid "Use Sekundo credits"
+msgstr "使用 Sekundo 額度"
 
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
@@ -6381,16 +6381,16 @@ msgid "Weekends"
 msgstr "週末"
 
 #: src/components/SignupSurvey.tsx
-msgid "Welcome to Anviq Agents"
-msgstr "歡迎使用 Anviq Agents"
+msgid "Welcome to Sekundo"
+msgstr "歡迎使用 Sekundo"
 
 #: src/pages/shell/dialogs.tsx
 msgid "What about its memories?"
 msgstr "它的記憶怎麼處理？"
 
 #: src/components/SignupSurvey.tsx
-msgid "What do you most want Anviq Agents to help with?"
-msgstr "你最希望 Anviq Agents 幫你做什麼？"
+msgid "What do you most want Sekundo to help with?"
+msgstr "你最希望 Sekundo 幫你做什麼？"
 
 #: src/pages/shell/message-cards.tsx
 msgid "What do you want me on first?"

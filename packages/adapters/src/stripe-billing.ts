@@ -189,7 +189,7 @@ export class StripeBillingProvider implements BillingProvider {
                 price: await this.monthlyPrice(
                   `anviq_monthly_credits_${input.amountCents}`,
                   input.amountCents,
-                  "Anviq Agents monthly model credits",
+                  "Sekundo monthly model credits",
                 ),
               }
             : {
@@ -197,7 +197,7 @@ export class StripeBillingProvider implements BillingProvider {
                 price_data: {
                   currency: "usd",
                   unit_amount: input.amountCents,
-                  product_data: { name: "Anviq Agents model credits" },
+                  product_data: { name: "Sekundo model credits" },
                 },
               },
         ],
@@ -232,7 +232,7 @@ export class StripeBillingProvider implements BillingProvider {
           price: await this.monthlyPrice(
             `anviq_monthly_credits_${amountCents}`,
             amountCents,
-            "Anviq Agents monthly model credits",
+            "Sekundo monthly model credits",
           ),
           quantity: 1,
         },
@@ -265,7 +265,7 @@ export class StripeBillingProvider implements BillingProvider {
             price: await this.monthlyPrice(
               `anviq_byok_monthly_${input.amountCents}`,
               input.amountCents,
-              "Anviq Agents own-key plan",
+              "Sekundo own-key plan",
             ),
           },
         ],

@@ -6,7 +6,7 @@ import { ConnectionModeFields } from "./ConnectionModeFields";
 import type { MemoryProviderConnectionDraft, MemoryProviderSettingsFormProps } from "./registry";
 
 const RESOURCE_ID_PATTERN = /^[A-Za-z0-9_-]{0,512}$/;
-// Anviq Agents writes to these peers, so they cannot be read as the user's own peer.
+// Sekundo writes to these peers, so they cannot be read as the user's own peer.
 function isReservedPeerId(value: string): boolean {
   return value === "anviq-shared" || value.startsWith("bot-");
 }
@@ -113,13 +113,13 @@ export function HonchoSettingsForm({ busy, onConnect }: MemoryProviderSettingsFo
             autoComplete="off"
           />
           <p id={userPeerDescriptionId} className="mt-2 text-[13px] text-muted-foreground">
-            <Trans>An existing Honcho peer to read from. Anviq Agents never writes to it.</Trans>
+            <Trans>An existing Honcho peer to read from. Sekundo never writes to it.</Trans>
           </p>
           {!userPeerValid ? (
             <FieldError id={userPeerErrorId}>
               {userPeerFormatValid ? (
                 <Trans>
-                  anviq-shared and IDs starting with bot- are reserved for Anviq Agents.
+                  anviq-shared and IDs starting with bot- are reserved for Sekundo.
                 </Trans>
               ) : (
                 <Trans>Use up to 512 letters, digits, _ or -.</Trans>

@@ -1,5 +1,5 @@
-appId: com.anviq.app
-name: Anviq Agents mobile screenshots
+appId: com.sekundo.app
+name: Sekundo mobile screenshots
 tags:
   - screenshots
 ---
@@ -10,7 +10,7 @@ tags:
 
 # A cold API 34 emulator can show a launcher ANR over the healthy app.
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents|Pixel Launcher isn't responding"
+    visible: "Sign up for Sekundo|Pixel Launcher isn't responding"
     timeout: 30000
 - runFlow:
     when:
@@ -18,7 +18,7 @@ tags:
     commands:
       - tapOn: "Close app"
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents"
+    visible: "Sign up for Sekundo"
     timeout: 30000
 - takeScreenshot: "02-sign-up"
 - tapOn: "Sign in"
@@ -27,7 +27,7 @@ tags:
       notVisible:
         id: "server-address"
     commands:
-      - assertVisible: "Sign in to Anviq Agents"
+      - assertVisible: "Sign in to Sekundo"
       - takeScreenshot: "01-sign-in"
       - tapOn: "Use a custom server"
 - assertVisible: "Server"
@@ -75,15 +75,15 @@ tags:
 - tapOn:
     id: "search-sheet-close"
 
-- openLink: "anviq:///new-group"
+- openLink: "sekundo:///new-group"
 - assertVisible: "Search bots"
 - takeScreenshot: "08-new-group"
 
-- openLink: "anviq:///new-space"
+- openLink: "sekundo:///new-space"
 - assertVisible: "Customer support"
 - takeScreenshot: "09-new-space"
 
-- openLink: "anviq:///account"
+- openLink: "sekundo:///account"
 - extendedWaitUntil:
     visible: "Change password"
     timeout: 10000
@@ -97,20 +97,20 @@ tags:
     direction: DOWN
 - takeScreenshot: "10c-account-notifications"
 
-- openLink: "anviq:///models"
+- openLink: "sekundo:///models"
 - extendedWaitUntil:
     visible: "Main model"
     timeout: 10000
 - assertVisible: "Approval model"
 - takeScreenshot: "11-models"
 
-- openLink: "anviq:///voice"
+- openLink: "sekundo:///voice"
 - extendedWaitUntil:
     visible: "Scripted"
     timeout: 10000
 - takeScreenshot: "12-voice"
 
-- openLink: "anviq:///integrations"
+- openLink: "sekundo:///integrations"
 - extendedWaitUntil:
     visible: "Search apps"
     timeout: 10000
@@ -122,7 +122,7 @@ tags:
     timeout: 10000
 - takeScreenshot: "14-integrations-advanced"
 
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: "The fixture workspace is ready."
     timeout: 10000
@@ -180,7 +180,7 @@ tags:
 - takeScreenshot: "16-bot-actions"
 - back
 
-- openLink: "anviq:///bot-settings?botId=${ANVIQ_SCREENSHOT_BOT_ID}"
+- openLink: "sekundo:///bot-settings?botId=${ANVIQ_SCREENSHOT_BOT_ID}"
 - extendedWaitUntil:
     visible: "Researcher"
     timeout: 10000
@@ -191,13 +191,13 @@ tags:
 - assertVisible: "Space default.*"
 - takeScreenshot: "17-bot-settings"
 
-- openLink: "anviq:///computer?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///computer?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: "Take control"
     timeout: 10000
 - takeScreenshot: "18-computer"
 
-- openLink: "anviq:///group-thread?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}&name=Launch%20team"
+- openLink: "sekundo:///group-thread?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}&name=Launch%20team"
 - extendedWaitUntil:
     visible: "The fixture launch plan is ready."
     timeout: 10000
@@ -218,20 +218,20 @@ tags:
 - assertVisible: "Speak message"
 - back
 
-- openLink: "anviq:///group-settings?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}"
+- openLink: "sekundo:///group-settings?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}"
 - extendedWaitUntil:
     visible: "Delete group"
     timeout: 10000
 - takeScreenshot: "20-group-settings"
 
-- openLink: "anviq:///routine?botId=${ANVIQ_SCREENSHOT_BOT_ID}&botName=Researcher&routineId=${ANVIQ_SCREENSHOT_ROUTINE_ID}"
+- openLink: "sekundo:///routine?botId=${ANVIQ_SCREENSHOT_BOT_ID}&botName=Researcher&routineId=${ANVIQ_SCREENSHOT_ROUTINE_ID}"
 - extendedWaitUntil:
     visible: "Weekly fixture review"
     timeout: 10000
 - takeScreenshot: "21-routine"
 
 # Verify saved appearance changes on already-mounted screens and modal routes.
-- openLink: "anviq:///account"
+- openLink: "sekundo:///account"
 - extendedWaitUntil:
     visible: "Dark"
     timeout: 10000
@@ -242,33 +242,33 @@ tags:
     direction: DOWN
 - takeScreenshot: "22b-account-notifications-dark"
 
-- openLink: "anviq:///new-group"
+- openLink: "sekundo:///new-group"
 - assertVisible: "Search bots"
 - takeScreenshot: "24-new-group-dark"
 
-- openLink: "anviq:///new-space"
+- openLink: "sekundo:///new-space"
 - assertVisible: "Customer support"
 - takeScreenshot: "25-new-space-dark"
 
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: "The fixture workspace is ready."
     timeout: 10000
 - takeScreenshot: "26-thread-dark"
 
-- openLink: "anviq:///group-thread?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}&name=Launch%20team"
+- openLink: "sekundo:///group-thread?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}&name=Launch%20team"
 - extendedWaitUntil:
     visible: "The fixture launch plan is ready."
     timeout: 10000
 - takeScreenshot: "27-group-thread-dark"
 
-- openLink: "anviq:///group-settings?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}"
+- openLink: "sekundo:///group-settings?groupId=${ANVIQ_SCREENSHOT_GROUP_ID}"
 - assertVisible: "Delete group"
 - takeScreenshot: "28-group-settings-dark"
 
-- openLink: "anviq:///account"
+- openLink: "sekundo:///account"
 - tapOn: "Light"
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - assertVisible: "The fixture workspace is ready."
 - takeScreenshot: "29-thread-light-restored"
 

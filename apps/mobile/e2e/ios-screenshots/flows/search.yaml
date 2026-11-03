@@ -1,4 +1,4 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Search
 ---
 - runFlow:

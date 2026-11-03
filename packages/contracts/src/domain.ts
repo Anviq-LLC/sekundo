@@ -928,7 +928,7 @@ const McpOAuthClientFields = {
  * authorization server, so the client is bound to it on first use. */
 const McpOAuthClientInput = z.object(McpOAuthClientFields).nullable().optional();
 /** A stdio server has no URL to discover from, so its client names the
- * authorization server (its issuer, e.g. https://accounts.google.com). Anviq Agents
+ * authorization server (its issuer, e.g. https://accounts.google.com). Sekundo
  * runs the OAuth flow and passes the grant through `{{oauth.*}}` env references. */
 const McpStdioOAuthClientInput = z
   .object({ ...McpOAuthClientFields, authorizationServer: McpRemoteEndpointSchema })
@@ -1680,6 +1680,7 @@ export type ServerUpdateRequest = z.infer<typeof ServerUpdateRequestSchema>;
 
 /** Shown at the bottom of Settings, General on every instance. */
 export const ANVIQ_COPYRIGHT_LINE = "© 2026 Anviq LLC. All rights reserved.";
+export const ANVIQ_ORIGIN_LINE = "Sekundo is licensed from Anviq LLC and built on Anviq Agents.";
 export const ANVIQ_ADDRESS_LINE = "30 N Gould St #69062, Sheridan, WY 82801, USA";
 export const LICENSEE_MAX_LENGTH = 80;
 
@@ -1760,7 +1761,7 @@ export function signupSurveyAsksTeamSize(use: SignupSurvey["use"]): boolean {
 /** Where checkout returns: the mobile app's in-app browser instead of the web app. */
 export const BillingClientSchema = z.literal("mobile").optional();
 /** The deep link the API sends a mobile checkout back to; it closes the in-app browser. */
-export const MOBILE_BILLING_CALLBACK_URL = "anviq://billing";
+export const MOBILE_BILLING_CALLBACK_URL = "sekundo://billing";
 
 export const BillingStatusSchema = z.object({
   funding: z.enum(["byok", "credits"]).nullable().optional(),

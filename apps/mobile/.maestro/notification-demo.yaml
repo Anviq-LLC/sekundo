@@ -1,4 +1,4 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Android live working status demonstration
 ---
 - launchApp:
@@ -7,7 +7,7 @@ name: Android live working status demonstration
       notifications: allow
 # A cold API 34 emulator can show a launcher ANR over the healthy app.
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents|Pixel Launcher isn't responding"
+    visible: "Sign up for Sekundo|Pixel Launcher isn't responding"
     timeout: 30000
 - runFlow:
     when:
@@ -15,7 +15,7 @@ name: Android live working status demonstration
     commands:
       - tapOn: "Close app"
 - extendedWaitUntil:
-    visible: "Sign up for Anviq Agents"
+    visible: "Sign up for Sekundo"
     timeout: 30000
 - tapOn: "Sign in"
 - runFlow: helpers/server.yaml
@@ -31,12 +31,12 @@ name: Android live working status demonstration
 
 # Only the public demo is recorded; sign-in uses disposable fixture credentials.
 - startRecording: ${ANVIQ_NOTIFICATION_VIDEO}
-- openLink: "anviq:///account"
+- openLink: "sekundo:///account"
 - scrollUntilVisible:
     element: "Live working status"
     direction: DOWN
 - tapOn: "Live working status"
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: "Message Researcher"
     timeout: 10000
@@ -70,7 +70,7 @@ name: Android live working status demonstration
 - extendedWaitUntil:
     notVisible: "Stop"
     timeout: 30000
-- openLink: "anviq:///account"
+- openLink: "sekundo:///account"
 - scrollUntilVisible:
     element: "Live working status"
     direction: DOWN

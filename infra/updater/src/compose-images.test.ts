@@ -37,7 +37,7 @@ const publishWorkflow = parse(readFileSync(publishWorkflowFile, "utf8")) as {
 };
 
 const appServices = ["api", "worker", "web", "supervisor", "migrate"] as const;
-const FIRST_PARTY_IMAGE = /ghcr\.io\/leovoss\/anviq-agents\/([a-z0-9][a-z0-9._-]*)/g;
+const FIRST_PARTY_IMAGE = /ghcr\.io\/anviq-llc\/sekundo\/([a-z0-9][a-z0-9._-]*)/g;
 
 function firstPartyImageNames(value: unknown): string[] {
   if (typeof value !== "string") return [];
@@ -62,10 +62,10 @@ describe("the images compose file", () => {
       "worker",
     ]);
     for (const service of appServices) {
-      expect(compose.services[service]?.image).toContain("ghcr.io/leovoss/anviq-agents/app");
+      expect(compose.services[service]?.image).toContain("ghcr.io/anviq-llc/sekundo/app");
       expect(compose.services[service]?.image).toContain("ANVIQ_IMAGE_TAG");
     }
-    expect(compose.services.computer?.image).toContain("ghcr.io/leovoss/anviq-agents/computer");
+    expect(compose.services.computer?.image).toContain("ghcr.io/anviq-llc/sekundo/computer");
     expect(compose.services.computer?.image).toContain("ANVIQ_COMPUTER_IMAGE_TAG");
     expect(compose.services.postgres?.image).toMatch(
       /^\$\{POSTGRES_IMAGE:-postgres:16@sha256:[0-9a-f]{64}\}$/,
@@ -77,7 +77,7 @@ describe("the images compose file", () => {
     expect(firstPartyImageNames(null)).toEqual([]);
     expect(firstPartyImageNames(true)).toEqual([]);
     expect(firstPartyImageNames(7091)).toEqual([]);
-    expect(firstPartyImageNames("ghcr.io/leovoss/anviq-agents/computer:edge")).toEqual([
+    expect(firstPartyImageNames("ghcr.io/anviq-llc/sekundo/computer:edge")).toEqual([
       "computer",
     ]);
   });

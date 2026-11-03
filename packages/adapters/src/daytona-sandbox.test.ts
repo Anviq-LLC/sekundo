@@ -630,7 +630,7 @@ describe("DaytonaSandboxProvider", () => {
     const provider = new DaytonaSandboxProvider({ apiKey: "test-key" }, fixture.client);
     const computer = await provider.provision({ botId: "bot-a", homePath: "/unused" }, context);
     await provider.prepare(computer, context);
-    // Stopped outside Anviq Agents, for example from the Daytona dashboard.
+    // Stopped outside Sekundo, for example from the Daytona dashboard.
     fixture.remote.state = "stopped";
     fixture.remote.desiredState = "stopped";
 

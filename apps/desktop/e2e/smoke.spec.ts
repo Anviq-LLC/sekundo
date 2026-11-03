@@ -4,7 +4,7 @@ import { _electron as electron, expect, test } from "@playwright/test";
 
 const fixture = `<!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8"><title>Anviq Agents desktop smoke</title></head>
+  <head><meta charset="utf-8"><title>Sekundo desktop smoke</title></head>
   <body><main>Desktop fixture ready</main></body>
 </html>`;
 
@@ -21,7 +21,7 @@ test("launches with a narrow preload bridge and an isolated renderer", async () 
   try {
     const page = await app.firstWindow();
     await expect(page.getByText("Desktop fixture ready")).toBeVisible();
-    await expect(page).toHaveTitle("Anviq Agents desktop smoke");
+    await expect(page).toHaveTitle("Sekundo desktop smoke");
 
     const renderer = await page.evaluate(async () => {
       const desktop = (window as typeof window & { anviqDesktop?: AnviqDesktop }).anviqDesktop;

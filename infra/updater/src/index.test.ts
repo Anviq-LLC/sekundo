@@ -109,7 +109,7 @@ describe("updater HTTP surface", () => {
       method: "POST",
       headers: authorized,
       body: JSON.stringify({
-        repoUrl: "https://github.com/leovoss/anviq-agents",
+        repoUrl: "https://github.com/anviq-llc/sekundo",
         branch: "--exec=id",
       }),
     });
@@ -179,7 +179,7 @@ describe("updater orchestration", () => {
       return ok();
     };
     const subject = createUpdaterApp(fixture.config, { run });
-    const input = { repoUrl: "https://github.com/leovoss/anviq-agents", branch: "main" };
+    const input = { repoUrl: "https://github.com/anviq-llc/sekundo", branch: "main" };
     const first = request(subject, "/apply", input);
     await atRemote;
     const second = await request(subject, "/apply", input);
@@ -232,7 +232,7 @@ describe("updater orchestration", () => {
     };
     const subject = createUpdaterApp(fixture.config, { run });
     const response = await request(subject, "/apply", {
-      repoUrl: "https://github.com/leovoss/anviq-agents",
+      repoUrl: "https://github.com/anviq-llc/sekundo",
       branch: "main",
     });
     const record = (await response.json()) as ServerUpdateRun;
@@ -355,7 +355,7 @@ describe("updater orchestration", () => {
     const run: UpdaterCommandRunner = async (command) =>
       command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/leovoss/anviq-agents",
+      repoUrl: "https://github.com/anviq-llc/sekundo",
       branch: "main",
     });
     expect(response.status).toBe(200);
@@ -379,7 +379,7 @@ describe("updater orchestration", () => {
       return ok();
     };
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/leovoss/anviq-agents",
+      repoUrl: "https://github.com/anviq-llc/sekundo",
       branch: "main",
     });
     await expect(response.json()).resolves.toMatchObject({ ok: true });
@@ -397,7 +397,7 @@ describe("updater orchestration", () => {
     const run: UpdaterCommandRunner = async (command) =>
       command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/leovoss/anviq-agents",
+      repoUrl: "https://github.com/anviq-llc/sekundo",
       branch: "main",
     });
     expect(response.status).toBe(200);

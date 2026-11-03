@@ -28,7 +28,7 @@ import { sandboxCommandArgv } from "./sandbox-command-environment.js";
 const DEFAULT_NAMESPACE = "anviq-sandboxes";
 // Same default as the Compose stack. Pin a digest with KUBERNETES_SANDBOX_COMPUTER_IMAGE in
 // production so every pod runs the image the API was tested against.
-const DEFAULT_COMPUTER_IMAGE = "ghcr.io/leovoss/anviq-agents/computer:edge";
+const DEFAULT_COMPUTER_IMAGE = "ghcr.io/anviq-llc/sekundo/computer:edge";
 const DEFAULT_READY_TIMEOUT_MS = 120_000;
 const WORKSPACE = "/home/anviq";
 const CONTAINER_NAME = "computer";
@@ -64,7 +64,7 @@ export interface KubernetesSandboxOptions {
   podLabels?: Record<string, string>;
   readyTimeoutMs?: number;
   /**
-   * Claim in the sandbox namespace that holds the Anviq Agents data directory. When
+   * Claim in the sandbox namespace that holds the Sekundo data directory. When
    * set, each Computer mounts only its own `homes/<bot id>` directory at the
    * workspace, so the home persists in place and is never copied in or out.
    * The claim's volume is ReadWriteOnce, so the pod must also be placed with

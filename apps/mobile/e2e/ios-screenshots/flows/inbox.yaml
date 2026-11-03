@@ -1,4 +1,4 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Inbox
 ---
 - runFlow:
@@ -15,7 +15,7 @@ name: Inbox
     timeout: 15000
 - takeScreenshot: 02-activity
 - tapOn: "Activity"
-- openLink: "anviq:///artifacts"
+- openLink: "sekundo:///artifacts"
 - extendedWaitUntil:
     visible: ".*launch-notes.txt.*|.*No artifacts yet.*|.*Artifacts.*"
     timeout: 15000

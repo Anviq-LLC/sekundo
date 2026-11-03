@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 
-/** Package of the Anviq Agents Android app (apps/mobile/app.json). */
-const ANDROID_PACKAGE = "com.anviq.app";
+/** Package of the Sekundo Android app (apps/mobile/app.json). */
+const ANDROID_PACKAGE = "com.sekundo.app";
 
 /**
  * Which native apps can use this server's passkeys: only those the domain vouches for

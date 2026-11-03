@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restricted egress for Anviq Agents bot computers (SANDBOX_COMPUTER_EGRESS=restricted).
+# Restricted egress for Sekundo bot computers (SANDBOX_COMPUTER_EGRESS=restricted).
 #
 # Computers keep full public-internet egress (browsing, DNS, apt, git over SSH)
 # but can no longer reach the destinations below. DNS keeps working only while
@@ -331,7 +331,7 @@ install_persistence() {
   fi
   cat >"$UNIT_PATH" <<EOF
 [Unit]
-Description=Restrict Anviq Agents bot-computer egress (anviq-c* bridges)
+Description=Restrict Sekundo bot-computer egress (anviq-c* bridges)
 After=docker.service
 Wants=docker.service
 

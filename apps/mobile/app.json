@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Anviq Agents",
-    "slug": "anviq",
-    "scheme": "anviq",
+    "name": "Sekundo",
+    "slug": "sekundo",
+    "scheme": "sekundo",
     "version": "1.0.10",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
@@ -25,14 +25,14 @@
         "expo-audio",
         {
           "enableBackgroundPlayback": false,
-          "microphonePermission": "Anviq Agents uses the microphone for voice calls with your bots."
+          "microphonePermission": "Sekundo uses the microphone for voice calls with your bots."
         }
       ],
       [
         "expo-speech-recognition",
         {
-          "speechRecognitionPermission": "Anviq Agents turns your speech into messages during voice calls.",
-          "microphonePermission": "Anviq Agents uses the microphone for voice calls with your bots."
+          "speechRecognitionPermission": "Sekundo turns your speech into messages during voice calls.",
+          "microphonePermission": "Sekundo uses the microphone for voice calls with your bots."
         }
       ],
       "expo-localization",
@@ -48,9 +48,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Anviq Agents uses your photo library so you can attach images to a bot message.",
-          "cameraPermission": "Anviq Agents uses the camera so you can attach photos to a bot message.",
-          "microphonePermission": "Anviq Agents uses the microphone for voice calls with your bots."
+          "photosPermission": "Sekundo uses your photo library so you can attach images to a bot message.",
+          "cameraPermission": "Sekundo uses the camera so you can attach photos to a bot message.",
+          "microphonePermission": "Sekundo uses the microphone for voice calls with your bots."
         }
       ],
       "expo-sharing",
@@ -58,7 +58,7 @@
       "./plugins/with-scene-lifecycle"
     ],
     "ios": {
-      "bundleIdentifier": "com.anviq.app",
+      "bundleIdentifier": "com.sekundo.app",
       "buildNumber": "1",
       "supportsTablet": false,
       "icon": "../../packages/ui-tokens/assets/Anviq.icon",
@@ -66,16 +66,16 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "Anviq Agents uses the camera so you can attach photos to a bot message.",
-        "NSPhotoLibraryUsageDescription": "Anviq Agents uses your photo library so you can attach images to a bot message.",
-        "NSLocalNetworkUsageDescription": "Anviq Agents connects to a self-hosted Anviq Agents server on your local network.",
+        "NSCameraUsageDescription": "Sekundo uses the camera so you can attach photos to a bot message.",
+        "NSPhotoLibraryUsageDescription": "Sekundo uses your photo library so you can attach images to a bot message.",
+        "NSLocalNetworkUsageDescription": "Sekundo connects to a self-hosted Sekundo server on your local network.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
       }
     },
     "android": {
-      "package": "com.anviq.app",
+      "package": "com.sekundo.app",
       "versionCode": 10,
       "softwareKeyboardLayoutMode": "resize",
       "icon": "./assets/icon.png",

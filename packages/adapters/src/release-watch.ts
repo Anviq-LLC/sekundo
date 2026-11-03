@@ -33,22 +33,22 @@ export type EmulatedGithubRelease = {
 /** Seeded anviq releases so evals succeed without the public internet. */
 export const DEFAULT_ANVIQ_EMULATED_RELEASES: readonly EmulatedGithubRelease[] = [
   {
-    owner: "leovoss",
-    repo: "anviq-agents",
+    owner: "anviq-llc",
+    repo: "sekundo",
     tag: "v0.4.2",
     name: "v0.4.2 — routine tools + connector emulators",
     body: "Routines can bind connector tools. Composio emulator covers GitHub releases offline.",
     publishedAt: "2026-08-28T12:00:00.000Z",
-    htmlUrl: "https://github.com/leovoss/anviq-agents/releases/tag/v0.4.2",
+    htmlUrl: "https://github.com/anviq-llc/sekundo/releases/tag/v0.4.2",
   },
   {
-    owner: "leovoss",
-    repo: "anviq-agents",
+    owner: "anviq-llc",
+    repo: "sekundo",
     tag: "v0.4.1",
     name: "v0.4.1 — computer + plugin guidance",
     body: "Prefer connected plugins over browsing when reading app data.",
     publishedAt: "2026-08-20T12:00:00.000Z",
-    htmlUrl: "https://github.com/leovoss/anviq-agents/releases/tag/v0.4.1",
+    htmlUrl: "https://github.com/anviq-llc/sekundo/releases/tag/v0.4.1",
   },
 ];
 
@@ -85,7 +85,7 @@ export function assessReleaseWatchRoutinePrompt(prompt: string): {
     };
   }
 
-  const mentionsRepo = /anviq|leovoss/i.test(text);
+  const mentionsRepo = /sekundo|anviq-llc/i.test(text);
   const mentionsReleases = /release/i.test(text);
   const mentionsGithubTool =
     /GITHUB_LIST_RELEASES|GITHUB_GET_RELEASE|list(?:\s+\w+){0,4}\s+releases|github\s+(tool|integration|plugin|connector|api)/i.test(
@@ -106,7 +106,7 @@ export function assessReleaseWatchRoutinePrompt(prompt: string): {
 
   if (!mentionsRepo || !mentionsReleases || !mentionsGithubTool) {
     const missing = [
-      !mentionsRepo ? "repo (leovoss/anviq-agents)" : null,
+      !mentionsRepo ? "repo (anviq-llc/sekundo)" : null,
       !mentionsReleases ? "releases" : null,
       !mentionsGithubTool ? "GitHub/releases tool steps" : null,
     ]

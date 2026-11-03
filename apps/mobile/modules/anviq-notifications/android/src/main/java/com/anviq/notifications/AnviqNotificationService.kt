@@ -363,12 +363,12 @@ class AnviqNotificationService : Service() {
 
   private fun openApp(run: RunRecord? = null): PendingIntent {
     val intent = if (run == null) {
-      packageManager.getLaunchIntentForPackage(packageName) ?: Intent(Intent.ACTION_VIEW, Uri.parse("anviq://"))
+      packageManager.getLaunchIntentForPackage(packageName) ?: Intent(Intent.ACTION_VIEW, Uri.parse("sekundo://"))
     } else {
       val destination = if (run.groupId != null) {
-        "anviq://group-thread?groupId=${Uri.encode(run.groupId)}&name=${Uri.encode(run.groupName.orEmpty())}&spaceId=${Uri.encode(run.spaceId)}&threadId=${Uri.encode(run.threadId)}"
+        "sekundo://group-thread?groupId=${Uri.encode(run.groupId)}&name=${Uri.encode(run.groupName.orEmpty())}&spaceId=${Uri.encode(run.spaceId)}&threadId=${Uri.encode(run.threadId)}"
       } else {
-        "anviq://thread?botId=${Uri.encode(run.botId)}&name=${Uri.encode(run.botName)}&spaceId=${Uri.encode(run.spaceId)}&threadId=${Uri.encode(run.threadId)}"
+        "sekundo://thread?botId=${Uri.encode(run.botId)}&name=${Uri.encode(run.botName)}&spaceId=${Uri.encode(run.spaceId)}&threadId=${Uri.encode(run.threadId)}"
       }
       Intent(
         Intent.ACTION_VIEW,
@@ -1015,7 +1015,7 @@ private fun rpc(
     connection.readTimeout = 15_000
     connection.doOutput = true
     connection.setRequestProperty("Content-Type", "application/json")
-    connection.setRequestProperty("Origin", "anviq://")
+    connection.setRequestProperty("Origin", "sekundo://")
     connection.setRequestProperty("Authorization", "Bearer $token")
     if (spaceId.isNotBlank()) {
       connection.setRequestProperty("x-anviq-space-id", spaceId)

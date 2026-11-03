@@ -1,13 +1,13 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 ---
 - runFlow: launch-app.yaml
 - runFlow:
     when:
-      visible: "Sign up for Anviq Agents"
+      visible: "Sign up for Sekundo"
     commands:
       - tapOn: "Sign in"
 - extendedWaitUntil:
-    visible: "Sign in to Anviq Agents"
+    visible: "Sign in to Sekundo"
     timeout: 15000
 - tapOn: "Email"
 - inputText: ${ANVIQ_ACTIVE_EMAIL}

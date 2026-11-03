@@ -6,7 +6,7 @@ import type { PrismaClient } from "./generated/prisma/client.js";
  * - `stopped`: stopped on request (the stop button, a computer switch, an archived bot).
  * - `idle` / `active_limit`: idle shutdown, or the cap on one continuous stretch.
  * - `replaced`: torn down by update, recovery or reset; the replacement starts a new run.
- * - `gone`: the provider had already stopped or lost the sandbox. The end is when Anviq Agents noticed.
+ * - `gone`: the provider had already stopped or lost the sandbox. The end is when Sekundo noticed.
  * - `deleted`: destroyed with its computer, bot, space or account.
  * - `reconciled`: the end was never seen; a later start or the reconciler found the computer
  *   no longer running. The end is when that was detected.
@@ -39,7 +39,7 @@ export async function recordComputerRunStart(
   startedAt: Date,
   previousEnd: ComputerRunEnd = "reconciled",
 ): Promise<void> {
-  // Host computers run on the user's own machine, and Electron, not Anviq Agents, sees them stop.
+  // Host computers run on the user's own machine, and Electron, not Sekundo, sees them stop.
   if (computer.kind === "desktop") return;
   try {
     await prisma.computerRun.updateMany({

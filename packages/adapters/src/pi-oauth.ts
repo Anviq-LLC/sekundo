@@ -50,21 +50,21 @@ export const SUBSCRIPTION_SIGN_IN_PROVIDERS: Record<
     loginLabel: "Sign in with ChatGPT",
     hint: "ChatGPT Plus/Pro",
     billing:
-      "Sign in with ChatGPT Plus or Pro. Uses your OpenAI subscription. Anviq Agents does not pay.",
+      "Sign in with ChatGPT Plus or Pro. Uses your OpenAI subscription. Sekundo does not pay.",
   },
   [COPILOT_OAUTH_PROVIDER]: {
     mode: "device-code",
     loginLabel: "Sign in with GitHub Copilot",
     hint: "Copilot",
     billing:
-      "Sign in with GitHub Copilot. Uses your Copilot subscription. Anviq Agents does not pay.",
+      "Sign in with GitHub Copilot. Uses your Copilot subscription. Sekundo does not pay.",
   },
   [XAI_OAUTH_PROVIDER]: {
     mode: "device-code",
     loginLabel: "Sign in with SuperGrok or X Premium",
     hint: "SuperGrok / key",
     billing:
-      "Sign in with SuperGrok or X Premium, or paste an xAI API key. Anviq Agents does not pay.",
+      "Sign in with SuperGrok or X Premium, or paste an xAI API key. Sekundo does not pay.",
   },
   [ANTHROPIC_OAUTH_PROVIDER]: {
     mode: "auth-url",

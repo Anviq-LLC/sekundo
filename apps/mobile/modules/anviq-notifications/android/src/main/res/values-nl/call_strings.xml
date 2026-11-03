@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="anviq_call_channel">Actief gesprek</string>
-  <string name="anviq_call_title">Anviq-gesprek</string>
+  <string name="anviq_call_title">Sekundo-gesprek</string>
   <string name="anviq_call_text">Microfoon is actief</string>
 </resources>

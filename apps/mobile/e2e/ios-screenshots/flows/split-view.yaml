@@ -1,4 +1,4 @@
-appId: com.anviq.app
+appId: com.sekundo.app
 name: Split view
 ---
 # On a phone this is a single column; on an unfolded iPhone Duo the chat list sits beside it.
@@ -6,7 +6,7 @@ name: Split view
     file: ../subflows/sign-in.yaml
     env:
       ANVIQ_ACTIVE_EMAIL: ${ANVIQ_SCREENSHOT_EMAIL}
-- openLink: "anviq:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
+- openLink: "sekundo:///thread?botId=${ANVIQ_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: ".*The fixture workspace is ready.*"
     timeout: 20000

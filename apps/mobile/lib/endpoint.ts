@@ -71,7 +71,7 @@ export async function probeApiBase(
     const res = await withAbort(
       fetchImpl(`${parsed.url}/rpc/health`, {
         method: "POST",
-        headers: { "content-type": "application/json", origin: "anviq://" },
+        headers: { "content-type": "application/json", origin: "sekundo://" },
         body: JSON.stringify({ json: {} }),
         signal: controller.signal,
       }),
@@ -80,7 +80,7 @@ export async function probeApiBase(
     );
     if (!res.ok) {
       cancelResponseBody(res);
-      return { ok: false, error: t("That URL did not look like a Anviq Agents server") };
+      return { ok: false, error: t("That URL did not look like a Sekundo server") };
     }
     let body: HealthResponse;
     try {
@@ -94,7 +94,7 @@ export async function probeApiBase(
       body = {};
     }
     if (body.error || body.json?.ok !== true) {
-      return { ok: false, error: t("That URL did not look like a Anviq Agents server") };
+      return { ok: false, error: t("That URL did not look like a Sekundo server") };
     }
     return parsed;
   } catch {

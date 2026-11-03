@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Token-auth desktop control for the Anviq Agents supervisor."""
+"""Token-auth desktop control for the Sekundo supervisor."""
 
 import base64
 import ctypes

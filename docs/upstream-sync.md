@@ -1,8 +1,8 @@
 # Syncing upstream
 
-Anviq Agents follows [rakazo](https://github.com/elie222/rakazo). The `upstream` remote points at it and
-`anviq-upstream` is a branch holding upstream with the Anviq rename already applied, so merges only
-conflict where Anviq really diverges.
+Sekundo follows [rakazo](https://github.com/elie222/rakazo). The `upstream` remote points at it and
+`anviq-upstream` is a branch holding upstream with the Sekundo rename already applied, so merges only
+conflict where Sekundo really diverges.
 
 ```bash
 git remote add upstream https://github.com/elie222/rakazo.git   # once

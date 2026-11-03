@@ -1,5 +1,10 @@
 import type { AccountSecurity, UsageSummary } from "@anviq/contracts";
-import { ANVIQ_ADDRESS_LINE, ANVIQ_COPYRIGHT_LINE, licensedToLine } from "@anviq/contracts";
+import {
+  ANVIQ_ADDRESS_LINE,
+  ANVIQ_COPYRIGHT_LINE,
+  ANVIQ_ORIGIN_LINE,
+  licensedToLine,
+} from "@anviq/contracts";
 import { accountDisplay, displayName } from "@anviq/core";
 import { MenuView } from "@expo/ui/community/menu";
 import * as Notifications from "expo-notifications";
@@ -803,6 +808,7 @@ export default function Account() {
         </SettingsGroup>
         <View accessibilityRole="text" style={styles.licenseNotice}>
           <Text style={styles.licenseLine}>{ANVIQ_COPYRIGHT_LINE}</Text>
+          <Text style={styles.licenseLine}>{ANVIQ_ORIGIN_LINE}</Text>
           <Text style={styles.licenseLine}>{ANVIQ_ADDRESS_LINE}</Text>
           {me?.licensee ? (
             <Text style={styles.licenseLine}>{licensedToLine(me.licensee)}</Text>

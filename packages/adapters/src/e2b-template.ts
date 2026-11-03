@@ -19,7 +19,7 @@ type BuildTemplate = (
   options: Omit<BuildOptions, "alias">,
 ) => Promise<{ name: string }>;
 
-/** Publish the Anviq Agents computer template to the E2B team that owns this API key. */
+/** Publish the Sekundo computer template to the E2B team that owns this API key. */
 export function buildE2BComputerTemplate(
   apiKey: string,
   options: {

@@ -100,7 +100,7 @@ class AnviqCallService : Service() {
 
   private fun openApp(): PendingIntent {
     val intent = packageManager.getLaunchIntentForPackage(packageName)
-      ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("anviq://"))
+      ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("sekundo://"))
     intent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
     return PendingIntent.getActivity(
       this,

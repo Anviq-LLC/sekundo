@@ -1,5 +1,10 @@
 import type { AccountSecurity, UsageSummary } from "@anviq/contracts";
-import { ANVIQ_ADDRESS_LINE, ANVIQ_COPYRIGHT_LINE, licensedToLine } from "@anviq/contracts";
+import {
+  ANVIQ_ADDRESS_LINE,
+  ANVIQ_COPYRIGHT_LINE,
+  ANVIQ_ORIGIN_LINE,
+  licensedToLine,
+} from "@anviq/contracts";
 import { accountDisplay, displayName, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@anviq/core";
 import {
   Button,
@@ -473,6 +478,8 @@ export function LicenseNotice({ licensee }: { licensee?: string | null }) {
       data-testid="license-notice"
     >
       {ANVIQ_COPYRIGHT_LINE}
+      <br />
+      {ANVIQ_ORIGIN_LINE}
       <br />
       {ANVIQ_ADDRESS_LINE}
       {name ? (

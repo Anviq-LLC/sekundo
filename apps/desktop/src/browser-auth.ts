@@ -86,11 +86,11 @@ export async function openBrowserAuth(
           ) {
             response
               .writeHead(400)
-              .end("Sign-in callback rejected. Return to Anviq Agents to retry.");
+              .end("Sign-in callback rejected. Return to Sekundo to retry.");
             return;
           }
           consumed = true;
-          response.end("You can close this tab and return to Anviq Agents.", close);
+          response.end("You can close this tab and return to Sekundo.", close);
           options.onCallback({ code, state });
         });
         server.requestTimeout = 10_000;

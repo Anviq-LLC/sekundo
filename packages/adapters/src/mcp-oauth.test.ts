@@ -1068,7 +1068,7 @@ describe("MCP OAuth", () => {
       const authorizationUrl = new URL(started.authorizationUrl);
 
       expect(registration).toMatchObject({
-        client_name: "Anviq Agents",
+        client_name: "Sekundo",
         application_type: "native",
       });
       expect(authorizationUrl.origin).toBe("https://auth.example.test");

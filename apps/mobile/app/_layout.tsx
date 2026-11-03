@@ -359,7 +359,7 @@ function LayoutContent() {
                   >
                     <Stack.Screen
                       name="index"
-                      options={{ headerShown: false, title: "Anviq Agents" }}
+                      options={{ headerShown: false, title: "Sekundo" }}
                     />
                     <Stack.Screen
                       name="search"

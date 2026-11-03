@@ -30,7 +30,7 @@ describe("release-watch diagnosis", () => {
 
     const good = assessReleaseWatchRoutinePrompt(
       [
-        "Daily: use GITHUB_LIST_RELEASES for owner leovoss repo anviq-agents.",
+        "Daily: use GITHUB_LIST_RELEASES for owner anviq-llc repo sekundo.",
         "Summarize new release tags and capability notes from release bodies.",
         "Prefer the GitHub plugin tools; do not browse or Bing-search.",
       ].join(" "),
@@ -63,7 +63,7 @@ describe("release-watch diagnosis", () => {
       availableToolNames: [...RELEASE_WATCH_GITHUB_TOOL_NAMES],
       calledToolNames: ["GITHUB_LIST_RELEASES"],
       routinePrompt:
-        "Call GITHUB_LIST_RELEASES for leovoss/anviq-agents and summarize new releases and capabilities.",
+        "Call GITHUB_LIST_RELEASES for anviq-llc/sekundo and summarize new releases and capabilities.",
       resultText: "GitHub returned no releases.",
       seededReleaseTags: ["v0.4.2"],
     });
@@ -74,7 +74,7 @@ describe("release-watch diagnosis", () => {
       availableToolNames: [...RELEASE_WATCH_GITHUB_TOOL_NAMES],
       calledToolNames: ["GITHUB_LIST_RELEASES"],
       routinePrompt:
-        "Call GITHUB_LIST_RELEASES for leovoss/anviq-agents and summarize new releases and capabilities.",
+        "Call GITHUB_LIST_RELEASES for anviq-llc/sekundo and summarize new releases and capabilities.",
       resultText: "Latest is v0.4.2 with routine tools + connector emulators.",
       seededReleaseTags: ["v0.4.2"],
     });
@@ -88,7 +88,7 @@ describe("release-watch diagnosis", () => {
       availableToolNames: [...RELEASE_WATCH_GITHUB_TOOL_NAMES],
       calledToolNames: ["GITHUB_LIST_RELEASES"],
       routinePrompt:
-        "Call GITHUB_LIST_RELEASES for leovoss/anviq-agents and summarize new releases and capabilities.",
+        "Call GITHUB_LIST_RELEASES for anviq-llc/sekundo and summarize new releases and capabilities.",
       resultText: "Tool finished without useful output.",
       seededReleaseTags: ["v0.4.2"],
       githubToolResults: [{ ok: false, tool: "GITHUB_LIST_RELEASES", error: "upstream failed" }],
@@ -100,7 +100,7 @@ describe("release-watch diagnosis", () => {
       availableToolNames: [...RELEASE_WATCH_GITHUB_TOOL_NAMES],
       calledToolNames: ["GITHUB_LIST_RELEASES"],
       routinePrompt:
-        "Call GITHUB_LIST_RELEASES for leovoss/anviq-agents and summarize new releases and capabilities.",
+        "Call GITHUB_LIST_RELEASES for anviq-llc/sekundo and summarize new releases and capabilities.",
       resultText: "Tool finished without useful output.",
       seededReleaseTags: ["v0.4.2"],
       githubToolResults: [{ ok: true, tool: "GITHUB_LIST_RELEASES", releases: [] }],
@@ -130,7 +130,7 @@ describe("release-watch diagnosis", () => {
       availableToolNames: [...RELEASE_WATCH_GITHUB_TOOL_NAMES],
       calledToolNames: ["GITHUB_LIST_RELEASES"],
       routinePrompt:
-        "Call GITHUB_LIST_RELEASES for leovoss/anviq-agents and summarize new releases and capabilities.",
+        "Call GITHUB_LIST_RELEASES for anviq-llc/sekundo and summarize new releases and capabilities.",
       resultText: "Latest is v0.4.2 with routine tools + connector emulators.",
       seededReleaseTags: ["v0.4.2"],
       githubToolResults: [{ ok: false, tool: "GITHUB_LIST_RELEASES", error: "upstream failed" }],
@@ -142,7 +142,7 @@ describe("release-watch diagnosis", () => {
       availableToolNames: [...RELEASE_WATCH_GITHUB_TOOL_NAMES],
       calledToolNames: ["GITHUB_LIST_RELEASES"],
       routinePrompt:
-        "Call GITHUB_LIST_RELEASES for leovoss/anviq-agents and summarize new releases and capabilities.",
+        "Call GITHUB_LIST_RELEASES for anviq-llc/sekundo and summarize new releases and capabilities.",
       resultText: "Checked GitHub releases.",
       seededReleaseTags: ["v0.4.2"],
       githubToolResults: [

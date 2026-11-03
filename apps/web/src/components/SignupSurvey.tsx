@@ -46,10 +46,10 @@ export function SignupSurvey({ onDone }: { onDone: () => void }) {
       }}
     >
       <h1 className="text-[32px] font-medium text-foreground">
-        <Trans>Welcome to Anviq Agents</Trans>
+        <Trans>Welcome to Sekundo</Trans>
       </h1>
       <p id={`${fieldId}-use`} className="mt-8 text-sm font-medium text-foreground">
-        <Trans>How will you use Anviq Agents?</Trans>
+        <Trans>How will you use Sekundo?</Trans>
       </p>
       <ToggleGroup
         aria-labelledby={`${fieldId}-use`}
@@ -105,7 +105,7 @@ export function SignupSurvey({ onDone }: { onDone: () => void }) {
         htmlFor={`${fieldId}-reason`}
         className="mt-6 block text-sm font-medium text-foreground"
       >
-        <Trans>What do you most want Anviq Agents to help with?</Trans>
+        <Trans>What do you most want Sekundo to help with?</Trans>
       </label>
       <Textarea
         id={`${fieldId}-reason`}

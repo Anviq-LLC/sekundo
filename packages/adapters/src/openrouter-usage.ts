@@ -18,7 +18,7 @@ export function openRouterInferenceFetch(fetcher: typeof fetch, userId?: string)
           : undefined,
     );
     headers.set("HTTP-Referer", "https://anviq.net");
-    headers.set("X-OpenRouter-Title", "Anviq Agents");
+    headers.set("X-OpenRouter-Title", "Sekundo");
     const body = init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
     if (typeof body !== "string") throw new Error("OpenRouter inference requires a JSON body");
     const payload = JSON.parse(body);

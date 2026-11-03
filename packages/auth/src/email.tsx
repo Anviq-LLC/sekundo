@@ -33,14 +33,14 @@ export const linkStyle = { color: lightTokens.primary, textDecoration: "underlin
 export function verificationEmail(email: string, url: string): Promise<TransactionalEmail> {
   return message(
     email,
-    "Verify your Anviq Agents email",
+    "Verify your Sekundo email",
     <>
       <Text>
         <Link href={url} style={linkStyle}>
           Verify email
         </Link>
       </Text>
-      <Text>Then return to Anviq Agents to sign in.</Text>
+      <Text>Then return to Sekundo to sign in.</Text>
       <Text>This link expires in one hour. If you did not register, ignore this email.</Text>
     </>,
   );
@@ -49,9 +49,9 @@ export function verificationEmail(email: string, url: string): Promise<Transacti
 export function signInCodeEmail(email: string, code: string): Promise<TransactionalEmail> {
   return message(
     email,
-    "Your Anviq Agents sign-in code",
+    "Your Sekundo sign-in code",
     <>
-      <Text>Enter this code to sign in to Anviq Agents:</Text>
+      <Text>Enter this code to sign in to Sekundo:</Text>
       <Text>
         <strong>{code}</strong>
       </Text>
@@ -66,10 +66,10 @@ export function passwordResetEmail(
 ): Promise<TransactionalEmail> {
   return message(
     user.email,
-    "Reset your Anviq Agents password",
+    "Reset your Sekundo password",
     <>
       <Text>Hi {displayName(user.name, "there")},</Text>
-      <Text>Reset your Anviq Agents password:</Text>
+      <Text>Reset your Sekundo password:</Text>
       <Text>
         <Link href={resetUrl} style={linkStyle}>
           Reset password
@@ -89,10 +89,10 @@ export function teamInvitationEmail(
   const team = displayName(invitation.organizationName, "a team");
   return message(
     email,
-    `Join ${team} on Anviq Agents`,
+    `Join ${team} on Sekundo`,
     <>
       <Text>
-        {displayName(invitation.inviterName, "A teammate")} invited you to join {team} on Anviq
+        {displayName(invitation.inviterName, "A teammate")} invited you to join {team} on Sekundo
         Agents.
       </Text>
       <Text>
@@ -108,9 +108,9 @@ export function teamInvitationEmail(
 export function accountDeletionEmail(email: string, code: string): Promise<TransactionalEmail> {
   return message(
     email,
-    "Confirm Anviq Agents account deletion",
+    "Confirm Sekundo account deletion",
     <>
-      <Text>Enter this code in Anviq Agents to delete your account:</Text>
+      <Text>Enter this code in Sekundo to delete your account:</Text>
       <Text>{code}</Text>
       <Text>
         This code expires in ten minutes. If you did not request deletion, ignore this email.
@@ -122,9 +122,9 @@ export function accountDeletionEmail(email: string, code: string): Promise<Trans
 export function identityCodeEmail(email: string, code: string): Promise<TransactionalEmail> {
   return message(
     email,
-    "Your Anviq Agents confirmation code",
+    "Your Sekundo confirmation code",
     <>
-      <Text>Enter this code in Anviq Agents to confirm it's you:</Text>
+      <Text>Enter this code in Sekundo to confirm it's you:</Text>
       <Text>
         <strong>{code}</strong>
       </Text>

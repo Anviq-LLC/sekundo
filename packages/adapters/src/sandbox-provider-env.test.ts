@@ -107,7 +107,7 @@ describe("sandboxProviderOptionsFromEnv", () => {
       sandboxProviderOptionsFromEnv({
         KUBERNETES_SANDBOX_NAMESPACE: " anviq-computers ",
         KUBERNETES_SANDBOX_RUNTIME_CLASS_NAME: "kata",
-        KUBERNETES_SANDBOX_COMPUTER_IMAGE: "ghcr.io/leovoss/anviq-agents/computer@sha256:abc",
+        KUBERNETES_SANDBOX_COMPUTER_IMAGE: "ghcr.io/anviq-llc/sekundo/computer@sha256:abc",
         KUBERNETES_SANDBOX_CPU_LIMIT: "2",
         KUBERNETES_SANDBOX_MEMORY_LIMIT: "4Gi",
         KUBERNETES_SANDBOX_POD_LABELS: '{"team":"bots"}',
@@ -117,7 +117,7 @@ describe("sandboxProviderOptionsFromEnv", () => {
     ).toMatchObject({
       kubernetesNamespace: "anviq-computers",
       kubernetesRuntimeClassName: "kata",
-      kubernetesComputerImage: "ghcr.io/leovoss/anviq-agents/computer@sha256:abc",
+      kubernetesComputerImage: "ghcr.io/anviq-llc/sekundo/computer@sha256:abc",
       kubernetesCpuLimit: "2",
       kubernetesMemoryLimit: "4Gi",
       kubernetesPodLabels: { team: "bots" },

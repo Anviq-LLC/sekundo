@@ -22,7 +22,7 @@ async function controlNeedsModel(page: Page, { survey = false } = {}) {
 test("a new user can start from an imported agent instead of Chief", async ({ page }, testInfo) => {
   const model = await controlNeedsModel(page, { survey: true });
   await signup(page, `onboarding-import-${Date.now()}@anviq.test`, "password12", "Importer");
-  await expect(page.getByRole("heading", { name: "Welcome to Anviq Agents" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible({
     timeout: 20_000,
   });
   const entry = page.getByRole("button", { name: "Import an agent", exact: true });
@@ -98,7 +98,7 @@ test("a new user can start from an imported agent instead of Chief", async ({ pa
     preview.getByRole("button", { name: "Create", exact: true }),
     "bots/importCreate",
   );
-  await expect(page.getByRole("heading", { name: "Welcome to Anviq Agents" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.waitForURL(/\/app\/[^/]+$/, { timeout: 20_000 });
   await expect(page.getByPlaceholder("Message Pebble")).toBeVisible();
@@ -140,7 +140,7 @@ test("with a model already provided, import is offered before the first bot is m
     });
   });
   await signup(page, `onboarding-import-ready-${Date.now()}@anviq.test`, "password12", "Ready");
-  await expect(page.getByRole("heading", { name: "Welcome to Anviq Agents" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible({
     timeout: 20_000,
   });
   // No bot is made while the user is still choosing.
@@ -162,7 +162,7 @@ test("with a model already provided, import is offered before the first bot is m
     "bots/importCreate",
   );
   // The survey still comes first; its Continue opens the imported bot, and no Chief is made.
-  await expect(page.getByRole("heading", { name: "Welcome to Anviq Agents" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.waitForURL(/\/app\/[^/]+$/, { timeout: 20_000 });
   await expect(page.getByPlaceholder("Message Pebble")).toBeVisible();
@@ -187,7 +187,7 @@ test("with a model already provided, an import that finds a first bot already ma
     "password12",
     "Raced",
   );
-  await expect(page.getByRole("heading", { name: "Welcome to Anviq Agents" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible({
     timeout: 20_000,
   });
   await page.getByRole("button", { name: "Import an agent", exact: true }).click();
@@ -209,7 +209,7 @@ test("with a model already provided, an import that finds a first bot already ma
   await expect(notice.getByRole("alert")).toHaveText(
     "Your first bot already existed, so the agent was not imported.",
   );
-  await expect(page.getByRole("heading", { name: "Welcome to Anviq Agents" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible();
   await expect(notice.getByRole("button")).toHaveCount(0);
   await captureScreenshot(page, testInfo, "onboarding-import-not-imported-survey");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -230,7 +230,7 @@ test("with a model already provided, ignoring import still starts with Chief at 
     });
   });
   await signup(page, `onboarding-no-import-ready-${Date.now()}@anviq.test`, "password12", "Plain");
-  await expect(page.getByRole("heading", { name: "Welcome to Anviq Agents" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible({
     timeout: 20_000,
   });
   await page.getByRole("button", { name: "Continue", exact: true }).click();

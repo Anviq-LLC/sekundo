@@ -187,7 +187,7 @@ describe("optional Parallel web provider", () => {
       for (const request of peer.requests) {
         expect(request.url).toBe("https://search.parallel.ai/mcp");
         expect(request.headers.get("user-agent")).toBe(
-          "Anviq/0.1 (+https://github.com/leovoss/anviq-agents; web tools)",
+          "Sekundo/0.1 (+https://github.com/anviq-llc/sekundo; web tools)",
         );
         expect(request.headers.has("authorization")).toBe(false);
       }

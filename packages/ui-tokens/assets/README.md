@@ -1,36 +1,29 @@
 # App icon source
 
 `Anviq.icon` is the shared editable source for macOS and iOS. Open it in Apple's
-Icon Composer with Xcode 26 or newer. The foreground is the Anviq anvil mark in
-off-white with the orange accent, centered on the system dark background.
+Icon Composer with Xcode 26 or newer. The foreground is the Sekundo placeholder mark
+(`Assets/sekundo-mark.png`) in off-white, centered on the system dark background.
 
 macOS packaging compiles the source into a Tahoe asset catalog and generates the
 legacy ICNS fallback. Expo copies the same source into the iOS project.
 
 The platform exports are:
 
-- `apps/desktop/assets/icon-macos.png`: Icon Composer's default appearance,
-  1024-pixel macOS pre-Tahoe export, including Dock margins for development launches.
+- `apps/desktop/assets/icon-macos.png`: 1024-pixel macOS pre-Tahoe export, including
+  Dock margins for development launches.
 - `apps/mobile/assets/icon.png`: opaque 1024-pixel square for the generic/legacy icon,
   with no rounded mask or Dock margins.
-- `apps/mobile/assets/adaptive-icon.png`: transparent 1024-pixel Android foreground;
-  the mark is 470 pixels wide and centered, inside the launcher's safe area.
+- `apps/mobile/assets/adaptive-icon.png`: transparent 1024-pixel Android foreground,
+  inside the launcher's safe area.
 - `apps/mobile/assets/icon-background.png`: opaque Android background in the
   paper tone (`#F2F2F0`).
 - `apps/mobile/assets/monochrome-icon.png`: matching Android alpha silhouette for
   themed launchers.
 
-Refresh platform exports after changing the source. Android supplies its own mask;
-never bake Mac corners, a rim, or an outer shadow into adaptive layers.
+Android supplies its own mask; never bake Mac corners, a rim, or an outer shadow into
+adaptive layers.
 
-Run `pnpm --filter @anviq/ui-tokens export:brand` to refresh the web and marketing
-favicons, install icons, marketing mark, Windows/Linux icons, mobile splash, and
-mobile web favicon. These use the same orange foreground with the shared dark
-background, a rounded mask for small browser marks, and transparent splash padding.
-The notification export uses the Android monochrome silhouette so its eyes remain
-transparent. Apple Icon Composer and Android launcher exports remain separate
-because their system masks and safe areas differ.
-
-After exporting, run `pnpm exec tsx apps/www/scripts/render-og.mjs` to refresh the
-marketing page social cards; set `CHROME_PATH` to a headless Chrome executable when
-it is not available at the script's default location.
+The mark is a placeholder. When the final logo exists, replace `sekundo-mark.png`, the
+platform exports above, `apps/web/public` icons, `apps/desktop/assets/icon*`, and
+`apps/mobile/modules/anviq-notifications/android/src/main/res/drawable/ic_anviq_notification.xml`.
+`scripts/export-brand.ts` expects a source image that this repository does not contain.
