@@ -770,11 +770,6 @@ msgstr "נענה: {answer}"
 msgid "Anthropic API"
 msgstr ""
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Sekundo credits"
-msgstr ""
-
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
 msgstr ""
@@ -4972,14 +4967,14 @@ msgstr "לנסות שוב עכשיו"
 msgid "Retry screen"
 msgstr "טעינת המסך מחדש"
 
-#: src/pages/McpOAuthCallback.tsx
-msgid "Return to Sekundo"
-msgstr "חזרה ל-Anviq"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
 msgstr ""
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Return to Sekundo"
+msgstr "חזרה ל-Anviq"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -5223,6 +5218,11 @@ msgstr "אבטחה"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
+msgstr ""
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/shell/chat-header.tsx
@@ -6239,10 +6239,6 @@ msgstr "השתמש ב-{oauthEnvReference} עבור אסימון הגישה."
 msgid "Use a found model"
 msgstr "שימוש במודל שנמצא"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Sekundo credits"
-msgstr ""
-
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
 msgstr ""
@@ -6274,6 +6270,10 @@ msgstr ""
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
 msgstr "לסיסמאות יש להשתמש בקלט מוגן."
+
+#: src/components/ModelCredits.tsx
+msgid "Use Sekundo credits"
+msgstr ""
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"

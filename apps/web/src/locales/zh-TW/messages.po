@@ -771,11 +771,6 @@ msgstr "已回答：{answer}"
 msgid "Anthropic API"
 msgstr "Anthropic API"
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Sekundo credits"
-msgstr "Sekundo 額度"
-
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
 msgstr "anviq-shared 與以 bot- 開頭的 ID 保留給 Sekundo 使用。"
@@ -4973,14 +4968,14 @@ msgstr "立即重試"
 msgid "Retry screen"
 msgstr "重新連線螢幕"
 
-#: src/pages/McpOAuthCallback.tsx
-msgid "Return to Sekundo"
-msgstr "返回 Sekundo"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
 msgstr "返回與 {0} 的通話"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Return to Sekundo"
+msgstr "返回 Sekundo"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -5225,6 +5220,11 @@ msgstr "安全"
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
 msgstr ""
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sekundo credits"
+msgstr "Sekundo 額度"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Select a bot"
@@ -6240,10 +6240,6 @@ msgstr "存取權杖請使用 {oauthEnvReference}。"
 msgid "Use a found model"
 msgstr "使用找到的模型"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Sekundo credits"
-msgstr "使用 Sekundo 額度"
-
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
 msgstr ""
@@ -6275,6 +6271,10 @@ msgstr "使用我的訂閱或 API 金鑰"
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
 msgstr "輸入密碼時，請使用受保護的輸入。"
+
+#: src/components/ModelCredits.tsx
+msgid "Use Sekundo credits"
+msgstr "使用 Sekundo 額度"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"

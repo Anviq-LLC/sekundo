@@ -770,11 +770,6 @@ msgstr "回答済み: {answer}"
 msgid "Anthropic API"
 msgstr "Anthropic API"
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Sekundo credits"
-msgstr "Sekundoクレジット"
-
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
 msgstr "anviq-sharedおよびbot-で始まるIDはSekundo用に予約されています。"
@@ -4972,14 +4967,14 @@ msgstr "今すぐ再試行"
 msgid "Retry screen"
 msgstr "画面を再試行"
 
-#: src/pages/McpOAuthCallback.tsx
-msgid "Return to Sekundo"
-msgstr "Sekundoに戻る"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
 msgstr "{0}との通話に戻る"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Return to Sekundo"
+msgstr "Sekundoに戻る"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -5224,6 +5219,11 @@ msgstr "セキュリティ"
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
 msgstr ""
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sekundo credits"
+msgstr "Sekundoクレジット"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Select a bot"
@@ -6239,10 +6239,6 @@ msgstr "アクセストークンには{oauthEnvReference}を使用してくだ�
 msgid "Use a found model"
 msgstr "見つかったモデルを使用"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Sekundo credits"
-msgstr "Sekundoクレジットを使用"
-
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
 msgstr ""
@@ -6274,6 +6270,10 @@ msgstr "自分のサブスクリプションまたはAPIキーを使用"
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
 msgstr "パスワードには保護された入力を使用してください。"
+
+#: src/components/ModelCredits.tsx
+msgid "Use Sekundo credits"
+msgstr "Sekundoクレジットを使用"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"

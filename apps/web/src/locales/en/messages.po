@@ -770,11 +770,6 @@ msgstr "Answered: {answer}"
 msgid "Anthropic API"
 msgstr "Anthropic API"
 
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Sekundo credits"
-msgstr "Sekundo credits"
-
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
 msgstr "anviq-shared and IDs starting with bot- are reserved for Sekundo."
@@ -4972,14 +4967,14 @@ msgstr "Retry now"
 msgid "Retry screen"
 msgstr "Retry screen"
 
-#: src/pages/McpOAuthCallback.tsx
-msgid "Return to Sekundo"
-msgstr "Return to Sekundo"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
 msgstr "Return to call with {0}"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Return to Sekundo"
+msgstr "Return to Sekundo"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -5224,6 +5219,11 @@ msgstr "Security"
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
 msgstr "Security & Ops"
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sekundo credits"
+msgstr "Sekundo credits"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Select a bot"
@@ -6239,10 +6239,6 @@ msgstr "Use {oauthEnvReference} for the access token."
 msgid "Use a found model"
 msgstr "Use a found model"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Sekundo credits"
-msgstr "Use Sekundo credits"
-
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
 msgstr "Use built-in memory"
@@ -6274,6 +6270,10 @@ msgstr "Use my subscription or API key"
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
 msgstr "Use Protected input for passwords."
+
+#: src/components/ModelCredits.tsx
+msgid "Use Sekundo credits"
+msgstr "Use Sekundo credits"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"
