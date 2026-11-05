@@ -1,4 +1,7 @@
 export const NL_MESSAGES: Record<string, string> = {
+  "Schedule delayed": "Geplande uitvoering vertraagd",
+  "Add rule": "Regel toevoegen",
+  "Tool name": "Toolnaam",
   "Not sent. Tap for options": "Niet verzonden. Tik voor opties",
   "Image input is not configured for this model.":
     "Afbeeldingsinvoer is niet ingesteld voor dit model.",
@@ -865,7 +868,7 @@ export const NL_MESSAGES: Record<string, string> = {
   "AI models": "AI-modellen",
   Memory: "Geheugen",
   "Privacy policies": "Privacybeleid",
-  "Sekundo": "Sekundo",
+  Sekundo: "Sekundo",
   "Withdraw all permissions": "Alle toestemmingen intrekken",
   "Withdraw all permissions?": "Alle toestemmingen intrekken?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":
@@ -1025,8 +1028,7 @@ export const NL_MESSAGES: Record<string, string> = {
   Work: "Werk",
   Both: "Allebei",
   "How will you use Sekundo?": "Hoe ga je Sekundo gebruiken?",
-  "What do you most want Sekundo to help with?":
-    "Waarmee wil je vooral hulp van Sekundo?",
+  "What do you most want Sekundo to help with?": "Waarmee wil je vooral hulp van Sekundo?",
   "How big is your team?": "Hoe groot is je team?",
   "How did you hear about us?": "Hoe heb je over ons gehoord?",
   "Welcome to Sekundo": "Welkom bij Sekundo",
@@ -1185,6 +1187,8 @@ export const NL_MESSAGES: Record<string, string> = {
   Invitations: "Uitnodigingen",
   Invite: "Uitnodigen",
   Join: "Deelnemen",
+  "Delete team": "Team verwijderen",
+  "Delete this team?": "Dit team verwijderen?",
   "Leave team": "Team verlaten",
   "Leave this team?": "Dit team verlaten?",
   "Make admin": "Beheerder maken",

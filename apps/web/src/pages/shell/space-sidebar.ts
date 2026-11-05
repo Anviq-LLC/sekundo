@@ -12,6 +12,7 @@ type SidebarChat = {
 type SidebarSpace<TBot extends SidebarChat, TGroup extends SidebarChat> = {
   id: string;
   name: string;
+  team?: boolean;
   canRename?: boolean;
   canDelete?: boolean;
   bots: readonly TBot[];
@@ -91,7 +92,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       // A header holding the space menu is never blank, even for the only space.
       title: showSpaceNames ? space.name : index === 0 && !group.title ? space.name : group.title,
       subtitle: showSpaceNames && group.title ? group.title : undefined,
-      showLock: showSpaceNames,
+      showLock: showSpaceNames && !space.team,
       emptySpaceId: undefined as string | undefined,
       spaceId: space.id,
       spaceName: space.name,
@@ -110,7 +111,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
           subtitle: showSpaceNames ? section.name : undefined,
           bots: [] as (typeof sections)[number]["bots"],
           sectionId: section.id as string | null,
-          showLock: showSpaceNames,
+          showLock: showSpaceNames && !space.team,
           emptySpaceId: undefined as string | undefined,
           spaceId: space.id,
           spaceName: space.name,
@@ -128,7 +129,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         subtitle: undefined,
         bots: [],
         sectionId: null,
-        showLock: showSpaceNames,
+        showLock: showSpaceNames && !space.team,
         emptySpaceId: showSpaceNames ? space.id : undefined,
         spaceId: space.id,
         spaceName: space.name,

@@ -350,6 +350,8 @@ export const SpaceSchema = z.object({
   id: Id,
   name: z.string(),
   isDefault: z.boolean(),
+  /** True for a team's space. */
+  team: z.boolean().optional(),
   /** True when the space has any bot or group, including archived. */
   hasContent: z.boolean(),
   /** True only when the current member owns the space and may rename it. */
@@ -520,6 +522,8 @@ export const RoutineSchema = z.object({
   watchState: RoutineWatchStateSchema.nullable(),
   lastRunAt: z.string().nullable(),
   nextRunAt: z.string().nullable(),
+  /** Computed by the server; absent on older servers. Not a worker-health diagnosis. */
+  scheduleDelayed: z.boolean().optional(),
   createdAt: z.string(),
   /** False when another Space member created it; only its creator can change it. */
   editable: z.boolean().optional(),
@@ -952,6 +956,7 @@ export const McpServerConfigInput = z.discriminatedUnion("transport", [
   McpServerBaseInput.extend({
     transport: z.literal("stdio"),
     command: z.string().min(1).max(512),
+    /** Update: send none to keep the stored arguments while the command is unchanged. */
     args: z.array(z.string().max(2048)).max(64).default([]),
     env: z
       .record(z.string().regex(/^[A-Z_][A-Z0-9_]*$/), z.string().max(4096))
@@ -992,7 +997,8 @@ export const McpServerSchema = z.object({
   transport: McpTransportSchema,
   endpoint: z.string().url().nullable(),
   command: z.string().nullable(),
-  args: z.array(z.string()),
+  /** Arguments are stored encrypted and never returned. */
+  hasArgs: z.boolean(),
   envKeys: z.array(z.string()),
   /** Env variables that receive a credential file's path instead of a value. */
   fileKeys: z.array(z.string()),
@@ -1700,6 +1706,8 @@ export const MeSchema = z.object({
   spaceId: Id,
   /** Deprecated: app accounts never have server administrator privileges. Always false. */
   isDeploymentOwner: z.boolean(),
+  /** Listed in ANVIQ_ADMIN_EMAILS with a verified email: may add stdio MCP servers. */
+  isAdmin: z.boolean().default(false),
   needsModel: z.boolean(),
   defaultProvider: z.string().nullable(),
   defaultModel: z.string().nullable(),
@@ -1710,7 +1718,7 @@ export const MeSchema = z.object({
   computerHost: z.enum(["docker", "this-mac"]).nullable(),
   canChooseHostComputer: z.boolean(),
   sandboxProvider: z.string(),
-  /** Whether this deployment runs stdio MCP servers. Absent from older servers. */
+  /** Whether this account can add stdio MCP servers here. Absent from older servers. */
   mcpStdioEnabled: z.boolean().default(false),
   avatarStyle: AvatarStyleSchema,
   /**

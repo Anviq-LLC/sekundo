@@ -1250,6 +1250,7 @@ describe("MCP prepared credential updates", () => {
       botSecret: { count: async () => 0 },
       vaultCredential: { count: async () => 0 },
       integrationProviderConfig: { count: async () => 0 },
+      userIntegrationProviderConfig: { count: async () => 0 },
       $executeRaw: async () => 1,
       $queryRaw: async () => [],
       async $transaction(callback: (tx: typeof prisma) => Promise<unknown>) {
@@ -1323,7 +1324,11 @@ describe("MCP prepared credential updates", () => {
 });
 
 describe("MCP pre-registered OAuth client", () => {
-  function harness(isDeploymentOwner = true, storedMaterial?: Record<string, unknown>) {
+  function harness(
+    isDeploymentOwner = true,
+    storedMaterial?: Record<string, unknown>,
+    allowedCommands: readonly string[] = ["npx"],
+  ) {
     const values = new Map<string, string>();
     const secretRows = new Map<string, { id: string; ciphertext: string }>();
     let server: Record<string, unknown> | undefined;
@@ -1370,6 +1375,7 @@ describe("MCP pre-registered OAuth client", () => {
           return server;
         }),
       },
+      mcpOAuthSession: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       secret: {
         create: vi.fn(async ({ data }: { data: { id: string; ciphertext: string } }) => {
           secretRows.set(data.id, data);
@@ -1380,6 +1386,9 @@ describe("MCP pre-registered OAuth client", () => {
           secretRows.delete(where.id);
           return { count: 1 };
         }),
+      },
+      user: {
+        findUnique: vi.fn(async () => ({ email: "owner@anviq.test", emailVerified: true })),
       },
       deploymentSettings: { findUnique: vi.fn().mockResolvedValue({ ownerUserId: "owner-1" }) },
       $executeRaw: vi.fn(async () => 1),
@@ -1405,7 +1414,8 @@ describe("MCP pre-registered OAuth client", () => {
         sandboxProvider: "fake",
         mcpAllowPrivateEndpoint: isDeploymentOwner,
         mcpStdioEnabled: true,
-        mcpStdioAllowedCommands: ["npx"],
+        mcpStdioAllowedCommands: allowedCommands,
+        adminEmails: ["owner@anviq.test"],
       },
       dataDir: "/tmp/anviq-router-test",
     } as unknown as RouterDeps;
@@ -1464,6 +1474,44 @@ describe("MCP pre-registered OAuth client", () => {
       code: "CONFLICT",
       message: "An MCP server with that name already exists.",
     });
+  });
+
+  it("rejects a credential in the endpoint query, which would be stored in plaintext", async () => {
+    const { client, prisma, secrets } = harness();
+
+    await expect(
+      client.mcp.servers.create({
+        transport: "streamable_http",
+        slug: "gmail",
+        name: "Gmail",
+        endpoint: "http://localhost:3100/mcp?region=us&api_key=sk-test-123",
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Put api_key in a header instead of the server URL",
+    });
+    expect(secrets.put).not.toHaveBeenCalled();
+    expect(prisma.mcpServer.create).not.toHaveBeenCalled();
+  });
+
+  it("does not report a stored credential for a lone OAuth generation marker", async () => {
+    const { client, server } = harness(true);
+
+    const created = await client.mcp.servers.create({
+      transport: "streamable_http",
+      slug: "gmail",
+      name: "Gmail",
+      endpoint: "http://localhost:3100/mcp",
+    });
+    expect(created.hasSecret).toBe(false);
+
+    await client.mcp.oauth.disconnect({ serverId: created.id });
+    // The disconnect of a never-connected server still leaves the generation marker row.
+    expect(server()?.secretId).not.toBeNull();
+
+    const checked = await client.mcp.servers.test({ id: created.id });
+    expect(checked.hasSecret).toBe(false);
+    expect(checked.oauthStatus).toBe("none");
   });
 
   describe("stdio server with host-managed OAuth", () => {
@@ -1680,7 +1728,7 @@ describe("MCP pre-registered OAuth client", () => {
           expect(secrets.put).not.toHaveBeenCalled();
         });
 
-        it("drops the files when the credential is cleared", async () => {
+        it("drops the files but keeps the arguments when the credential is cleared", async () => {
           const { client, material, server } = harness(true, storedWithFile);
 
           const updated = await client.mcp.servers.update({
@@ -1690,6 +1738,23 @@ describe("MCP pre-registered OAuth client", () => {
 
           expect(updated.fileKeys).toEqual([]);
           expect(server()?.files).toEqual({});
+          expect(material()).toEqual({ args: stdio.args });
+        });
+
+        it("drops the secret when the credential is cleared from a server without arguments", async () => {
+          const { client, material, server } = harness(true, storedWithFile);
+
+          await client.mcp.servers.update({
+            ...base,
+            config: {
+              ...base.config,
+              command: "npx",
+              args: [],
+              oauthClient: null,
+              clearCredential: true,
+            },
+          });
+
           expect(server()?.secretId).toBeNull();
           expect(material).toThrow();
         });
@@ -1777,7 +1842,7 @@ describe("MCP pre-registered OAuth client", () => {
         const updated = await client.mcp.servers.update(update);
 
         expect(updated.oauthClientId).toBe("client-1.apps.example.test");
-        expect(material()).toEqual(stored);
+        expect(material()).toEqual({ ...stored, args: stdio.args });
       });
 
       it("clears the grant when the update changes the scope", async () => {
@@ -1802,6 +1867,43 @@ describe("MCP pre-registered OAuth client", () => {
           scope: "drive",
           authorization_server: "https://accounts.example.test/",
         });
+      });
+
+      it("clears the stored credential when the command changes and none is sent", async () => {
+        const { client, server, secrets, prisma } = harness(
+          true,
+          { args: [...stdio.args, "--token", "stored-token"] },
+          ["npx", "node"],
+        );
+
+        const updated = await client.mcp.servers.update({
+          ...update,
+          config: { ...stdio, command: "node", args: [], env: {}, enabled: true, description: "" },
+        });
+
+        expect(updated.hasSecret).toBe(false);
+        expect(updated.hasArgs).toBe(false);
+        expect(server()?.secretId).toBeNull();
+        expect(secrets.put).not.toHaveBeenCalled();
+        expect(prisma.secret.deleteMany).toHaveBeenCalledWith(
+          expect.objectContaining({ where: expect.objectContaining({ id: "secret-0" }) }),
+        );
+      });
+
+      it("deletes a stored credential that holds only an empty env record", async () => {
+        const { client, server, secrets, prisma } = harness(true, { env: {} });
+
+        const updated = await client.mcp.servers.update({
+          ...update,
+          config: { ...stdio, args: [], env: {}, enabled: true, description: "" },
+        });
+
+        expect(updated.hasSecret).toBe(false);
+        expect(server()?.secretId).toBeNull();
+        expect(secrets.put).not.toHaveBeenCalled();
+        expect(prisma.secret.deleteMany).toHaveBeenCalledWith(
+          expect.objectContaining({ where: expect.objectContaining({ id: "secret-0" }) }),
+        );
       });
     });
 
@@ -1994,12 +2096,18 @@ describe("MCP server health", () => {
         updateMany,
       },
       secret: { findFirst: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
+      user: {
+        findUnique: vi.fn(async () => ({ email: "owner@anviq.test", emailVerified: true })),
+        findUniqueOrThrow: vi.fn(async () => ({ email: "owner@anviq.test", name: "Owner" })),
+      },
       deploymentSettings: { findUnique: vi.fn().mockResolvedValue({ ownerUserId: "owner-1" }) },
       $executeRaw: vi.fn(async () => 1),
       $queryRaw: vi.fn(async () => []),
       $transaction: vi.fn(async (run: (tx: unknown) => Promise<unknown>) => run(prisma)),
     } as unknown as PrismaClient;
-    const summaryFor = vi.fn(async () => options.oauth ?? { status: "none", clientId: null });
+    const summaryFor = vi.fn(
+      async () => options.oauth ?? { status: "none", clientId: null, credential: true },
+    );
     const deps = {
       prisma,
       secrets: { put: vi.fn(), load: vi.fn() },
@@ -2014,6 +2122,7 @@ describe("MCP server health", () => {
         sandboxProvider: "fake",
         mcpStdioEnabled: true,
         mcpStdioAllowedCommands: ["npx"],
+        adminEmails: ["owner@anviq.test"],
       },
       dataDir: "/tmp/anviq-router-test",
     } as unknown as RouterDeps;
@@ -2085,12 +2194,49 @@ describe("MCP server health", () => {
 
   it("reports stdio support with the account", async () => {
     const h = harness();
-    (h.deps.prisma as unknown as Record<string, unknown>).user = {
-      findUniqueOrThrow: vi.fn(async () => ({ email: "owner@anviq.test", name: "Owner" })),
-    };
     expect((await h.client.me()).mcpStdioEnabled).toBe(true);
     Object.assign(h.deps.env, { mcpStdioEnabled: false });
     expect((await h.client.me()).mcpStdioEnabled).toBe(false);
+  });
+
+  it("lets only admins add or change stdio servers", async () => {
+    const h = harness();
+    Object.assign(h.deps.env, { adminEmails: ["someone-else@anviq.test"] });
+    const refusal = { code: "FORBIDDEN", message: "Only admins can add local MCP servers" };
+
+    expect((await h.client.me()).mcpStdioEnabled).toBe(false);
+    await expect(h.client.mcp.servers.create(stdioInput)).rejects.toMatchObject(refusal);
+    await expect(
+      h.client.mcp.servers.update({
+        id: "server-1",
+        config: { ...stdioInput, enabled: true, description: "", env: {} },
+      }),
+    ).rejects.toMatchObject(refusal);
+    await expect(
+      h.client.mcp.servers.update({
+        id: "server-1",
+        config: {
+          transport: "streamable_http",
+          slug: "gmail",
+          name: "Gmail",
+          description: "",
+          enabled: true,
+          endpoint: "https://mcp.example.test/mcp",
+          headers: {},
+        },
+      }),
+    ).rejects.toMatchObject(refusal);
+    expect(h.deps.prisma.mcpServer.create).not.toHaveBeenCalled();
+    expect(h.deps.prisma.mcpServer.update).not.toHaveBeenCalled();
+
+    await expect(
+      h.client.mcp.servers.create({
+        transport: "streamable_http",
+        slug: "remote",
+        name: "Remote",
+        endpoint: "https://mcp.example.test/mcp",
+      }),
+    ).resolves.toMatchObject({ transport: "streamable_http" });
   });
 
   it("lists servers with their health", async () => {
@@ -2157,7 +2303,7 @@ describe("MCP server health", () => {
 
     it("says why it did not probe when the server still needs its OAuth account", async () => {
       const { client, probe } = harness({
-        oauth: { status: "none", clientId: "client-1.apps.example.test" },
+        oauth: { status: "none", clientId: "client-1.apps.example.test", credential: true },
       });
 
       const tested = await client.mcp.servers.test({ id: "server-1" });
@@ -2177,7 +2323,7 @@ describe("MCP server health", () => {
       async (material, shouldProbe) => {
         const h = harness({
           row: baseRow({ secretId: "secret-1" }),
-          oauth: { status: "none", clientId: "fake-client" },
+          oauth: { status: "none", clientId: "fake-client", credential: true },
         });
         vi.mocked(h.deps.prisma.secret.findFirst).mockResolvedValue({
           id: "secret-1",
@@ -2246,7 +2392,7 @@ describe("MCP server health", () => {
     it("does not probe a server whose OAuth account is not connected", async () => {
       const { client, probe, row } = harness({
         row: null,
-        oauth: { status: "none", clientId: "client-1.apps.example.test" },
+        oauth: { status: "none", clientId: "client-1.apps.example.test", credential: true },
       });
 
       const created = await client.mcp.servers.create(stdioInput);
@@ -2296,6 +2442,59 @@ describe("MCP server health", () => {
 
       expect(created.health.status).toBe("unknown");
       expect(h.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("keeps stdio arguments in the encrypted credential, never in the row or the response", async () => {
+      const h = harness({ row: null });
+      const put = vi.mocked(h.deps.secrets.put).mockResolvedValue({
+        id: "secret-1",
+        ciphertext: "v2:fake",
+      } as never);
+
+      const created = await h.client.mcp.servers.create({
+        ...stdioInput,
+        args: ["--api-key", "fake-key"],
+      });
+
+      expect(JSON.parse(String(put.mock.calls[0]?.[0]))).toMatchObject({
+        args: ["--api-key", "fake-key"],
+      });
+      const data = vi.mocked(h.deps.prisma.mcpServer.create).mock.calls[0]?.[0].data;
+      expect(data).not.toHaveProperty("args");
+      expect(data).toMatchObject({ hasArgs: true, secretId: "secret-1" });
+      expect(created).not.toHaveProperty("args");
+      expect(created.hasArgs).toBe(true);
+    });
+
+    it("moves a server's plaintext arguments into its credential when it is saved", async () => {
+      const h = harness({ row: baseRow({ args: ["--api-key", "fake-key"] }) });
+      const put = vi.mocked(h.deps.secrets.put).mockResolvedValue({
+        id: "secret-1",
+        ciphertext: "v2:fake",
+      } as never);
+
+      const updated = await h.client.mcp.servers.update({
+        id: "server-1",
+        config: { ...stdioInput, args: [] },
+      });
+
+      expect(JSON.parse(String(put.mock.calls[0]?.[0]))).toMatchObject({
+        args: ["--api-key", "fake-key"],
+      });
+      expect(h.row()).toMatchObject({ args: [], hasArgs: true, secretId: "secret-1" });
+      expect(updated.hasArgs).toBe(true);
+    });
+
+    it("still reports arguments a server kept in plaintext", async () => {
+      const h = harness();
+      (h.deps.prisma.mcpServer as unknown as { findMany: unknown }).findMany = vi.fn(async () => [
+        h.row(),
+      ]);
+
+      const [listed] = await h.client.mcp.servers.list();
+
+      expect(listed).not.toHaveProperty("args");
+      expect(listed?.hasArgs).toBe(true);
     });
 
     it("probes the server once its OAuth session completes", async () => {
@@ -2603,7 +2802,7 @@ describe("connections.complete", () => {
           userId: "user-1",
           signal: new AbortController().signal,
         },
-        { recordId: "integration-provider:composio" },
+        { recordId: "integration-provider:composio:user-1" },
       );
       let ref = stored.ref;
       let inTransaction = false;
@@ -2624,8 +2823,8 @@ describe("connections.complete", () => {
         createdAt: new Date(0),
       };
       const client = {
-        integrationProviderConfig: {
-          findUnique: vi.fn(async () => ({ id: "composio", ciphertext: ref })),
+        userIntegrationProviderConfig: {
+          findUnique: vi.fn(async () => ({ ciphertext: ref })),
         },
         connection: {
           findFirst: vi.fn(async () => row),
@@ -3014,11 +3213,30 @@ describe("connections.complete", () => {
       row.status = "connected";
       return true;
     });
-    Object.assign(connector, { connectedAccountId: vi.fn(async () => "account-1") });
+    Object.assign(connector, { resolveConnectedAccountId: vi.fn(async () => "account-1") });
 
     await expect(complete()).resolves.toMatchObject({ body: { json: { status: "connected" } } });
     expect(row.providerRef).toBe("account-1");
     expect(securityEvents()).toEqual([]);
+  });
+
+  it("stores the connected account a request id resolves to", async () => {
+    const { complete, connector, row } = pollFixture("pending");
+    row.providerRef = "request-1";
+    Object.assign(connector, {
+      accounts: new Map([["request-1", "account-1"]]),
+      async resolveConnectedAccountId(
+        this: { accounts: Map<string, string> },
+        _userId: string,
+        _slug: string,
+        ref: string,
+      ) {
+        return this.accounts.get(ref);
+      },
+    });
+
+    await expect(complete()).resolves.toMatchObject({ body: { json: { status: "connected" } } });
+    expect(row.providerRef).toBe("account-1");
   });
 
   it("reports a superseded connection as revoked instead of failing", async () => {
@@ -3648,74 +3866,121 @@ describe("computer terminal and file transfer", () => {
   });
 });
 
-describe("integration setup authorization", () => {
-  it.each([
-    { owner: false, configured: false, needsSetup: false },
-    { owner: true, configured: false, needsSetup: false },
-    { owner: true, configured: true, needsSetup: false },
-  ])(
-    "never offers server setup to an app account: %j",
-    async ({ owner, configured, needsSetup }) => {
-      const lookup = vi.fn(async () => configured);
-      const deps = {
-        prisma: {},
-        env: { webOrigin: "https://example.test" },
-        integrationSettings: { configured: lookup },
-      } as unknown as RouterDeps;
-      const handler = new RPCHandler(createRouter(deps));
-      const { response } = await handler.handle(
-        new Request("https://example.test/rpc/integrationSetup/get", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ json: null }),
-        }),
-        {
-          prefix: "/rpc",
-          context: {
-            actor: {
-              userId: "user",
-              spaceId: "space",
-              email: "user@anviq.test",
-              isDeploymentOwner: owner,
-            },
-          },
-        },
-      );
-      const result = (await response.json()).json;
-      expect(result).toMatchObject({ canConfigure: false, needsSetup });
-      expect(result.providers).toEqual([]);
-      expect(lookup).not.toHaveBeenCalled();
-    },
-  );
-
-  it("rejects provider credentials from a non-owner before verification or persistence", async () => {
-    const save = vi.fn();
-    const deps = {
-      prisma: {},
-      env: { webOrigin: "https://example.test" },
-      integrationSettings: { save },
-    } as unknown as RouterDeps;
-    const handler = new RPCHandler(createRouter(deps));
+describe("integration setup", () => {
+  const admin = { id: "user", email: "boss@anviq.test", emailVerified: true };
+  const call = async (
+    procedure: "get" | "save",
+    deps: Record<string, unknown>,
+    body: unknown = null,
+  ) => {
+    const handler = new RPCHandler(createRouter(deps as unknown as RouterDeps));
     const { response } = await handler.handle(
-      new Request("https://example.test/rpc/integrationSetup/save", {
+      new Request(`https://example.test/rpc/integrationSetup/${procedure}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ json: { provider: "composio", apiKey: "fake-key" } }),
+        body: JSON.stringify({ json: body }),
       }),
       {
         prefix: "/rpc",
         context: {
           actor: {
-            userId: "member",
+            userId: "user",
             spaceId: "space",
-            email: "member@anviq.test",
+            email: "user@anviq.test",
             isDeploymentOwner: false,
           },
         },
       },
     );
-    expect(response.status).toBe(403);
+    return response;
+  };
+  const baseDeps = (user: typeof admin | null, extra: Record<string, unknown> = {}) => ({
+    prisma: { user: { findUnique: vi.fn(async () => user) } },
+    env: { webOrigin: "https://example.test", adminEmails: ["boss@anviq.test"] },
+    ...extra,
+  });
+  const member = { ...admin, email: "member@anviq.test" };
+
+  it("reports whether the signed-in user has a key, looked up for that user only", async () => {
+    const lookup = vi.fn(
+      async (id: string, userId?: string) => id === "composio" && userId === "user",
+    );
+    const response = await call(
+      "get",
+      baseDeps(member, { integrationSettings: { configured: lookup } }),
+    );
+    const result = (await response.json()).json;
+    expect(result).toMatchObject({ canConfigure: true, needsSetup: false });
+    expect(result.providers).toEqual([
+      { id: "composio", configured: true },
+      { id: "pipedream", configured: false },
+    ]);
+    expect(lookup).toHaveBeenCalledWith("composio", "user");
+  });
+
+  it("needs setup when the user has no key", async () => {
+    const response = await call(
+      "get",
+      baseDeps(member, { integrationSettings: { configured: vi.fn(async () => false) } }),
+    );
+    expect((await response.json()).json).toMatchObject({ canConfigure: true, needsSetup: true });
+  });
+
+  it("saves a member's Composio key under their own user", async () => {
+    const save = vi.fn(async () => undefined);
+    const response = await call("save", baseDeps(member, { integrationSettings: { save } }), {
+      provider: "composio",
+      apiKey: "fake-key",
+    });
+    expect(response.status).toBe(200);
+    expect(save).toHaveBeenCalledWith(
+      { provider: "composio", apiKey: "fake-key" },
+      expect.objectContaining({ userId: "user", spaceId: "space" }),
+    );
+  });
+
+  const pipedream = {
+    provider: "pipedream",
+    clientId: "client",
+    clientSecret: "fake-secret",
+    projectId: "project",
+  };
+
+  it("keeps deployment-wide providers to administrators", async () => {
+    const save = vi.fn(async () => undefined);
+    const denied = await call(
+      "save",
+      baseDeps(member, { integrationSettings: { save } }),
+      pipedream,
+    );
+    expect(denied.status).toBe(403);
     expect(save).not.toHaveBeenCalled();
+    const unverified = await call(
+      "save",
+      baseDeps({ ...admin, emailVerified: false }, { integrationSettings: { save } }),
+      pipedream,
+    );
+    expect(unverified.status).toBe(403);
+    expect(save).not.toHaveBeenCalled();
+    const allowed = await call(
+      "save",
+      baseDeps(admin, { integrationSettings: { save } }),
+      pipedream,
+    );
+    expect(allowed.status).toBe(200);
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it("does not echo provider errors that could contain credentials", async () => {
+    const save = vi.fn(async () => {
+      throw new Error("bad key fake-key");
+    });
+    const response = await call("save", baseDeps(member, { integrationSettings: { save } }), {
+      provider: "composio",
+      apiKey: "fake-key",
+    });
+    expect(response.status).toBe(400);
+    expect(JSON.stringify(await response.json())).not.toContain("fake-key");
   });
 });
 
@@ -3748,7 +4013,13 @@ describe("server operation authorization", () => {
         () => client.updater.check({}),
         () => client.updater.apply({}),
         () => client.computer.releaseInterrupted({ id: "update-1", workersStopped: true }),
-        () => client.integrationSetup.save({ provider: "composio", apiKey: "fake-key" }),
+        () =>
+          client.integrationSetup.save({
+            provider: "pipedream",
+            clientId: "client",
+            clientSecret: "fake-secret",
+            projectId: "project",
+          }),
       ])
         await expect(call()).rejects.toMatchObject({ code: "FORBIDDEN" });
       expect(prisma.deploymentSettings.update).not.toHaveBeenCalled();
@@ -6722,7 +6993,7 @@ describe("routines.update", () => {
     expect(response.status).toBe(200);
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "routine-1", bot: { archivedAt: null } },
+        where: { id: "routine-1", bot: { archivedAt: null }, nextRunAt: null },
         data: expect.objectContaining({ active: true }),
       }),
     );
@@ -6730,7 +7001,8 @@ describe("routines.update", () => {
   });
 
   it("does not re-arm when the bot is archived between the read and the write", async () => {
-    const { enqueue, call } = fixture(false, true);
+    const { enqueue, call, findFirst } = fixture(false, true);
+    findFirst.mockResolvedValueOnce(routine).mockResolvedValueOnce(null);
     const { response } = await call();
     expect(response.status).toBe(404);
     expect(enqueue).not.toHaveBeenCalled();
@@ -6744,7 +7016,9 @@ describe("routines.update", () => {
 
   it("leaves model columns out of unrelated updates", async () => {
     const { call, update } = fixture(false, false, ownModel);
-    expect((await call({ name: "Renamed" })).response.status).toBe(200);
+    expect(
+      (await call({ name: "Renamed", active: undefined, runAt: undefined })).response.status,
+    ).toBe(200);
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "routine-1", bot: { archivedAt: null } } }),
     );
@@ -6826,6 +7100,75 @@ describe("routines.update", () => {
     const { call, update } = fixture(false);
     expect((await call({ thinkingLevel: "high" })).response.status).toBe(400);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  const recurring = {
+    crons: ["0 9 * * *"],
+    active: true,
+    nextRunAt: new Date("2026-09-02T09:00:00.000Z"),
+  };
+
+  it("leaves the schedule alone when an edit does not change it", async () => {
+    const { call, update, enqueue } = fixture(false, false, recurring);
+    expect((await call({ name: "Renamed", runAt: undefined })).response.status).toBe(200);
+    expect(update.mock.calls[0]![0].data).not.toHaveProperty("nextRunAt");
+    expect(update.mock.calls[0]![0].where).not.toHaveProperty("nextRunAt");
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("rejects a schedule change when the routine fired after the read", async () => {
+    const { call, update, enqueue } = fixture(false, false, recurring);
+    update.mockImplementationOnce(async (args) => {
+      expect(args.where).toMatchObject({ nextRunAt: recurring.nextRunAt });
+      throw Object.assign(new Error("not found"), { code: "P2025" });
+    });
+    expect((await call({ crons: ["0 10 * * *"], runAt: undefined })).response.status).toBe(409);
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+});
+
+describe("routines.remove", () => {
+  function fixture() {
+    const routine = { id: "routine-1", botId: "bot-1", spaceId: "space-1", userId: "user-a" };
+    const remove = vi.fn(async () => routine);
+    const cancel = vi.fn(async () => undefined);
+    const router = createRouter({
+      prisma: {
+        routine: {
+          findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
+            Object.entries(where).every(
+              ([key, value]) => routine[key as keyof typeof routine] === value,
+            )
+              ? routine
+              : null,
+          ),
+          delete: remove,
+        },
+      },
+      env: { sandboxProvider: "fake" },
+      jobs: { cancel },
+    } as unknown as RouterDeps);
+    const as = (userId: string) =>
+      createRouterClient(router, {
+        context: { actor: { spaceId: "space-1", userId } } as never,
+      });
+    return { as, remove, cancel };
+  }
+
+  it("does not let another Space member delete a routine", async () => {
+    const { as, remove, cancel } = fixture();
+    await expect(as("user-b").routines.remove({ routineId: "routine-1" })).rejects.toThrow();
+    expect(remove).not.toHaveBeenCalled();
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it("deletes the owner's routine", async () => {
+    const { as, remove, cancel } = fixture();
+    await expect(as("user-a").routines.remove({ routineId: "routine-1" })).resolves.toEqual({
+      ok: true,
+    });
+    expect(remove).toHaveBeenCalledWith({ where: { id: "routine-1" } });
+    expect(cancel).toHaveBeenCalledOnce();
   });
 });
 

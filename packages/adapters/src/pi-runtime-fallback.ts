@@ -29,7 +29,7 @@ import { OPENAI_COMPATIBLE_PROVIDER_ID } from "./pi-openai-compatible-provider.j
 import { assistantText, messageHasToolCall, sanitizeProviderError } from "./pi-runtime-errors.js";
 import {
   effectiveOutputReserve,
-  MODEL_STREAM_TIMEOUT_MS,
+  modelStreamTimeoutMs,
   resolveCompletionMaxTokens,
 } from "./pi-runtime-limits.js";
 import type { RuntimeModelTarget } from "./pi-runtime-models.js";
@@ -418,7 +418,7 @@ export function fallbackAwareModelStream(
     // Bound same-model retries. Explicit backups retain their per-model header
     // timeout: a post-header idle watchdog can already exceed that timeout.
     let startedAt = Date.now();
-    const timeoutMs = options?.timeoutMs ?? MODEL_STREAM_TIMEOUT_MS;
+    const timeoutMs = options?.timeoutMs ?? modelStreamTimeoutMs();
     let firstRetryableError: Extract<AssistantMessageEvent, { type: "error" }> | undefined;
     // Set once this call has been repeated after spending its output budget on nothing visible.
     let lengthRecovered = false;

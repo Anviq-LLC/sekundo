@@ -1,0 +1,3 @@
+# <name> <ssh target> [<instance directory, default /opt/anviq>]
+customer-a deploy@customer-a.example.test
+customer-b deploy@customer-b.example.test /srv/anviq

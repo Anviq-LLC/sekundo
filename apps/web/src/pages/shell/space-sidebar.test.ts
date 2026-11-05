@@ -30,6 +30,17 @@ function space(
 }
 
 describe("sidebarGroupsForSpaces", () => {
+  it("locks a personal space header but not a team's", () => {
+    const groups = sidebarGroupsForSpaces(
+      [space("space-1", "Personal"), { ...space("space-2", "Acme"), team: true }],
+      "",
+    );
+    expect(groups.map((group) => [group.title, group.showLock])).toEqual([
+      ["Personal", true],
+      ["Acme", false],
+    ]);
+  });
+
   it("keeps an empty space with saved sections openable", () => {
     const empty = {
       ...space("space-2", "Support", { canRename: true, bots: [] }),

@@ -1,4 +1,5 @@
 import type { McpServer } from "@anviq/contracts";
+import type { Route } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, openIntegrationsAdd, signup } from "./helpers";
 
@@ -35,7 +36,18 @@ function stdioServer(overrides: Partial<McpServer>): McpServer {
   };
 }
 
+// Only admins add stdio servers; the create below is stubbed, so the account only needs to read as one.
+async function asAdmin(route: Route, path: "me" | "bootstrap") {
+  const response = await route.fetch();
+  const body = (await response.json()) as { json?: Record<string, unknown> };
+  const me = path === "me" ? body.json : (body.json?.me as Record<string, unknown> | undefined);
+  if (me) Object.assign(me, { isAdmin: true, mcpStdioEnabled: true });
+  await route.fulfill({ response, json: body });
+}
+
 test("adds a stdio MCP server with encrypted environment variables", async ({ page }, testInfo) => {
+  await page.context().route("**/rpc/me", (route) => asAdmin(route, "me"));
+  await page.context().route("**/rpc/bootstrap", (route) => asAdmin(route, "bootstrap"));
   const stamp = Date.now();
   await signup(page, `mcp-stdio-${stamp}@anviq.test`, "password12", "MCP stdio");
   await completeOnboarding(page);
@@ -77,7 +89,7 @@ test("adds a stdio MCP server with encrypted environment variables", async ({ pa
       transport: "stdio",
       endpoint: null,
       command: "npx",
-      args: ["-y", "invoices-mcp@1.0.0"],
+      hasArgs: true,
       envKeys: ["INVOICES_API_ID", "INVOICES_API_SECRET", "GOOGLE_ACCESS_TOKEN"],
       fileKeys: ["GOOGLE_OAUTH_CREDENTIALS"],
       headerKeys: [],

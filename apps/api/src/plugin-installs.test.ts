@@ -63,6 +63,7 @@ function setup() {
     botSecret: { count: vi.fn().mockResolvedValue(0) },
     vaultCredential: { count: vi.fn().mockResolvedValue(0) },
     integrationProviderConfig: { count: vi.fn().mockResolvedValue(0) },
+    userIntegrationProviderConfig: { count: vi.fn().mockResolvedValue(0) },
     $transaction: vi.fn(),
   };
   prisma.$transaction.mockImplementation(async (run) => run(prisma));

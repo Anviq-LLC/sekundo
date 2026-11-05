@@ -36,8 +36,7 @@ it.skipIf(!databaseUrl)(
         headers: { "content-type": "application/json", origin: webOrigin },
         body: JSON.stringify(body),
       });
-    const welcomes = () =>
-      email.sent.filter((message) => message.subject === "Welcome to Sekundo");
+    const welcomes = () => email.sent.filter((message) => message.subject === "Welcome to Sekundo");
     try {
       expect((await post("/api/auth/sign-up/email", { ...credentials, name: "New" })).status).toBe(
         200,

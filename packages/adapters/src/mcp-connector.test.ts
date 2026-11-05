@@ -971,6 +971,7 @@ describe("MCP connector session cache", () => {
       const prisma = {
         capabilityInstall: { findMany: vi.fn().mockResolvedValue([]) },
         integrationProviderConfig: { findUnique: vi.fn().mockResolvedValue(null) },
+        userIntegrationProviderConfig: { findUnique: vi.fn().mockResolvedValue(null) },
         botMcpServer: {
           findMany: vi.fn().mockResolvedValue([ASSIGNMENT]),
           findFirst: vi.fn().mockResolvedValue(ASSIGNMENT),

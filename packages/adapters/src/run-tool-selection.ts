@@ -4,7 +4,12 @@ import { builtinAgentTools } from "./builtin-tools.js";
 import { selectCloudAgentTools } from "./cloud-agent-tools-select.js";
 import { selectMemoryTools } from "./memory-tools.js";
 import { filterImageReturningComputerTools } from "./model-vision.js";
-import { filterBuiltinToolsForRun, filterBuiltinToolsForThread } from "./schedule-tools.js";
+import {
+  filterBuiltinToolsForRun,
+  filterBuiltinToolsForThread,
+  SCHEDULE_TOOL_NAMES,
+} from "./schedule-tools.js";
+import { SKILL_TOOL_NAMES } from "./skill-tools.js";
 
 export const READ_ONLY_AGENT_TOOLS = new Set([
   "computer_observe",
@@ -130,6 +135,9 @@ export function selectBuiltinToolsForRun(options: {
         tool.name !== "call_user") &&
       (options.historyRetrievalEnabled ||
         !["search_history", "read_history"].includes(tool.name)) &&
+      // Routines and taught skills are the owner's own, so people reading the chat never see them.
+      (!(options.sharedChat || options.messagingChannelRun) ||
+        (!SCHEDULE_TOOL_NAMES.has(tool.name) && !SKILL_TOOL_NAMES.has(tool.name))) &&
       (!options.sharedChat ||
         (!["remember", "save_memory", "recall_memory", "forget_memory"].includes(tool.name) &&
           !tool.name.startsWith("scratchpad_"))) &&

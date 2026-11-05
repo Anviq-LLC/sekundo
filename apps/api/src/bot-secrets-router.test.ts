@@ -85,6 +85,7 @@ function botSecretDeps(seed: Row[] = []) {
     secret: { count: vi.fn(async () => 0) },
     botSecret: { count: vi.fn(async () => 0) },
     integrationProviderConfig: { count: vi.fn(async () => 0) },
+    userIntegrationProviderConfig: { count: vi.fn(async () => 0) },
     spaceSettingOverride: {
       findUnique: vi.fn<() => Promise<{ setting: string } | null>>(async () => null),
     },

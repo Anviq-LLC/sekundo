@@ -30,7 +30,6 @@ import {
   applyMessagingOutboundStatus,
   ChatSdkMessagingSurface,
   CodexCatalogCache,
-  ComposioConnector,
   contentKeyProviderFromEnv,
   createAgentHomeStore,
   createArtifactStore,
@@ -60,7 +59,6 @@ import {
   InstalledConnectorProvider,
   IntegrationProviderSettings,
   installedMessaging,
-  isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
   McpConnector,
@@ -151,6 +149,7 @@ import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
 import { mountLocalComputerHost } from "./local-settings.js";
 import { marketingEmailRoutes, sendWelcomeEmail } from "./marketing-email.js";
+import { moveMcpArgsIntoSecrets } from "./mcp-args-migration.js";
 import {
   createMessagingInboundHandler,
   teamChatSenderCanWakeMessageRoutines,
@@ -173,7 +172,7 @@ import {
   TEAM_CHAT_STARTUP_SHUTDOWN_MS,
   TeamChatStartupRetries,
 } from "./team-chat-startup.js";
-import { mountUserDeviceRoutes } from "./user-devices.js";
+import { endUserDeviceSession, mountUserDeviceRoutes } from "./user-devices.js";
 import { mountVoiceHttpRoutes, voiceAccountErrorStatus } from "./voice.js";
 import { mountWebhookHttpRoutes } from "./webhook.js";
 
@@ -458,11 +457,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     env.mcpAllowPrivateEndpoint,
   );
   const integrationSettings = new IntegrationProviderSettings(prisma, secrets, env.encryptionKey, {
-    composio:
-      composioOverride ??
-      (isComposioEnabled(env.composioApiKey)
-        ? new ComposioConnector({ apiKey: env.composioApiKey })
-        : undefined),
+    composio: composioOverride,
     pipedream,
   });
   const stack = createConnectorStack(composioOverride, [
@@ -489,6 +484,17 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       jobs,
       accessToken: env.expoAccessToken,
     });
+  const userDeviceSecret = userDeviceForwardSecret(env.encryptionKey);
+  const userDeviceHub = env.userDevicesEnabled
+    ? new UserDeviceHub({ prisma, address: userDeviceInternalAddress(env.apiHost, env.port) })
+    : undefined;
+  const userDevices = userDeviceHub
+    ? new UserDevices({ prisma, forwardSecret: userDeviceSecret, hub: userDeviceHub })
+    : undefined;
+  const deviceSessions = {
+    prisma,
+    devices: userDevices ?? new UserDevices({ prisma, forwardSecret: userDeviceSecret }),
+  };
   const auth = createAuth(prisma, {
     analytics,
     passwordAuth: env.passwordAuth,
@@ -499,6 +505,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     webOrigin: env.webOrigin,
     signupsEnabled: env.signupsEnabled,
     signupAllowlist: env.signupAllowlist,
+    singleAccount: Boolean(env.desktopStackToken),
     email,
     logger: {
       level: "error",
@@ -556,11 +563,17 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       await pushTokens
         .endSession(session.userId, session.id)
         .catch((error) => getLogger().error("push token removal failed", error));
+      await endUserDeviceSession(deviceSessions, session).catch((error) =>
+        getLogger().error("user device revocation failed", error),
+      );
     },
     afterReplaceSession: async (previous, session) => {
       await pushTokens
         .endSession(session.userId, previous.id, session.id)
         .catch((error) => getLogger().error("push token session update failed", error));
+      await endUserDeviceSession(deviceSessions, previous, session).catch((error) =>
+        getLogger().error("user device session update failed", error),
+      );
     },
   });
   const oauthTokenUpgrade = auth
@@ -577,16 +590,16 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     PAYMENT_WALLET_CLIENT_ID: env.paymentWalletClientId,
   });
   const shutdown = new AbortController();
+  const mcpArgsMove = moveMcpArgsIntoSecrets(prisma, secrets, { signal: shutdown.signal })
+    .then(({ moved }) => {
+      if (moved) getLogger().info("mcp server arguments encrypted", { count: moved });
+    })
+    .catch((error) => {
+      if (!shutdown.signal.aborted) getLogger().error("mcp server arguments move failed", error);
+    });
   // One cache serves models.list, selection validation, and run-time model
   // resolution alike, so a list call warms the run path in this process.
   const codexCatalog = new CodexCatalogCache();
-  const userDeviceSecret = userDeviceForwardSecret(env.encryptionKey);
-  const userDeviceHub = env.userDevicesEnabled
-    ? new UserDeviceHub({ prisma, address: userDeviceInternalAddress(env.apiHost, env.port) })
-    : undefined;
-  const userDevices = userDeviceHub
-    ? new UserDevices({ prisma, forwardSecret: userDeviceSecret, hub: userDeviceHub })
-    : undefined;
   const executor = createRunExecutor({
     billingEnabled: modelCreditsEnabled,
     maxUploadSizeBytes: env.maxUploadSizeBytes,
@@ -602,7 +615,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     connector: stack.connector,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
-      const provider = await integrationSettings.resolve("composio");
+      const provider = await integrationSettings.resolve("composio", userId);
       if (!provider) return [];
       return provider.listConnectedExternalIds({
         userId,
@@ -614,14 +627,12 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     },
     secrets: [
       env.deploymentModelKey ?? "",
-      env.composioApiKey ?? "",
       env.cursorApiKey ?? "",
       process.env.TYPESAFE_API_KEY ?? "",
     ].filter(Boolean),
     secretStore: secrets,
     secretHttp: remoteConnectors,
     mcpAllowPrivateEndpoint: env.mcpAllowPrivateEndpoint,
-    mcpStdio: { stdioEnabled: env.mcpStdioEnabled, allowedCommands: env.mcpStdioAllowedCommands },
     deploymentModelKey: env.deploymentModelKey,
     deploymentModelConfigured: env.deploymentModelConfigured,
     dataDir: env.dataDir,
@@ -870,8 +881,10 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       hub: userDeviceHub,
       devices: userDevices,
       forwardSecret: userDeviceSecret,
-      sessionUserId: async (request) =>
-        (await auth.api.getSession({ headers: request.headers }))?.user.id ?? null,
+      session: async (request) => {
+        const found = await auth.api.getSession({ headers: request.headers });
+        return found ? { userId: found.user.id, sessionId: found.session.id } : null;
+      },
       trustedOrigin: (origin) => isTrustedOrigin(origin, env),
     });
   }
@@ -1361,6 +1374,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       await email?.drain?.();
       await reconciler?.stop();
       await oauthTokenUpgrade;
+      await mcpArgsMove;
       await jobs.close();
       await secrets.close();
       await realtime.close();

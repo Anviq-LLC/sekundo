@@ -458,22 +458,26 @@ export async function personalOrganizationIds(
  * content, so nobody who joins later can lose a bot to the teardown. A retry after a failed
  * deletion keeps every space this account already claimed, even one someone has since joined,
  * so the last step can release it. A space another deletion is still working on fails the
- * account deletion until that claim finishes or goes stale.
+ * account deletion until that claim finishes or goes stale. With `onlyOrganizationId`, only that
+ * team's spaces are candidates, for deleting the team.
  */
 export async function claimSpacesLeavingWithAccount(
   prisma: PrismaClient,
   userId: string,
+  onlyOrganizationId?: string,
 ): Promise<string[]> {
   const organizationIds = await personalOrganizationIds(prisma, userId);
   const claimId = accountDeletionClaimId(userId);
   const candidates = await prisma.space.findMany({
-    where: {
-      OR: [
-        { organizationId: { in: organizationIds } },
-        { memberships: { some: { userId }, every: { userId } } },
-        { deletionClaimId: claimId },
-      ],
-    },
+    where: onlyOrganizationId
+      ? { organizationId: onlyOrganizationId }
+      : {
+          OR: [
+            { organizationId: { in: organizationIds } },
+            { memberships: { some: { userId }, every: { userId } } },
+            { deletionClaimId: claimId },
+          ],
+        },
     select: { id: true },
     orderBy: { createdAt: "asc" },
   });

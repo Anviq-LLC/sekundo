@@ -170,7 +170,7 @@ so the mode does not apply there.
 ## Docker Compose (single machine)
 
 1. Copy `.env.example` to `.env` and set `POSTGRES_PASSWORD` and `POSTGRES_APP_PASSWORD` (`openssl rand -hex 16` each), plus `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and `SCREEN_PROXY_SECRET` to independent long random strings (32+ characters; 64 hex for `ENCRYPTION_KEY`). Docker sandboxes also need a dedicated `SANDBOX_SUPERVISOR_TOKEN`. Keep existing `ENCRYPTION_KEY` values so stored credentials stay decryptable.
-2. Set `OPENROUTER_API_KEY` (and `COMPOSIO_API_KEY` if you want Plugins).
+2. Set `OPENROUTER_API_KEY`. Each user adds their own Composio key in the app if they want Plugins.
 3. Build the computer image: `pnpm sandbox:build` (Compose also builds it via the `computer` service).
 4. `docker compose --env-file .env -f infra/compose/docker-compose.yml up --build`
 5. Open the web origin (`http://127.0.0.1:5173` by default). Signup never grants server-administration permissions.
@@ -219,7 +219,11 @@ returns nothing from other Spaces. A background job that acts for one run, routi
 skill, thread or cloud agent runs as that row's Space and user, so agent tools get the same
 backstop. Security events are written and read only in system scope. Reconcilers, queue sweeps,
 the messaging outbox drain and webhooks run in a named system scope (`runAsSystem` in
-`packages/db`). The job queue's tables (`graphile_worker`) hold job metadata, not Space content:
+`packages/db`). That scope also sends a key derived from the app login's password, which
+`pnpm db:migrate` registers, so SQL that runs for one Space cannot switch itself into system scope.
+An app login without a password in `DATABASE_URL` has no key, and `pnpm db:migrate` warns. After
+changing that password, run `pnpm db:migrate` again so the registered key matches. The job queue's
+tables (`graphile_worker`) hold job metadata, not Space content:
 graphile-worker turns on row-level security for them, and `pnpm db:migrate` adds a policy that
 gives the app login every row.
 
@@ -883,7 +887,9 @@ refuses to send it anywhere else afterwards. Replacing the client clears the bin
 Stdio MCP servers can use OAuth too. They do not authorize themselves (the MCP spec has them
 read credentials from the environment), so Sekundo runs the flow for them. They are off unless
 the API and worker have `MCP_STDIO_ENABLED=true` and the command is listed in
-`MCP_STDIO_ALLOWED_COMMANDS`. When adding the server, enter the OAuth client, its
+`MCP_STDIO_ALLOWED_COMMANDS`. A stdio server runs inside the API and worker with their access, so
+only accounts with a verified email listed in `ANVIQ_ADMIN_EMAILS` can add or change one, and bots
+can add remote servers only. Existing stdio servers keep working. When adding the server, enter the OAuth client, its
 **Authorization server** (the issuer, for example `https://accounts.google.com`) and the
 **Scopes**, then click **Connect OAuth** as for a remote server. Some providers issue a refresh
 token only when asked through extra parameters: for Google, set **Authorization parameters** to
@@ -932,7 +938,7 @@ advanced settings; mobile inherits the same backend policy. Sekundo sends standa
 model-specific translation. Leave **Supports thinking** off when the server lacks standard effort
 support. Existing token limits still apply; effort is not a separate reasoning-token budget.
 
-Do not commit `.env`. Never put `COMPOSIO_API_KEY`, OpenRouter keys, or provider tokens in git, logs, or chat.
+Do not commit `.env`. Never put OpenRouter keys, or provider tokens in git, logs, or chat.
 
 Optional messaging platforms (iMessage, Slack, WhatsApp, Telegram, Feishu/Lark) mount when their env credentials are set — see `.env.example`. The Lark adapter and official SDK load only when configured. Point a Feishu/Lark bot event subscription at `/api/v1/messaging/webhook/lark` (webhook/HTTP inbound only; do not enable long connection). Personal group linking stays iMessage-only; Slack channels use workspace installations below. Telegram can run several bots side by side (`TELEGRAM_BOT_TOKEN_<NAME>` plus `TELEGRAM_WEBHOOK_SECRET_TOKEN_<NAME>`), for example one per space, so the same person can chat with a different Sekundo bot through each.
 
@@ -1673,8 +1679,21 @@ dump into `/var/backups/anviq`, tags the running app image for rollback, pins `A
 `ANVIQ_COMPUTER_IMAGE_TAG`, pulls, starts with `--wait`, and puts the previous tags back if the
 new ones do not start. A host that keeps only `secrets.enc.yaml` gets its `.env` decrypted with
 `sops` first. Migrations are not reversed by the rollback; they only add tables and columns, so
-the previous images keep working against the migrated database. To update several instances, run
-the script over SSH on each one in turn and stop at the first failure.
+the previous images keep working against the migrated database. Add `--dry-run` to check the tag,
+the Compose file and free disk without changing anything.
+
+To update several instances, keep a list outside the repository (format in
+`infra/compose/fleet.example`, default `~/.config/anviq/fleet`) and run
+`infra/compose/fleet.sh update sha-<commit> [--dry-run] [--canary a,b] [--parallel N] [--only a,b] [--registry <path>]`.
+It copies the update script and the release's Compose file to each host and runs the update. The
+canary instances (by default the first in the list) update one after another and gate the rest,
+which then update N at a time. After any failure no further instance is started, and running the
+same command again carries on, because an instance already on the tag is skipped. Run it with
+`--dry-run` first to check every host, its registry access and its disk without changing anything.
+`--registry ghcr.io/owner/name` moves the instances to the `app` and `computer` images under that path;
+the previous paths come back if the update rolls back.
+`infra/compose/fleet.sh versions [--parallel N]` prints the image tag and revision each instance
+runs and marks any it cannot reach.
 
 Source checkouts (not Compose) still upgrade the old way: pull, rebuild with
 `GIT_SHA=$(git rev-parse HEAD)`, run `pnpm db:migrate`, then restart API and worker.

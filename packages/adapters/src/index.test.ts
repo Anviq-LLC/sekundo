@@ -250,6 +250,13 @@ describe("builtin tools", () => {
     expect(alone).toEqual(expect.arrayContaining(privateNotes));
     expect(inSharedChat.filter((name) => privateNotes.includes(name))).toEqual([]);
     expect(inSharedChat.some((name) => name.startsWith("scratchpad_"))).toBe(false);
+    const ownerOnly = ["schedule_list", "schedule_create", "skill_read", "skill_create"];
+    const fromChannel = selectBuiltinToolsForRun({ ...options, messagingChannelRun: true }).map(
+      (tool) => tool.name,
+    );
+    expect(alone).toEqual(expect.arrayContaining(ownerOnly));
+    expect(inSharedChat.filter((name) => ownerOnly.includes(name))).toEqual([]);
+    expect(fromChannel.filter((name) => ownerOnly.includes(name))).toEqual([]);
     const purchaseNames = ["request_purchase", "purchase_status", "paid_request"];
     expect(enabled.filter((name) => purchaseNames.includes(name))).toEqual([]);
     expect(

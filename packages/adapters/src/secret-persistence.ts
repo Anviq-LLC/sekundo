@@ -31,6 +31,9 @@ async function deleteUnreferenced(
         (await prisma.vaultCredential.count({ where: { ciphertext: row.ciphertext } })) ||
         (await prisma.integrationProviderConfig.count({
           where: { ciphertext: row.ciphertext },
+        })) ||
+        (await prisma.userIntegrationProviderConfig.count({
+          where: { ciphertext: row.ciphertext },
         }))
       )
         continue;
@@ -73,7 +76,15 @@ const secretTables = {
   BotSecret: "bot_secrets",
   VaultCredential: "vault_credentials",
   IntegrationProviderConfig: "integration_provider_configs",
+  UserIntegrationProviderConfig: "user_integration_provider_configs",
 };
+// Integration keys are encrypted against "integration-provider:<row id>".
+const integrationKeyModels = new Set([
+  "IntegrationProviderConfig",
+  "UserIntegrationProviderConfig",
+]);
+const recordIdOf = (model: string, id: string) =>
+  integrationKeyModels.has(model) ? `integration-provider:${id}` : id;
 const parentTables = { User: "user", Space: "spaces", Bot: "bots", Organization: "organization" };
 
 /** Cleanup is coordinated with the DB transaction, including parent cascades.
@@ -122,10 +133,7 @@ export function withSecretPersistence(prisma: PrismaClient, store: SecretStore):
     for (const value of data)
       if (typeof value?.ciphertext === "string") {
         const id = String(value.id ?? input.where?.id ?? "secret");
-        state.written.push({
-          id: model === "IntegrationProviderConfig" ? `integration-provider:${id}` : id,
-          ciphertext: value.ciphertext,
-        });
+        state.written.push({ id: recordIdOf(model, id), ciphertext: value.ciphertext });
       }
   }
   async function prepare(
@@ -138,13 +146,7 @@ export function withSecretPersistence(prisma: PrismaClient, store: SecretStore):
       trackWrites(state, model, input);
       if (!operation.startsWith("create")) {
         const old = await lockedRows(state, model, input.where);
-        state.old.push(
-          ...old.map((row) =>
-            model === "IntegrationProviderConfig"
-              ? { ...row, id: `integration-provider:${row.id}` }
-              : row,
-          ),
-        );
+        state.old.push(...old.map((row) => ({ ...row, id: recordIdOf(model, row.id) })));
       }
       return;
     }
@@ -163,6 +165,12 @@ export function withSecretPersistence(prisma: PrismaClient, store: SecretStore):
     if (model !== "Bot") {
       state.old.push(...(await lockedRows(state, "Secret", filter)));
       state.old.push(...(await lockedRows(state, "VaultCredential", filter)));
+    }
+    if (model === "User") {
+      const keys = await lockedRows(state, "UserIntegrationProviderConfig", filter);
+      state.old.push(
+        ...keys.map((row) => ({ ...row, id: recordIdOf("UserIntegrationProviderConfig", row.id) })),
+      );
     }
     state.old.push(...(await lockedRows(state, "BotSecret", filter)));
   }

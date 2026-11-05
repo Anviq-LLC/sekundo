@@ -91,7 +91,7 @@ Before making changes, ask me these concise questions:
    - Add a deployment-wide `OPENROUTER_API_KEY` to `.env`.
    - Connect during Sekundo onboarding with a provider API key or with ChatGPT Plus/Pro, GitHub Copilot, or SuperGrok / X Premium.
    - Defer model setup and verify infrastructure only. Make clear that bots cannot answer until a model is connected.
-3. Do I want a managed app catalog? If yes, choose Composio (`COMPOSIO_API_KEY`) or Pipedream Connect (`PIPEDREAM_CLIENT_ID`, `PIPEDREAM_CLIENT_SECRET`, and `PIPEDREAM_PROJECT_ID`); otherwise leave them empty. Explain that this is optional and that users can still add Treg, HTTPS MCP, or OpenAPI sources in the app.
+3. Do I want a managed app catalog? If yes, choose Pipedream Connect (`PIPEDREAM_CLIENT_ID`, `PIPEDREAM_CLIENT_SECRET`, and `PIPEDREAM_PROJECT_ID`); otherwise leave them empty. Composio needs no server setting: each user adds their own key in the app. Explain that this is optional and that users can still add Treg, HTTPS MCP, or OpenAPI sources in the app.
 4. Set up the web app only (recommended), or also launch the Electron desktop shell after the web stack works?
 5. Which email should the initial ordinary account use? There is no administrator account or first-signup privilege. Keep deployment configuration in `.env` and server operations in deployment tooling. Without email delivery, keep `SIGNUPS_ENABLED=false` and create that account privately with the documented server-side bootstrap command; never treat an unverified public signup as proof of identity.
 

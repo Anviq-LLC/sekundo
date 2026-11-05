@@ -1,3 +1,4 @@
+import { newClientId } from "@anviq/core";
 import { t } from "@lingui/core/macro";
 import { desktopBridge } from "./desktop";
 
@@ -45,7 +46,7 @@ export async function runSsoFlow(
   callbackURLs: readonly string[],
 ): Promise<SsoResult> {
   if (!desktopBridge()) return begin(false, (url) => url);
-  const nonce = crypto.randomUUID();
+  const nonce = newClientId();
   const callbacks = callbackURLs.map((url) => new URL(url, window.location.href));
   const callbackURL = (url: string) => {
     const callback = new URL(SSO_CALLBACK_PATH, window.location.origin);

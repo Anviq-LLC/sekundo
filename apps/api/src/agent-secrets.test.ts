@@ -52,6 +52,7 @@ function fixture(role = "owner") {
     secret: { count: vi.fn(async () => 0) },
     botSecret: { count: vi.fn(async () => 0) },
     integrationProviderConfig: { count: vi.fn(async () => 0) },
+    userIntegrationProviderConfig: { count: vi.fn(async () => 0) },
     $queryRaw: vi.fn(async () => [{ locked: 1 }]),
   };
   prisma.$transaction = async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma);

@@ -165,6 +165,8 @@ describe.skipIf(!enabled)("history retrieval through executor", () => {
       });
       const dataDir = await mkdtemp(path.join(tmpdir(), "anviq-history-redaction-"));
       let stop: (() => Promise<void>) | undefined;
+      const previousTypesafeKey = process.env.TYPESAFE_API_KEY;
+      process.env.TYPESAFE_API_KEY = fakeSecrets[1];
       try {
         const { createApp } = await import("@anviq/api/app");
         const handles = await createApp({
@@ -180,7 +182,6 @@ describe.skipIf(!enabled)("history retrieval through executor", () => {
           composio: new ComposioConnector({ client: new FakeComposioClient() }),
           encryptionKey: "history-fixture-encryption-key",
           deploymentModelKey: fakeSecrets[0],
-          composioApiKey: fakeSecrets[1],
           cursorApiKey: fakeSecrets[2],
         });
         stop = handles.stop;
@@ -412,6 +413,8 @@ describe.skipIf(!enabled)("history retrieval through executor", () => {
         );
         model.assertComplete();
       } finally {
+        if (previousTypesafeKey === undefined) delete process.env.TYPESAFE_API_KEY;
+        else process.env.TYPESAFE_API_KEY = previousTypesafeKey;
         await stop?.();
         await model.close();
         await rm(dataDir, { recursive: true, force: true });

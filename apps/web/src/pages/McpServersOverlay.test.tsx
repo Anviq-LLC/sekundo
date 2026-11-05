@@ -69,7 +69,11 @@ vi.mock("@anviq/ui-web", async () => {
         disabled: boolean;
       }) => createElement("button", { onClick, disabled }, children),
     ],
-    ["Input", () => null],
+    [
+      "Input",
+      ({ id, value, placeholder }: { id?: string; value?: string; placeholder?: string }) =>
+        createElement("input", { id, value, placeholder, readOnly: true }),
+    ],
     ["Textarea", () => null],
     ["toast", { success: vi.fn(), error: vi.fn() }],
   ]);
@@ -110,7 +114,7 @@ it("offers stdio only where the deployment runs it, and still shows existing std
   mocks.list
     .mockReset()
     .mockResolvedValue([
-      { ...server("files"), args: [], envKeys: [], fileKeys: [], headerKeys: [] },
+      { ...server("files"), hasArgs: false, envKeys: [], fileKeys: [], headerKeys: [] },
     ]);
   const host = document.createElement("div");
   const root = createRoot(host);
@@ -216,7 +220,7 @@ it("opens a server's form and saves it in place, sending blank values to keep wh
     transport: "streamable_http",
     endpoint: "https://mcp.example.test/mcp",
     command: null,
-    args: [],
+    hasArgs: false,
     envKeys: [],
     fileKeys: [],
     headerKeys: ["Authorization", "X-Team"],
@@ -254,7 +258,7 @@ it("opens a server's form and saves it in place, sending blank values to keep wh
   }
 });
 
-it("keeps a stdio server's arguments intact when they were not edited", async () => {
+it("never shows stored stdio arguments and sends none back when they were not edited", async () => {
   const server = {
     id: "srv_2",
     slug: "files",
@@ -263,7 +267,7 @@ it("keeps a stdio server's arguments intact when they were not edited", async ()
     transport: "stdio",
     endpoint: null,
     command: "npx",
-    args: ["-y", "files-server", "/Users/me/My Documents"],
+    hasArgs: true,
     envKeys: [],
     fileKeys: [],
     headerKeys: [],
@@ -286,10 +290,13 @@ it("keeps a stdio server's arguments intact when they were not edited", async ()
       expect(button).toBeDefined();
       return button;
     });
+    const args = host.querySelector<HTMLInputElement>("#mcp-args");
+    expect(args?.value).toBe("");
+    expect(args?.placeholder).toBe("Stored encrypted");
     await act(async () => save?.click());
     expect(mocks.update).toHaveBeenCalledWith({
       id: "srv_2",
-      config: expect.objectContaining({ args: ["-y", "files-server", "/Users/me/My Documents"] }),
+      config: expect.objectContaining({ args: [] }),
     });
   } finally {
     await act(async () => root.unmount());

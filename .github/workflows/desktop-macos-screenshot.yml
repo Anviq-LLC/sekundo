@@ -42,17 +42,17 @@ jobs:
         run: |
           pnpm --filter @anviq/web build
           CSC_IDENTITY_AUTO_DISCOVERY=false pnpm --filter @anviq/desktop exec electron-builder --mac --dir --publish never -c.mac.identity=null -c.mac.notarize=false
-          xcrun assetutil --info apps/desktop/out/mac-arm64/Anviq.app/Contents/Resources/Assets.car > "$RUNNER_TEMP/icon-assets.json"
-          jq -e 'any(.[]; .Name == "Icon" and .AssetType == "IconImageStack") and any(.[]; .Name == "Icon_Assets/anviq-mark" and .AssetType == "Image")' "$RUNNER_TEMP/icon-assets.json"
-          iconutil -c iconset apps/desktop/out/mac-arm64/Anviq.app/Contents/Resources/icon.icns -o "$RUNNER_TEMP/fallback.iconset"
+          xcrun assetutil --info apps/desktop/out/mac-arm64/Sekundo.app/Contents/Resources/Assets.car > "$RUNNER_TEMP/icon-assets.json"
+          jq -e 'any(.[]; .Name == "Icon" and .AssetType == "IconImageStack") and any(.[]; .Name == "Icon_Assets/sekundo-mark" and .AssetType == "Image")' "$RUNNER_TEMP/icon-assets.json"
+          iconutil -c iconset apps/desktop/out/mac-arm64/Sekundo.app/Contents/Resources/icon.icns -o "$RUNNER_TEMP/fallback.iconset"
           sips -s format png "$RUNNER_TEMP/fallback.iconset/icon_128x128@2x.png" --out "$RUNNER_TEMP/fallback-decoded.png"
           test -s "$RUNNER_TEMP/fallback-decoded.png"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' apps/desktop/out/mac-arm64/Anviq.app/Contents/Info.plist)" = Icon
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' apps/desktop/out/mac-arm64/Sekundo.app/Contents/Info.plist)" = Icon
         env:
           ANVIQ_ALLOW_DEV_SECRETS: "1"
       - name: Capture packaged macOS setup window and Dock
         env:
-          ANVIQ_E2E_EXECUTABLE: out/mac-arm64/Anviq.app/Contents/MacOS/Anviq
+          ANVIQ_E2E_EXECUTABLE: out/mac-arm64/Sekundo.app/Contents/MacOS/Sekundo
         run: >-
           pnpm --filter @anviq/desktop exec playwright test
           --config e2e/playwright.config.ts setup.spec.ts

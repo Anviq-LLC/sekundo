@@ -577,6 +577,10 @@ msgstr "Passkey hinzufügen"
 msgid "Add provider"
 msgstr "Anbieter hinzufügen"
 
+#: src/components/ApprovalRulesSettings.tsx
+msgid "Add rule"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "Server hinzufügen"
@@ -764,11 +768,6 @@ msgstr "Beantwortet: {answer}"
 
 #: src/pages/Onboarding.tsx
 msgid "Anthropic API"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
@@ -1483,6 +1482,14 @@ msgstr "Abschließen"
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "Abgeschlossen"
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio key"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2430,6 +2437,8 @@ msgstr "{0} löschen"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#. placeholder {0}: team.name
+#: src/components/TeamSettings.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0} löschen?"
@@ -2453,6 +2462,10 @@ msgstr "Abschnitt löschen"
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Delete space"
+msgstr ""
+
+#: src/components/TeamSettings.tsx
+msgid "Delete team"
 msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
@@ -4954,14 +4967,14 @@ msgstr "Jetzt erneut versuchen"
 msgid "Retry screen"
 msgstr ""
 
-#: src/pages/McpOAuthCallback.tsx
-msgid "Return to Sekundo"
-msgstr "Zurück zu Sekundo"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
 msgstr "Zurück zum Anruf mit {0}"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Return to Sekundo"
+msgstr "Zurück zu Sekundo"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -5050,7 +5063,9 @@ msgstr ""
 msgid "Saturday"
 msgstr "Samstag"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
@@ -5123,6 +5138,10 @@ msgstr "Wird gespeichert…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Antworte mit Ja oder Nein oder in einem Satz."
+
+#: src/pages/RoutineEditor.tsx
+msgid "Schedule delayed"
+msgstr "Ausführung verzögert"
 
 #: src/components/ModelCredits.tsx
 msgid "Scheduled routines"
@@ -5199,6 +5218,11 @@ msgstr "Sicherheit"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
+msgstr ""
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/shell/chat-header.tsx
@@ -6021,6 +6045,7 @@ msgstr "Toolargumente müssen ein JSON-Objekt sein"
 msgid "Tool arguments must be JSON"
 msgstr "Toolargumente müssen JSON sein"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
 msgstr "Toolname"
@@ -6214,10 +6239,6 @@ msgstr "Verwende {oauthEnvReference} für das Zugriffstoken."
 msgid "Use a found model"
 msgstr "Gefundenes Modell verwenden"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Sekundo credits"
-msgstr ""
-
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
 msgstr ""
@@ -6248,6 +6269,10 @@ msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
+msgstr ""
+
+#: src/components/ModelCredits.tsx
+msgid "Use Sekundo credits"
 msgstr ""
 
 #: src/pages/model-settings/space-bots-model.tsx

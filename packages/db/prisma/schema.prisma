@@ -41,6 +41,7 @@ model User {
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
   voiceCredentials            UserVoiceCredential[]
+  integrationProviderConfigs  UserIntegrationProviderConfig[]
   paymentWallet               PaymentWallet?
   secrets                     Secret[]
   mcpServers                  McpServer[]
@@ -131,9 +132,13 @@ model UserDevice {
   name        String
   platform    String
   tokenHash   String                 @unique
+  /// The session that paired it. Ending that session revokes the device.
+  sessionId   String?
   createdAt   DateTime               @default(now())
   lastSeenAt  DateTime?
   revokedAt   DateTime?
+  /// Who revoked it: "owner", "device" or "session" (its sign-in ended). Null when unknown.
+  revokedBy   String?
   connections UserDeviceConnection[]
 
   @@index([userId, revokedAt])
@@ -1516,7 +1521,9 @@ model McpServer {
   transport     String
   endpoint      String?
   command       String?
+  /// Legacy plaintext; arguments now live in the encrypted secret, and `hasArgs` marks them.
   args          Json              @default("[]")
+  hasArgs       Boolean           @default(false)
   env           Json              @default("{}")
   files         Json              @default("{}")
   headers       Json              @default("{}")
@@ -1824,6 +1831,20 @@ model IntegrationProviderConfig {
   updatedAt  DateTime @updatedAt
 
   @@map("integration_provider_configs")
+}
+
+// A user's own integration provider key, encrypted; never exposed through read DTOs.
+model UserIntegrationProviderConfig {
+  // "<provider>:<userId>", the record id the encrypted key is bound to.
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  ciphertext String
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@map("user_integration_provider_configs")
 }
 
 model Board {

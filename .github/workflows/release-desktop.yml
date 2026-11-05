@@ -216,7 +216,7 @@ jobs:
           PASSKEY_ENTITLEMENTS: ${{ steps.passkeys.outputs.entitlements }}
         run: |
           set -euo pipefail
-          app="apps/desktop/out/mac-universal/Anviq.app"
+          app="apps/desktop/out/mac-universal/Sekundo.app"
           codesign --verify --deep --strict --verbose=2 "$app"
           # Without this entitlement the hardened runtime silences the microphone.
           # Check the app and every helper it signs, and require the value to be true.
@@ -253,13 +253,13 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          app="apps/desktop/out/mac-universal/Anviq.app"
+          app="apps/desktop/out/mac-universal/Sekundo.app"
           native="$app/Contents/Resources/app.asar.unpacked/node_modules"
           lipo "$native/@koromix/koffi-darwin-x64/darwin_x64/koffi.node" -verify_arch x86_64
           lipo "$native/@koromix/koffi-darwin-arm64/darwin_arm64/koffi.node" -verify_arch arm64
           lipo "$native/@oxc-parser/binding-darwin-x64/parser.darwin-x64.node" -verify_arch x86_64
           lipo "$native/@oxc-parser/binding-darwin-arm64/parser.darwin-arm64.node" -verify_arch arm64
-          ELECTRON_RUN_AS_NODE=1 "$app/Contents/MacOS/Anviq" -e '
+          ELECTRON_RUN_AS_NODE=1 "$app/Contents/MacOS/Sekundo" -e '
             const { createRequire } = require("node:module");
             const appRequire = createRequire(`${process.argv[1]}/Contents/Resources/app.asar/package.json`);
             const koffi = appRequire("koffi");

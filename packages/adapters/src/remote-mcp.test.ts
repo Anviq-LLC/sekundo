@@ -1,12 +1,14 @@
 import dns from "node:dns";
 import { fetch as undiciFetch } from "undici";
 import { describe, expect, it, vi } from "vitest";
+import { MAX_MCP_RESPONSE_BYTES } from "./mcp-response-limit.js";
 import {
   assertSafeRemoteUrl,
   createPrivateNetworkFetch,
   createSafeLookup,
   createSafeRemoteFetch,
   limitRemoteMcpPayload,
+  listRemoteMcpTools,
 } from "./remote-mcp.js";
 
 const publicResolver = async () => [{ address: "203.0.113.10", family: 4 as const }];
@@ -591,6 +593,27 @@ describe("remote MCP result limits", () => {
     expect(limited.truncated).toBe(true);
     expect(Buffer.byteLength(limited.content, "utf8")).toBeLessThanOrEqual(1_000_000);
     expect(limited.content).not.toContain("\uFFFD");
+  });
+});
+
+describe("remote MCP response size", () => {
+  it("refuses a response that declares more than the limit", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response("{}", {
+          headers: {
+            "content-type": "application/json",
+            "content-length": String(MAX_MCP_RESPONSE_BYTES + 1),
+          },
+        }),
+    );
+    await expect(
+      listRemoteMcpTools({
+        endpoint: "https://mcp.example.test/mcp",
+        fetch: fetch as unknown as typeof globalThis.fetch,
+        resolveHostname: publicResolver,
+      }),
+    ).rejects.toThrow("MCP server response exceeds 16 MB");
   });
 });
 

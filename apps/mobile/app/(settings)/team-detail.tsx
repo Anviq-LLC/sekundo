@@ -11,6 +11,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIdentityConfirmation } from "../../components/confirm-identity";
 import { LoadFailure } from "../../components/load-failure";
 import { NativeActionButton } from "../../components/native-action-button";
 import { SettingsGroup, SettingsRow } from "../../components/settings-group";
@@ -39,6 +40,7 @@ export default function TeamDetail() {
   }>();
   const router = useRouter();
   const { t } = useI18n();
+  const { withIdentityConfirmation, identityDialog } = useIdentityConfirmation();
   const sideInsets = useSideInsets();
   const styles = useThemedStyles(createStyles);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -375,7 +377,25 @@ export default function TeamDetail() {
           </SettingsGroup>
         ) : null}
 
-        {myRole !== "owner" ? (
+        {myRole === "owner" ? (
+          <NativeActionButton
+            label={t("Delete team")}
+            prominence="destructive"
+            disabled={busy}
+            onPress={() =>
+              confirm(t("Delete this team?"), t("Delete team"), async () => {
+                await withIdentityConfirmation(() =>
+                  rpc("organizations/remove", { organizationId }),
+                );
+                const { spaceId: personalSpaceId } = await rpc("organizations/personalSpace");
+                if (personalSpaceId && (await selectSpace(personalSpaceId))) {
+                  router.dismissAll();
+                  router.replace("/");
+                } else router.back();
+              })
+            }
+          />
+        ) : (
           <NativeActionButton
             label={t("Leave team")}
             prominence="destructive"
@@ -387,7 +407,8 @@ export default function TeamDetail() {
               })
             }
           />
-        ) : null}
+        )}
+        {identityDialog}
       </ScrollView>
     </SafeAreaView>
   );

@@ -577,6 +577,10 @@ msgstr "パスキーを追加"
 msgid "Add provider"
 msgstr "プロバイダーを追加"
 
+#: src/components/ApprovalRulesSettings.tsx
+msgid "Add rule"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "サーバーを追加"
@@ -765,11 +769,6 @@ msgstr "回答済み: {answer}"
 #: src/pages/Onboarding.tsx
 msgid "Anthropic API"
 msgstr "Anthropic API"
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Sekundo credits"
-msgstr "Sekundoクレジット"
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
 msgid "anviq-shared and IDs starting with bot- are reserved for Sekundo."
@@ -1483,6 +1482,14 @@ msgstr "完了"
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "完了"
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio key"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2430,6 +2437,8 @@ msgstr "{0}を削除"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#. placeholder {0}: team.name
+#: src/components/TeamSettings.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0}を削除しますか？"
@@ -2454,6 +2463,10 @@ msgstr "セクションを削除"
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Delete space"
 msgstr "スペースを削除"
+
+#: src/components/TeamSettings.tsx
+msgid "Delete team"
+msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Delete this Space's credentials?"
@@ -4954,14 +4967,14 @@ msgstr "今すぐ再試行"
 msgid "Retry screen"
 msgstr "画面を再試行"
 
-#: src/pages/McpOAuthCallback.tsx
-msgid "Return to Sekundo"
-msgstr "Sekundoに戻る"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
 msgstr "{0}との通話に戻る"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Return to Sekundo"
+msgstr "Sekundoに戻る"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -5050,7 +5063,9 @@ msgstr ""
 msgid "Saturday"
 msgstr "土曜日"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
@@ -5123,6 +5138,10 @@ msgstr "保存中…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "「はい」か「いいえ」、または文章で答えてください。"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Schedule delayed"
+msgstr "予定の実行が遅れています"
 
 #: src/components/ModelCredits.tsx
 msgid "Scheduled routines"
@@ -5200,6 +5219,11 @@ msgstr "セキュリティ"
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
 msgstr ""
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sekundo credits"
+msgstr "Sekundoクレジット"
 
 #: src/pages/shell/chat-header.tsx
 msgid "Select a bot"
@@ -6021,6 +6045,7 @@ msgstr "ツールの引数はJSONオブジェクトである必要がありま�
 msgid "Tool arguments must be JSON"
 msgstr "ツールの引数はJSONである必要があります"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
 msgstr "ツール名"
@@ -6214,10 +6239,6 @@ msgstr "アクセストークンには{oauthEnvReference}を使用してくだ�
 msgid "Use a found model"
 msgstr "見つかったモデルを使用"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Sekundo credits"
-msgstr "Sekundoクレジットを使用"
-
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
 msgstr ""
@@ -6249,6 +6270,10 @@ msgstr "自分のサブスクリプションまたはAPIキーを使用"
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
 msgstr "パスワードには保護された入力を使用してください。"
+
+#: src/components/ModelCredits.tsx
+msgid "Use Sekundo credits"
+msgstr "Sekundoクレジットを使用"
 
 #: src/pages/model-settings/space-bots-model.tsx
 msgid "Use space default"

@@ -6,6 +6,7 @@ import {
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
   nextCronDateAcrossStrict,
+  routineScheduleDelayed,
 } from "@anviq/core";
 import type { Prisma } from "@anviq/db";
 import { ORPCError } from "@orpc/server";
@@ -114,6 +115,10 @@ export function mapRoutine(row: {
     watchState: parseRoutineWatchState(row.watchState),
     lastRunAt: row.lastRunAt?.toISOString() ?? null,
     nextRunAt: row.nextRunAt?.toISOString() ?? null,
+    scheduleDelayed: routineScheduleDelayed({
+      active: row.active,
+      nextRunAt: row.nextRunAt?.getTime() ?? null,
+    }),
     createdAt: row.createdAt.toISOString(),
   };
 }

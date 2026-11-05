@@ -18,7 +18,11 @@ import type { SpaceDeletionDeps } from "./space-deletion.js";
  * each person got their own. Each sandbox is destroyed at its provider before its row goes, so a
  * failure keeps the handle and deleting again resumes from what is left.
  */
-export async function deleteAccountContent(deps: SpaceDeletionDeps, userId: string): Promise<void> {
+export async function deleteAccountContent(
+  deps: SpaceDeletionDeps,
+  userId: string,
+  organizationId?: string,
+): Promise<void> {
   const context = (spaceId: string, botId?: string): AdapterContext => ({
     operationId: `account-delete:${userId}`,
     traceId: `account-delete:${userId}`,
@@ -27,9 +31,11 @@ export async function deleteAccountContent(deps: SpaceDeletionDeps, userId: stri
     ...(botId ? { botId } : {}),
     signal: new AbortController().signal,
   });
-  const leaving = await claimSpacesLeavingWithAccount(deps.prisma, userId);
+  const leaving = await claimSpacesLeavingWithAccount(deps.prisma, userId, organizationId);
+  // Deleting one team touches only that team's spaces, never the rest of the person's content.
+  const own = organizationId ? [] : [{ userId }];
   const bots = await deps.prisma.bot.findMany({
-    where: { OR: [{ userId }, { spaceId: { in: leaving } }] },
+    where: { OR: [...own, { spaceId: { in: leaving } }] },
     select: {
       id: true,
       userId: true,
@@ -51,10 +57,12 @@ export async function deleteAccountContent(deps: SpaceDeletionDeps, userId: stri
 
   // Bot deletion cleans these best-effort; here a failure fails the account deletion, and the
   // retry finds the ids again in bot_deletions.
-  const deletions = await deps.prisma.botDeletion.findMany({
-    where: { deletedByUserId: userId, spaceId: { notIn: leaving } },
-    select: { id: true, spaceId: true },
-  });
+  const deletions = organizationId
+    ? []
+    : await deps.prisma.botDeletion.findMany({
+        where: { deletedByUserId: userId, spaceId: { notIn: leaving } },
+        select: { id: true, spaceId: true },
+      });
   const deletedBySpace = new Map<string, string[]>();
   for (const { id, spaceId } of deletions)
     deletedBySpace.set(spaceId, [...(deletedBySpace.get(spaceId) ?? []), id]);
@@ -65,7 +73,7 @@ export async function deleteAccountContent(deps: SpaceDeletionDeps, userId: stri
   );
 
   const computers = await deps.prisma.computer.findMany({
-    where: { OR: [{ userId }, { spaceId: { in: leaving } }] },
+    where: { OR: [...own, { spaceId: { in: leaving } }] },
     select: {
       id: true,
       spaceId: true,

@@ -27,7 +27,7 @@ import {
   OPENAI_COMPATIBLE_PROVIDER_ID,
   PRIVATE_MODEL_ENDPOINT_MESSAGE,
 } from "./openai-compatible-url.js";
-import { MODEL_CONNECT_TIMEOUT_MS } from "./pi-runtime-limits.js";
+import { MODEL_CONNECT_TIMEOUT_MS, modelConnectTimeoutMs } from "./pi-runtime-limits.js";
 import { guardToolCallNames } from "./pi-tool-call-guard.js";
 import { dispatcherFetch, fetchPairedWithDispatcher } from "./undici-fetch.js";
 
@@ -199,7 +199,7 @@ export function createOpenAiCompatibleFetch(
     const hostname = url.hostname.replace(/^\[|\]$/g, "");
     const dispatcher = new Agent({
       connect: {
-        timeout: MODEL_CONNECT_TIMEOUT_MS,
+        timeout: modelConnectTimeoutMs(),
         ...(ipVersion(hostname) === 0
           ? { lookup: createOpenAiCompatibleLookup(url, resolve, opts) }
           : {}),

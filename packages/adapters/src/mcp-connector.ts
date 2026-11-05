@@ -55,6 +55,7 @@ import {
   DEFAULT_MCP_INSTALL_TIMEOUT_MS,
   defaultMcpPackagesRoot,
   ensureMcpPackage,
+  isNpxCommand,
   parseNpxLaunch,
 } from "./mcp-package-installer.js";
 import type { McpServerHealthUpdate } from "./mcp-server-health.js";
@@ -999,7 +1000,8 @@ export class McpConnector implements ConnectorProvider {
       let digest = plaintext === undefined ? undefined : credentialDigest(plaintext);
       material = plaintext === undefined ? {} : (JSON.parse(plaintext) as OAuthMaterial);
       const loaded = { material, ...(secret ? { secretId: secret.id } : {}) };
-      const args = Array.isArray(server.args) ? server.args.map(String) : [];
+      // Rows saved before arguments moved into the secret still hold them in plaintext.
+      const args = material.args ?? (Array.isArray(server.args) ? server.args.map(String) : []);
       const env = { ...(material.env ?? {}) };
       const onPersisted = (record: { id: string; ref: string; material: OAuthMaterial }) => {
         ref = record.ref;
@@ -1015,6 +1017,8 @@ export class McpConnector implements ConnectorProvider {
         const refusal = mcpStdioRefusal(command, this.options);
         if (refusal) throw new McpConnectFailure(refusal, "reconnect");
         const npx = parseNpxLaunch(command, args);
+        if (!npx && isNpxCommand(command))
+          throw new McpConnectFailure("This npx command isn't supported here", "reconnect");
         let installedBin: InstalledMcpBin | undefined;
         if (npx) {
           // Install outside the startup timeout, once per package, into the shared volume.

@@ -5,6 +5,7 @@ import { canonicalPiProviderId, ModelConnectInputSchema } from "@anviq/contracts
 import type { createRepos } from "@anviq/db";
 import { findModelCredential, Prisma } from "@anviq/db";
 import { getLogger } from "@anviq/logging";
+import { isAdmin } from "./admins.js";
 import type { AgentImportServices } from "./agent-import.js";
 import type { createBotRemoval } from "./bot-removal.js";
 import type { createMcpServers } from "./mcp-servers.js";
@@ -91,7 +92,10 @@ export function createAgentImportServices({
       });
       return result.ok ? null : result.error;
     },
-    stdioAllowed: (command) => !mcpStdioRefusal(command, mcpStdioPolicy(deps)),
+    stdioAllowed: async (actor) => {
+      const admin = await isAdmin(deps, actor.userId);
+      return (command) => admin && !mcpStdioRefusal(command, mcpStdioPolicy(deps));
+    },
     prepareModelKey: async (actor, input, signal) => {
       const connect = ModelConnectInputSchema.parse({ ...input, credentialId: null });
       const { plaintext } = await verifyModelConnection(actor, connect, signal);

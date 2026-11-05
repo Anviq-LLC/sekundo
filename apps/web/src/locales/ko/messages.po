@@ -577,6 +577,10 @@ msgstr "패스키 추가"
 msgid "Add provider"
 msgstr "서비스 추가"
 
+#: src/components/ApprovalRulesSettings.tsx
+msgid "Add rule"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "서버 추가"
@@ -764,11 +768,6 @@ msgstr "응답: {answer}"
 
 #: src/pages/Onboarding.tsx
 msgid "Anthropic API"
-msgstr ""
-
-#: src/components/ModelCredits.tsx
-#: src/pages/Onboarding.tsx
-msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/memory-providers/HonchoSettingsForm.tsx
@@ -1483,6 +1482,14 @@ msgstr "완료"
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "완료"
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio key"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2430,6 +2437,8 @@ msgstr "{0} 삭제"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#. placeholder {0}: team.name
+#: src/components/TeamSettings.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0}을 삭제할까요?"
@@ -2453,6 +2462,10 @@ msgstr "섹션 삭제"
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Delete space"
+msgstr ""
+
+#: src/components/TeamSettings.tsx
+msgid "Delete team"
 msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
@@ -4954,14 +4967,14 @@ msgstr "지금 다시 시도"
 msgid "Retry screen"
 msgstr ""
 
-#: src/pages/McpOAuthCallback.tsx
-msgid "Return to Sekundo"
-msgstr "Sekundo로 돌아가기"
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "Return to call with {0}"
 msgstr ""
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Return to Sekundo"
+msgstr "Sekundo로 돌아가기"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Review provider settings and test again."
@@ -5050,7 +5063,9 @@ msgstr ""
 msgid "Saturday"
 msgstr "토요일"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
@@ -5123,6 +5138,10 @@ msgstr "저장 중…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "예 또는 아니요로 답하거나 문장으로 답해 주세요."
+
+#: src/pages/RoutineEditor.tsx
+msgid "Schedule delayed"
+msgstr "예약 실행 지연"
 
 #: src/components/ModelCredits.tsx
 msgid "Scheduled routines"
@@ -5199,6 +5218,11 @@ msgstr "보안"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Security & Ops"
+msgstr ""
+
+#: src/components/ModelCredits.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sekundo credits"
 msgstr ""
 
 #: src/pages/shell/chat-header.tsx
@@ -6021,6 +6045,7 @@ msgstr "도구 인수는 JSON 객체여야 합니다"
 msgid "Tool arguments must be JSON"
 msgstr "도구 인수는 JSON이어야 합니다"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
 msgstr "도구 이름"
@@ -6214,10 +6239,6 @@ msgstr "액세스 토큰에는 {oauthEnvReference}를 사용하세요."
 msgid "Use a found model"
 msgstr "찾은 모델 중에서 선택"
 
-#: src/components/ModelCredits.tsx
-msgid "Use Sekundo credits"
-msgstr ""
-
 #: src/pages/memory-providers/BuiltInSettingsForm.tsx
 msgid "Use built-in memory"
 msgstr ""
@@ -6248,6 +6269,10 @@ msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Use Protected input for passwords."
+msgstr ""
+
+#: src/components/ModelCredits.tsx
+msgid "Use Sekundo credits"
 msgstr ""
 
 #: src/pages/model-settings/space-bots-model.tsx

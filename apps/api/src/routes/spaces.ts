@@ -27,6 +27,8 @@ import { resolveThreadTarget, threadSnapshot } from "../thread-target.js";
 import type { RouterContext } from "./context.js";
 import { meDto } from "./shared.js";
 
+const TEAM_MARK = '"kind":"team"';
+
 /**
  * Runs `fn` scoped to another of the actor's Spaces. Membership is checked first,
  * so a client-supplied Space id never opens that Space's rows on its own.
@@ -217,17 +219,55 @@ async function memberSpaceNavigation(
 ): Promise<SpaceNavigation> {
   const currentSpace = await deps.prisma.space.findUnique({
     where: { id: actor.spaceId },
-    select: { organizationId: true },
+    select: { organizationId: true, organization: { select: { metadata: true } } },
   });
   if (!currentSpace) throw new IsolationError();
-  const memberships = await deps.prisma.spaceMember.findMany({
-    where: { userId: actor.userId, organizationId: currentSpace.organizationId },
+  const inTeam = currentSpace.organization.metadata?.includes(TEAM_MARK) === true;
+  // The current organization and the person's teams read as one list, and from a team so does
+  // their personal space; any other organization stays a boundary.
+  const rows = await deps.prisma.spaceMember.findMany({
+    where: {
+      userId: actor.userId,
+      OR: [
+        { organizationId: currentSpace.organizationId },
+        { space: { organization: { metadata: { contains: TEAM_MARK } } } },
+        ...(inTeam
+          ? [
+              {
+                space: {
+                  isDefault: true,
+                  organization: {
+                    OR: [{ metadata: null }, { NOT: { metadata: { contains: TEAM_MARK } } }],
+                  },
+                },
+              },
+            ]
+          : []),
+      ],
+    },
     select: {
       spaceId: true,
+      organizationId: true,
       role: true,
-      space: { select: { name: true, isDefault: true, deletingAt: true } },
+      space: {
+        select: {
+          name: true,
+          isDefault: true,
+          deletingAt: true,
+          organization: { select: { name: true, metadata: true } },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
+  });
+  const memberships = rows.map((row) => {
+    const team = row.space.organization.metadata?.includes(TEAM_MARK) === true;
+    return {
+      ...row,
+      team,
+      // A team's own space goes by the team's name.
+      name: team && row.space.isDefault ? row.space.organization.name : row.space.name,
+    };
   });
   const spaceIds = memberships.map((membership) => membership.spaceId);
   const inactiveSpaceIds = spaceIds.filter((spaceId) => spaceId !== actor.spaceId);
@@ -279,7 +319,7 @@ async function memberSpaceNavigation(
   return {
     current: {
       id: actor.spaceId,
-      name: currentMembership.space.name,
+      name: currentMembership.name,
       bots: currentBots,
       groups: currentGroups,
       externalConversations: externalConversations.filter(
@@ -292,15 +332,21 @@ async function memberSpaceNavigation(
       const spaceGroups = groupsFor(membership.spaceId);
       return {
         id: membership.spaceId,
-        name: membership.space.name,
+        name: membership.name,
         isDefault: membership.space.isDefault,
+        ...(membership.team ? { team: true } : {}),
         hasContent: spacesWithContent.has(membership.spaceId),
-        botCount: botCounts.get(membership.spaceId) ?? 0,
-        canRename: membership.role === "owner" && membership.space.deletingAt === null,
+        // A team's count would include chats that belong to other people.
+        botCount: membership.team ? undefined : (botCounts.get(membership.spaceId) ?? 0),
+        canRename:
+          membership.role === "owner" &&
+          membership.space.deletingAt === null &&
+          !(membership.team && membership.space.isDefault),
         canDelete:
           membership.role === "owner" &&
           !membership.space.isDefault &&
-          memberships.length > 1 &&
+          memberships.filter((other) => other.organizationId === membership.organizationId).length >
+            1 &&
           (membership.space.deletingAt === null || membership.space.deletingAt < staleClaimBefore),
         bots: spaceBots.map((bot) => ({
           id: bot.id,

@@ -7,9 +7,13 @@ import type {
 import type { IntegrationProviderConfig, IntegrationProviderId } from "@anviq/contracts";
 import { IntegrationProviderConfigSchema, IntegrationProviderIdSchema } from "@anviq/contracts";
 import type { PrismaClient } from "@anviq/db";
+import { runAsSystem } from "@anviq/db";
 import { ComposioConnector } from "./composio-connector.js";
 import { credentialDigest } from "./credential-digest.js";
 import { PipedreamConnector } from "./pipedream-connector.js";
+
+/** Providers whose key belongs to each user; the rest are configured once for the deployment. */
+const PER_USER: ReadonlySet<IntegrationProviderId> = new Set(["composio"]);
 
 /** Resolve persisted credentials on every operation so API and workers observe changes.
  * Cache adapters by ciphertext to preserve sessions without retaining old credentials. */
@@ -40,27 +44,50 @@ export class IntegrationProviderSettings {
       : new PipedreamConnector({ ...config, identitySecret: this.identitySecret });
   }
 
-  async configured(id: IntegrationProviderId): Promise<boolean> {
-    return (
-      Boolean(
-        await this.prisma.integrationProviderConfig.findUnique({
-          where: { id },
-          select: { id: true },
-        }),
-      ) || Boolean(this.fallbacks[id])
+  private scope(id: IntegrationProviderId, userId?: string) {
+    return PER_USER.has(id) && userId ? `${id}:${userId}` : id;
+  }
+
+  private recordId(id: IntegrationProviderId, userId?: string) {
+    return `integration-provider:${this.scope(id, userId)}`;
+  }
+
+  private async row(id: IntegrationProviderId, userId?: string) {
+    if (!PER_USER.has(id)) {
+      return this.prisma.integrationProviderConfig.findUnique({
+        where: { id },
+        select: { ciphertext: true },
+      });
+    }
+    if (!userId) return null;
+    // Narrowed to the one user by the key; callers may run outside any request.
+    return runAsSystem("read a user's integration provider key", () =>
+      this.prisma.userIntegrationProviderConfig.findUnique({
+        where: { id: `${id}:${userId}` },
+        select: { ciphertext: true },
+      }),
     );
   }
 
-  async resolve(id: IntegrationProviderId): Promise<ManagedConnectorProvider | undefined> {
-    return (await this.prepare(id)).provider;
+  async configured(id: IntegrationProviderId, userId?: string): Promise<boolean> {
+    return Boolean(await this.row(id, userId)) || Boolean(this.fallbacks[id]);
+  }
+
+  async resolve(
+    id: IntegrationProviderId,
+    userId?: string,
+  ): Promise<ManagedConnectorProvider | undefined> {
+    return (await this.prepare(id, userId)).provider;
   }
 
   async prepare(
     id: IntegrationProviderId,
+    userId?: string,
   ): Promise<{ provider: ManagedConnectorProvider | undefined; ref: string | null }> {
-    const row = await this.prisma.integrationProviderConfig.findUnique({ where: { id } });
+    const scope = this.scope(id, userId);
+    const row = await this.row(id, userId);
     if (!row) {
-      this.cache.delete(id);
+      this.cache.delete(scope);
       return { provider: this.fallbacks[id], ref: null };
     }
     let invalidated = false;
@@ -69,9 +96,9 @@ export class IntegrationProviderSettings {
         if (ref === row.ciphertext) invalidated = true;
       }) ?? (() => {});
     try {
-      const plaintext = await this.secrets.load(row.ciphertext, `integration-provider:${id}`);
-      if (invalidated) return await this.prepare(id);
-      const cached = this.cache.get(id);
+      const plaintext = await this.secrets.load(row.ciphertext, this.recordId(id, userId));
+      if (invalidated) return await this.prepare(id, userId);
+      const cached = this.cache.get(scope);
       const digest = credentialDigest(plaintext);
       if (cached?.ciphertext === row.ciphertext && cached.digest === digest)
         return { provider: cached.adapter, ref: row.ciphertext };
@@ -79,7 +106,7 @@ export class IntegrationProviderSettings {
       if (config.provider !== id)
         throw new Error("Integration provider configuration does not match");
       const adapter = this.create(config);
-      this.cache.set(id, { ciphertext: row.ciphertext, digest, adapter });
+      this.cache.set(scope, { ciphertext: row.ciphertext, digest, adapter });
       return { provider: adapter, ref: row.ciphertext };
     } finally {
       unsubscribe();
@@ -95,17 +122,32 @@ export class IntegrationProviderSettings {
       // Provider errors can contain credentials or account details.
       throw new Error("Could not verify these credentials");
     }
+    const userId = PER_USER.has(config.provider) ? context.userId : undefined;
     const stored = await this.secrets.put(JSON.stringify(config), context, {
-      recordId: `integration-provider:${config.provider}`,
+      recordId: this.recordId(config.provider, userId),
     });
-    await this.prisma.integrationProviderConfig.upsert({
-      where: { id: config.provider },
-      create: { id: config.provider, ciphertext: stored.ciphertext },
-      update: { ciphertext: stored.ciphertext },
-    });
+    if (userId) {
+      const rowId = `${config.provider}:${userId}`;
+      await this.prisma.userIntegrationProviderConfig.upsert({
+        where: { id: rowId },
+        create: {
+          id: rowId,
+          userId,
+          provider: config.provider,
+          ciphertext: stored.ciphertext,
+        },
+        update: { ciphertext: stored.ciphertext },
+      });
+    } else {
+      await this.prisma.integrationProviderConfig.upsert({
+        where: { id: config.provider },
+        create: { id: config.provider, ciphertext: stored.ciphertext },
+        update: { ciphertext: stored.ciphertext },
+      });
+    }
     // The store may have expired or invalidated this ref while persistence waited.
     // Re-resolve through it before retaining any provider credentials.
-    this.cache.delete(config.provider);
+    this.cache.delete(this.scope(config.provider, userId));
   }
 
   providers(): ManagedConnectorProvider[] {
@@ -117,6 +159,7 @@ export class IntegrationProviderSettings {
   /** Warm catalogs for env- and DB-configured providers. Fire-and-forget. */
   warmDirectories(): void {
     for (const id of IntegrationProviderIdSchema.options) {
+      if (PER_USER.has(id)) continue;
       void this.resolve(id)
         .then((provider) => provider?.warmDirectory?.())
         .catch(() => undefined);
@@ -125,22 +168,38 @@ export class IntegrationProviderSettings {
 }
 
 class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
+  readonly resolveConnectedAccountId?: ManagedConnectorProvider["resolveConnectedAccountId"];
+  readonly cancelAuthorizationRequest?: ManagedConnectorProvider["cancelAuthorizationRequest"];
+  readonly revokeUnreferencedAccounts?: ManagedConnectorProvider["revokeUnreferencedAccounts"];
+
   constructor(
     private readonly id: IntegrationProviderId,
     private readonly settings: IntegrationProviderSettings,
     private readonly prepared?: ManagedConnectorProvider,
-  ) {}
-  async prepareForTransaction() {
-    const prepared = await this.settings.prepare(this.id);
+  ) {
+    // Only a prepared provider is known up front; callers branch on which of these exist.
+    this.resolveConnectedAccountId = prepared?.resolveConnectedAccountId?.bind(prepared);
+    this.cancelAuthorizationRequest = prepared?.cancelAuthorizationRequest?.bind(prepared);
+    this.revokeUnreferencedAccounts = prepared?.revokeUnreferencedAccounts?.bind(prepared);
+  }
+  async prepareForTransaction(userId: string) {
+    const prepared = await this.settings.prepare(this.id, userId);
     return {
       provider: prepared.provider
         ? new ConfiguredIntegrationProvider(this.id, this.settings, prepared.provider)
         : undefined,
-      recheck: async (client: Pick<PrismaClient, "integrationProviderConfig">) => {
-        const current = await client.integrationProviderConfig.findUnique({
-          where: { id: this.id },
-          select: { ciphertext: true },
-        });
+      recheck: async (
+        client: Pick<PrismaClient, "integrationProviderConfig" | "userIntegrationProviderConfig">,
+      ) => {
+        const current = PER_USER.has(this.id)
+          ? await client.userIntegrationProviderConfig.findUnique({
+              where: { id: `${this.id}:${userId}` },
+              select: { ciphertext: true },
+            })
+          : await client.integrationProviderConfig.findUnique({
+              where: { id: this.id },
+              select: { ciphertext: true },
+            });
         return (current?.ciphertext ?? null) === prepared.ref;
       },
     };
@@ -153,52 +212,55 @@ class ConfiguredIntegrationProvider implements ManagedConnectorProvider {
       capabilities: { discover: true, oauth: true, secretsBrokered: true },
     };
   }
-  private async resolve() {
-    return this.prepared ?? this.settings.resolve(this.id);
+  private async resolve(context: AdapterContext) {
+    return this.prepared ?? this.settings.resolve(this.id, context.userId);
   }
-  private async required() {
-    const provider = await this.resolve();
+  private async required(context: AdapterContext) {
+    const provider = await this.resolve(context);
     if (!provider) throw new Error("Set up an integration provider in Integrations first");
     return provider;
   }
   async catalog(context: AdapterContext, query?: string) {
-    return (await this.resolve())?.catalog(context, query) ?? [];
+    return (await this.resolve(context))?.catalog(context, query) ?? [];
   }
   async discoverTools(context: AdapterContext) {
-    return (await this.resolve())?.discoverTools(context) ?? [];
+    return (await this.resolve(context))?.discoverTools(context) ?? [];
   }
   async listConnectedExternalIds(context: AdapterContext) {
-    return (await this.resolve())?.listConnectedExternalIds(context) ?? [];
+    return (await this.resolve(context))?.listConnectedExternalIds(context) ?? [];
   }
   async listReconnectRefs(context: AdapterContext) {
-    return (await (await this.resolve())?.listReconnectRefs?.(context)) ?? [];
+    return (await (await this.resolve(context))?.listReconnectRefs?.(context)) ?? [];
   }
   async connectionReady(context: AdapterContext, externalId: string) {
-    return (await this.required()).connectionReady(context, externalId);
+    return (await this.required(context)).connectionReady(context, externalId);
   }
   async begin(request: Parameters<ManagedConnectorProvider["begin"]>[0], context: AdapterContext) {
-    return (await this.required()).begin(request, context);
+    return (await this.required(context)).begin(request, context);
   }
   async complete(
     request: Parameters<ManagedConnectorProvider["complete"]>[0],
     context: AdapterContext,
   ) {
-    return (await this.required()).complete(request, context);
+    return (await this.required(context)).complete(request, context);
   }
   async revoke(ref: string, context: AdapterContext) {
-    return (await this.required()).revoke(ref, context);
+    return (await this.required(context)).revoke(ref, context);
   }
   async resolveCall(call: ConnectorCall, context: AdapterContext) {
-    const provider = await (call.route ? this.required() : this.resolve());
+    const provider = await (call.route ? this.required(context) : this.resolve(context));
     return provider?.resolveCall?.(call, context);
   }
   async *execute(call: ConnectorCall, context: AdapterContext) {
-    yield* (await this.required()).execute(call, context);
+    yield* (await this.required(context)).execute(call, context);
   }
 }
 
-export async function prepareManagedConnectorForTransaction(connector: ManagedConnectorProvider) {
+export async function prepareManagedConnectorForTransaction(
+  connector: ManagedConnectorProvider,
+  userId: string,
+) {
   return connector instanceof ConfiguredIntegrationProvider
-    ? connector.prepareForTransaction()
+    ? connector.prepareForTransaction(userId)
     : { provider: connector, recheck: undefined };
 }

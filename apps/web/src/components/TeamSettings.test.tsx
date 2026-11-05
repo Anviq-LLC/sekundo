@@ -32,6 +32,12 @@ vi.mock("@anviq/ui-web", () => ({
   Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
 }));
 vi.mock("lucide-react", () => ({ ChevronLeft: () => null }));
+vi.mock("./ConfirmIdentityDialog", () => ({
+  useIdentityConfirmation: () => ({
+    withIdentityConfirmation: <T,>(action: () => Promise<T>) => action(),
+    identityDialog: null,
+  }),
+}));
 
 const rpc = vi.hoisted(() => ({
   organizations: {
@@ -48,6 +54,7 @@ const rpc = vi.hoisted(() => ({
     transferOwnership: vi.fn(),
     cancelInvitation: vi.fn(),
     leave: vi.fn(),
+    remove: vi.fn(),
     memory: vi.fn(),
     memoryProposals: vi.fn(),
     proposeMemory: vi.fn(),
@@ -268,5 +275,31 @@ describe("TeamSettings", () => {
       proposalId: "p1",
       approve: true,
     });
+  });
+  it("lets only the owner delete a team, then returns to the personal space", async () => {
+    rpc.organizations.list.mockResolvedValue([
+      { id: "t1", name: "Acme", role: "owner", memberCount: 1, spaceId: "s-acme" },
+    ]);
+    rpc.organizations.remove.mockResolvedValue({ ok: true });
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    await render();
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="Manage Acme"]')?.click(),
+    );
+    await settle();
+    expect(button("Leave team")).toBeUndefined();
+    await act(async () => button("Delete team")?.click());
+    expect(container.textContent).toContain("Delete Acme?");
+    expect(rpc.organizations.remove).not.toHaveBeenCalled();
+    await act(async () =>
+      [...container.querySelectorAll("[role='alertdialog'] button")]
+        .find((item) => item.textContent === "Delete team")
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await settle();
+    expect(rpc.organizations.remove).toHaveBeenCalledWith({ organizationId: "t1" });
+    expect(selectSpace).toHaveBeenCalledWith("s-me");
+    vi.unstubAllGlobals();
   });
 });
