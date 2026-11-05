@@ -92,6 +92,25 @@ describe("integration provider settings", () => {
     await f.settings.resolve("composio", "user");
     expect(f.factory).toHaveBeenLastCalledWith({ provider: "composio", apiKey: "fake-first-key" });
   });
+  it("keeps Pipedream credentials per user as well", async () => {
+    const f = fixture();
+    const other = { ...context, userId: "someone-else" };
+    const config = {
+      provider: "pipedream" as const,
+      clientId: "client",
+      clientSecret: "fake-secret",
+      projectId: "project",
+      environment: "production" as const,
+    };
+    await f.settings.save(config, context);
+    expect(await f.settings.configured("pipedream", "user")).toBe(true);
+    expect(await f.settings.configured("pipedream", "someone-else")).toBe(false);
+    expect(await f.settings.resolve("pipedream", "someone-else")).toBeUndefined();
+    expect(f.rows.has("pipedream:user")).toBe(true);
+    await f.settings.save({ ...config, projectId: "other-project" }, other);
+    await f.settings.resolve("pipedream", "someone-else");
+    expect(f.factory).toHaveBeenLastCalledWith({ ...config, projectId: "other-project" });
+  });
   it("binds a stored key to its owner so another user's row cannot be read as theirs", async () => {
     const f = fixture();
     await f.settings.save({ provider: "composio", apiKey: "fake-first-key" }, context);
@@ -139,24 +158,6 @@ describe("integration provider settings", () => {
     const call = { tool: "read", args: {}, executionId: "watch" };
     await expect(provider.resolveCall?.(call, context)).rejects.toBe(error);
     expect(resolveCall).toHaveBeenCalledWith(call, context);
-  });
-  it("warms directories only for deployment-wide providers that are configured", async () => {
-    const f = fixture();
-    const fallbackWarm = vi.fn(async () => undefined);
-    const composioWarm = vi.fn(async () => undefined);
-    const settings = new IntegrationProviderSettings(
-      f.prisma as unknown as PrismaClient,
-      f.secrets,
-      "test-identity",
-      {
-        composio: { warmDirectory: composioWarm } as unknown as ManagedConnectorProvider,
-        pipedream: { warmDirectory: fallbackWarm } as unknown as ManagedConnectorProvider,
-      },
-      f.factory,
-    );
-    settings.warmDirectories();
-    await vi.waitFor(() => expect(fallbackWarm).toHaveBeenCalledOnce());
-    expect(composioWarm).not.toHaveBeenCalled();
   });
   it("exposes the prepared provider's account resolution bound to that provider", async () => {
     const f = fixture();

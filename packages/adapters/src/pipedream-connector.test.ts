@@ -1,11 +1,6 @@
 import type { AdapterContext } from "@anviq/adapter-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  isPipedreamEnabled,
-  MAX_PIPEDREAM_RESPONSE_BYTES,
-  PipedreamConnector,
-  pipedreamConfigFromEnv,
-} from "./pipedream-connector.js";
+import { MAX_PIPEDREAM_RESPONSE_BYTES, PipedreamConnector } from "./pipedream-connector.js";
 import { ThirdPartyConnectorEmulator } from "./third-party-connector-emulator.js";
 
 const context: AdapterContext = {
@@ -111,40 +106,6 @@ function connectedContext(...apps: string[]): AdapterContext {
 function appTools(app: string, count: number): Record<string, string[]> {
   return { [app]: Array.from({ length: count }, (_, index) => `${app}_tool_${index}`) };
 }
-
-describe("pipedreamConfigFromEnv", () => {
-  it("maps shared environment values and normalizes unsupported environments", () => {
-    expect(
-      pipedreamConfigFromEnv({
-        pipedreamClientId: "client-id",
-        pipedreamClientSecret: "client-secret",
-        pipedreamProjectId: "project-id",
-        pipedreamEnvironment: "staging",
-        encryptionKey: "identity-secret",
-      }),
-    ).toEqual({
-      clientId: "client-id",
-      clientSecret: "client-secret",
-      projectId: "project-id",
-      environment: "development",
-      identitySecret: "identity-secret",
-    });
-  });
-
-  it.each(["0", "false"])("does not treat VITEST=%s as an active test runner", (value) => {
-    vi.stubEnv("VITEST", value);
-    expect(
-      isPipedreamEnabled({
-        clientId: "client-id",
-        clientSecret: "client-secret",
-        projectId: "project-id",
-        environment: "production",
-        identitySecret: "identity-secret",
-      }),
-    ).toBe(true);
-    vi.unstubAllEnvs();
-  });
-});
 
 describe("PipedreamConnector", () => {
   afterEach(() => vi.unstubAllGlobals());

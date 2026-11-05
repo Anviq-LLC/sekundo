@@ -94,10 +94,6 @@ export interface AppEnv {
   boatApiUrl: string | undefined;
   /** Optional integrations.sh-compatible catalog base URL. */
   integrationsCatalogUrl: string | undefined;
-  pipedreamClientId: string | undefined;
-  pipedreamClientSecret: string | undefined;
-  pipedreamProjectId: string | undefined;
-  pipedreamEnvironment: "development" | "production";
   sendblueApiKeyId: string | undefined;
   sendblueApiSecret: string | undefined;
   sendblueSigningSecret: string | undefined;
@@ -264,11 +260,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     boatApiKey: boatApiKeyFromEnv(source),
     boatApiUrl: boatApiUrlFromEnv(source),
     integrationsCatalogUrl: optional(source.INTEGRATIONS_CATALOG_URL),
-    pipedreamClientId: optional(source.PIPEDREAM_CLIENT_ID),
-    pipedreamClientSecret: optional(source.PIPEDREAM_CLIENT_SECRET),
-    pipedreamProjectId: optional(source.PIPEDREAM_PROJECT_ID),
-    pipedreamEnvironment:
-      source.PIPEDREAM_ENVIRONMENT === "production" ? "production" : "development",
     sendblueApiKeyId: optional(source.SENDBLUE_API_KEY_ID),
     sendblueApiSecret: optional(source.SENDBLUE_API_SECRET),
     sendblueSigningSecret: optional(source.SENDBLUE_SIGNING_SECRET),

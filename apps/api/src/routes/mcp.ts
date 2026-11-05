@@ -19,7 +19,6 @@ import type { Prisma } from "@anviq/db";
 import { IsolationError } from "@anviq/db";
 import { getLogger } from "@anviq/logging";
 import { ORPCError } from "@orpc/server";
-import { isAdmin } from "../admins.js";
 import { searchIntegrationCatalog } from "../integration-catalog.js";
 import {
   queueMcpConnectedRun,
@@ -958,10 +957,6 @@ export function mcpRoutes(ctx: RouterContext) {
         };
       }),
       save: authed.integrationSetup.save.handler(async ({ context, input }) => {
-        // Composio keys belong to the person saving them; other providers are set once per deployment.
-        if (input.provider !== "composio" && !(await isAdmin(deps, context.actor.userId))) {
-          throw new ORPCError("FORBIDDEN");
-        }
         if (!deps.integrationSettings) throw new ORPCError("NOT_IMPLEMENTED");
         try {
           await deps.integrationSettings.save(input, {

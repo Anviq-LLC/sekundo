@@ -1483,7 +1483,7 @@ msgstr "Complete"
 msgid "Completed"
 msgstr "Completed"
 
-#: src/components/ComposioKeySettings.tsx
+#: src/components/IntegrationKeysSettings.tsx
 msgid "Composio API key"
 msgstr "Composio API key"
 
@@ -2140,9 +2140,9 @@ msgstr "Could not save that voice"
 msgid "Could not save the credential"
 msgstr "Could not save the credential"
 
-#: src/components/ComposioKeySettings.tsx
-msgid "Could not save the key"
-msgstr "Could not save the key"
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Could not save the credentials"
+msgstr "Could not save the credentials"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
@@ -2521,6 +2521,10 @@ msgstr "Details"
 msgid "Developer"
 msgstr "Developer"
 
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Development"
+msgstr "Development"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disable a tool"
 msgstr "Disable a tool"
@@ -2736,6 +2740,10 @@ msgstr "Enter a whole number from 1 to 1000 for the image limit."
 #: src/lib/model-connection-preflight.ts
 msgid "Enter an API key before testing."
 msgstr "Enter an API key before testing."
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Environment"
+msgstr "Environment"
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Environment variables"
@@ -4479,6 +4487,18 @@ msgstr "Pin"
 msgid "Pinned"
 msgstr "Pinned"
 
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream client ID"
+msgstr "Pipedream client ID"
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream client secret"
+msgstr "Pipedream client secret"
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream project ID"
+msgstr "Pipedream project ID"
+
 #: src/components/ArtifactFileCard.tsx
 msgid "Play {name}"
 msgstr "Play {name}"
@@ -4545,6 +4565,10 @@ msgstr "Private"
 #: src/pages/shell/bot-picker.tsx
 msgid "Private workspace with its own bots and groups."
 msgstr "Private workspace with its own bots and groups."
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Production"
+msgstr "Production"
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Productivity"
@@ -5066,7 +5090,7 @@ msgstr "Saturday"
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
-#: src/components/ComposioKeySettings.tsx
+#: src/components/IntegrationKeysSettings.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx

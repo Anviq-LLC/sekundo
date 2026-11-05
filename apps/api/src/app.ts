@@ -60,16 +60,13 @@ import {
   IntegrationProviderSettings,
   installedMessaging,
   isMessagingSurfaceEnabled,
-  isPipedreamEnabled,
   McpConnector,
   McpOAuthBroker,
   messagingPlatformsFromEnv,
   PiAgentRuntime,
   PiOAuthLogins,
-  PipedreamConnector,
   PostgresRealtimeFanout,
   PrismaPushTokenStore,
-  pipedreamConfigFromEnv,
   piSessionsRoot,
   RunJobPublisher,
   reconcileCloudAgents,
@@ -398,10 +395,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     },
     mcpOAuth,
   );
-  const pipedreamConfig = pipedreamConfigFromEnv(env);
-  const pipedream =
-    pipedreamOverride ??
-    (isPipedreamEnabled(pipedreamConfig) ? new PipedreamConnector(pipedreamConfig) : undefined);
+  const pipedream = pipedreamOverride;
   // This process registers the inbound sink, so it must hold Telegram's getUpdates connection.
   const messagingPlatforms = messagingPlatformsFromEnv(env, { pollInboundMessages: true }).filter(
     (platform) => platform.provider !== "slack" || !env.slackClientId,
@@ -468,7 +462,6 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     mcp,
     ...connectorOverrides,
   ]);
-  integrationSettings.warmDirectories();
   const runtime =
     runtimeOverride ??
     (env.agentRuntime === "scripted"

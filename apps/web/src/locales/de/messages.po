@@ -1483,7 +1483,7 @@ msgstr "Abschließen"
 msgid "Completed"
 msgstr "Abgeschlossen"
 
-#: src/components/ComposioKeySettings.tsx
+#: src/components/IntegrationKeysSettings.tsx
 msgid "Composio API key"
 msgstr ""
 
@@ -2140,8 +2140,8 @@ msgstr "Stimme konnte nicht gespeichert werden"
 msgid "Could not save the credential"
 msgstr ""
 
-#: src/components/ComposioKeySettings.tsx
-msgid "Could not save the key"
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Could not save the credentials"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -2521,6 +2521,10 @@ msgstr "Details"
 msgid "Developer"
 msgstr ""
 
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Development"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disable a tool"
 msgstr "Tool deaktivieren"
@@ -2736,6 +2740,10 @@ msgstr "Gib eine ganze Zahl von 1 bis 1000 für das Bilderlimit ein."
 #: src/lib/model-connection-preflight.ts
 msgid "Enter an API key before testing."
 msgstr "Gib vor dem Test einen API-Schlüssel ein."
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Environment"
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Environment variables"
@@ -4479,6 +4487,18 @@ msgstr "Anheften"
 msgid "Pinned"
 msgstr "Angeheftet"
 
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream client ID"
+msgstr ""
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream client secret"
+msgstr ""
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream project ID"
+msgstr ""
+
 #: src/components/ArtifactFileCard.tsx
 msgid "Play {name}"
 msgstr "{name} abspielen"
@@ -4544,6 +4564,10 @@ msgstr "Privat"
 
 #: src/pages/shell/bot-picker.tsx
 msgid "Private workspace with its own bots and groups."
+msgstr ""
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Production"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
@@ -5066,7 +5090,7 @@ msgstr "Samstag"
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
-#: src/components/ComposioKeySettings.tsx
+#: src/components/IntegrationKeysSettings.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx

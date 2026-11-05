@@ -3946,29 +3946,18 @@ describe("integration setup", () => {
     projectId: "project",
   };
 
-  it("keeps deployment-wide providers to administrators", async () => {
+  it("saves a member's Pipedream project under their own user", async () => {
     const save = vi.fn(async () => undefined);
-    const denied = await call(
+    const response = await call(
       "save",
       baseDeps(member, { integrationSettings: { save } }),
       pipedream,
     );
-    expect(denied.status).toBe(403);
-    expect(save).not.toHaveBeenCalled();
-    const unverified = await call(
-      "save",
-      baseDeps({ ...admin, emailVerified: false }, { integrationSettings: { save } }),
-      pipedream,
+    expect(response.status).toBe(200);
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "pipedream", projectId: "project" }),
+      expect.objectContaining({ userId: "user", spaceId: "space" }),
     );
-    expect(unverified.status).toBe(403);
-    expect(save).not.toHaveBeenCalled();
-    const allowed = await call(
-      "save",
-      baseDeps(admin, { integrationSettings: { save } }),
-      pipedream,
-    );
-    expect(allowed.status).toBe(200);
-    expect(save).toHaveBeenCalledOnce();
   });
 
   it("does not echo provider errors that could contain credentials", async () => {
@@ -4013,13 +4002,6 @@ describe("server operation authorization", () => {
         () => client.updater.check({}),
         () => client.updater.apply({}),
         () => client.computer.releaseInterrupted({ id: "update-1", workersStopped: true }),
-        () =>
-          client.integrationSetup.save({
-            provider: "pipedream",
-            clientId: "client",
-            clientSecret: "fake-secret",
-            projectId: "project",
-          }),
       ])
         await expect(call()).rejects.toMatchObject({ code: "FORBIDDEN" });
       expect(prisma.deploymentSettings.update).not.toHaveBeenCalled();
