@@ -357,10 +357,7 @@ function LayoutContent() {
                       contentStyle: { backgroundColor: String(native.page) },
                     }}
                   >
-                    <Stack.Screen
-                      name="index"
-                      options={{ headerShown: false, title: "Sekundo" }}
-                    />
+                    <Stack.Screen name="index" options={{ headerShown: false, title: "Sekundo" }} />
                     <Stack.Screen
                       name="search"
                       options={{

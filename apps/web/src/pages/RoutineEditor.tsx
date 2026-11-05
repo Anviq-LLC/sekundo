@@ -36,6 +36,7 @@ import {
 } from "@anviq/ui-web";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft,
   Clock,
@@ -56,6 +57,7 @@ import {
   parseModelOptionKey,
   thinkingLevelLabel,
 } from "../lib/model-catalog";
+import { useSpaceQueries } from "../lib/query";
 import { rpc } from "../lib/rpc";
 import { RoutineRunHistory } from "./RoutineRunHistory";
 import { RoutineSchedule } from "./RoutineSchedule";
@@ -354,6 +356,18 @@ export function RoutineEditor({
 }) {
   const { t } = useLingui();
   const fieldId = useId();
+  const queries = useSpaceQueries();
+  const scheduleStatus = useQuery({
+    ...queries.routines.list.queryOptions({ input: { botId: editing?.botId ?? "" } }),
+    enabled: editing !== null && draft.active,
+    refetchInterval: 15_000,
+    select: (routines) => routines.find((routine) => routine.id === editing?.id) ?? null,
+  });
+  const scheduleDelayed =
+    !scheduleStatus.isError &&
+    (scheduleStatus.data === undefined
+      ? editing?.scheduleDelayed
+      : scheduleStatus.data?.scheduleDelayed);
   const [credentials, setCredentials] = useState<ModelCredential[]>([]);
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   useEffect(() => {
@@ -466,6 +480,12 @@ export function RoutineEditor({
           </Button>
         </div>
       </div>
+
+      {draft.active && scheduleDelayed ? (
+        <p role="status" className="mb-5 text-sm text-warning">
+          <Trans>Schedule delayed</Trans>
+        </p>
+      ) : null}
 
       <label htmlFor={`${fieldId}-name`} className="block text-sm text-muted-foreground">
         <Trans>Name</Trans>

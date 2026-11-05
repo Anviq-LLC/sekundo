@@ -38,24 +38,27 @@ describe("redaction", () => {
     });
   });
 
-  it("handles a full-envelope-sized failed email candidate without blocking", () => {
-    const moduleUrl = new URL("./redaction.ts", import.meta.url).href;
-    // A child deadline also catches synchronous regex stalls that block the test runner's timers.
-    const output = execFileSync(
-      process.execPath,
-      [
-        "--import",
-        "tsx",
-        "--input-type=module",
-        "-e",
-        `import { redactSensitiveText } from ${JSON.stringify(moduleUrl)};
-         const text = "a.".repeat(512 * 1024);
+  it.each(["a.", "eyJ-"])(
+    "handles a full-envelope-sized failed candidate without blocking: %s",
+    (part) => {
+      const moduleUrl = new URL("./redaction.ts", import.meta.url).href;
+      // A child deadline also catches synchronous regex stalls that block the test runner's timers.
+      const output = execFileSync(
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          "--input-type=module",
+          "-e",
+          `import { redactSensitiveText } from ${JSON.stringify(moduleUrl)};
+         const text = ${JSON.stringify(part)}.repeat(1024 * 1024 / ${part.length});
          process.stdout.write(String(redactSensitiveText(text) === text));`,
-      ],
-      { encoding: "utf8", timeout: 5_000 },
-    );
-    expect(output).toBe("true");
-  });
+        ],
+        { encoding: "utf8", timeout: 5_000 },
+      );
+      expect(output).toBe("true");
+    },
+  );
 
   it("keeps non-email candidates and redacts adjacent and punctuated email addresses", () => {
     expect(
@@ -221,5 +224,29 @@ describe("redaction", () => {
     expect(redacted).toContain('"password":"[Redacted]"');
     expect(redacted).toContain('"token":"[Redacted]"');
     expect(redacted).toContain('"authorization":"[Redacted]"');
+  });
+
+  it.each([
+    "Authorization: Basic ZmFrZTpmaXh0dXJl",
+    "Authorization: token fixture-credential",
+    "proxy-authorization=Digest fixture-credential",
+    "x-api-key: fixture-credential",
+    "X-API-KEY=fixture-credential",
+  ])("redacts header credentials in free text: %s", (header) => {
+    const redacted = redactSensitiveText(`request failed with ${header} attached`);
+    expect(redacted).toContain("=[Redacted] attached");
+    expect(redacted).not.toMatch(/ZmFrZTpmaXh0dXJl|fixture-credential/);
+  });
+
+  it.each([
+    ["eyJ-header.payload.signature", "[Redacted]"],
+    ["eyJ-header.payload.signature-", "[Redacted]-"],
+    ["eyJ-header.payload", "eyJ-header.payload"],
+    ["eyJ-header-ak_fixture", "eyJ-header-[Redacted]"],
+    ["eyJ-header-sk-fixturesecret", "eyJ-header-[Redacted]"],
+    ["sk-fixture-eyJheader.payload.signature", "[Redacted].payload.signature"],
+    ["eyJ-header-sk-fixturesecret.payload.signature", "[Redacted]"],
+  ])("preserves JWT and key redaction within candidates: %s", (text, expected) => {
+    expect(redactSensitiveText(text)).toBe(expected);
   });
 });

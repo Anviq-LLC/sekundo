@@ -13,22 +13,24 @@ import {
   verifyMcpInstall,
 } from "@anviq/adapters";
 import type { Actor } from "@anviq/contracts";
-import { signupSurveyAsksTeamSize } from "@anviq/contracts";
+import { IntegrationProviderIdSchema, signupSurveyAsksTeamSize } from "@anviq/contracts";
 import { containsSecret } from "@anviq/core";
 import type { Prisma } from "@anviq/db";
 import { IsolationError } from "@anviq/db";
 import { getLogger } from "@anviq/logging";
 import { ORPCError } from "@orpc/server";
+import { isAdmin } from "../admins.js";
 import { searchIntegrationCatalog } from "../integration-catalog.js";
 import {
   queueMcpConnectedRun,
   resolveMcpApprovalCards,
   revertConnectedMcpApprovals,
 } from "../mcp-approval.js";
-import { buildMcpUpdateMaterial } from "../mcp-material.js";
+import { buildMcpUpdateMaterial, legacyMcpArgs } from "../mcp-material.js";
 import {
   assertMcpOAuthTemplates,
   assertMcpRemoteEndpoint,
+  assertMcpStdioAdmin,
   assertMcpStdioCommand,
   MCP_OAUTH_PENDING_MESSAGE,
   mayUsePrivateEndpoint,
@@ -437,13 +439,17 @@ export function mcpRoutes(ctx: RouterContext) {
               await assertMcpRemoteEndpoint(nextEndpoint, deps);
             }
             if (config.transport === "stdio") {
-              assertMcpStdioCommand(config.command, deps);
+              await assertMcpStdioCommand(config.command, context.actor, deps);
               await assertMcpRemoteEndpoint(config.oauthClient?.authorizationServer, deps);
+            } else if (existing.transport === "stdio") {
+              await assertMcpStdioAdmin(context.actor, deps);
             }
             const endpointChanged = existing.endpoint !== nextEndpoint;
+            existingMaterial.args ??= legacyMcpArgs(existing.args);
             const update = buildMcpUpdateMaterial(existingMaterial, config, {
               clearOAuth: endpointChanged,
               endpointChanged,
+              commandChanged: existing.command !== ("command" in config ? config.command : null),
             });
             if (update.action === "store" && config.transport === "stdio") {
               await assertMcpRemoteEndpoint(
@@ -517,7 +523,8 @@ export function mcpRoutes(ctx: RouterContext) {
                       transport: config.transport,
                       endpoint: nextEndpoint,
                       command: "command" in config ? config.command : null,
-                      args: ("args" in config ? config.args : []) as Prisma.InputJsonValue,
+                      args: [],
+                      hasArgs: update.action === "store" && Boolean(update.material.args?.length),
                       env: ("env" in config
                         ? Object.fromEntries(Object.keys(config.env).map((key) => [key, true]))
                         : {}) as Prisma.InputJsonValue,
@@ -934,14 +941,42 @@ export function mcpRoutes(ctx: RouterContext) {
       }),
     },
     integrationSetup: {
-      get: authed.integrationSetup.get.handler(() => ({
-        canConfigure: false,
-        needsSetup: false,
-        webUrl: new URL("/integrations/setup", deps.env.webOrigin).toString(),
-        providers: [],
-      })),
-      save: authed.integrationSetup.save.handler(() => {
-        throw new ORPCError("FORBIDDEN");
+      get: authed.integrationSetup.get.handler(async ({ context }) => {
+        const providers = await Promise.all(
+          IntegrationProviderIdSchema.options.map(async (id) => ({
+            id,
+            configured: deps.integrationSettings
+              ? await deps.integrationSettings.configured(id, context.actor.userId)
+              : Boolean(deps.connectors.managed(id)),
+          })),
+        );
+        return {
+          canConfigure: true,
+          needsSetup: !providers.some((provider) => provider.configured),
+          webUrl: new URL("/integrations/setup", deps.env.webOrigin).toString(),
+          providers,
+        };
+      }),
+      save: authed.integrationSetup.save.handler(async ({ context, input }) => {
+        // Composio keys belong to the person saving them; other providers are set once per deployment.
+        if (input.provider !== "composio" && !(await isAdmin(deps, context.actor.userId))) {
+          throw new ORPCError("FORBIDDEN");
+        }
+        if (!deps.integrationSettings) throw new ORPCError("NOT_IMPLEMENTED");
+        try {
+          await deps.integrationSettings.save(input, {
+            operationId: "integrationSetup.save",
+            traceId: "integrationSetup.save",
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            signal: context.signal ?? new AbortController().signal,
+          });
+        } catch {
+          throw new ORPCError("BAD_REQUEST", {
+            message: "Could not verify or save these credentials",
+          });
+        }
+        return { ok: true as const };
       }),
     },
   };

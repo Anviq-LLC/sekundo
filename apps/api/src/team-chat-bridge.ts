@@ -687,8 +687,7 @@ export class TeamChatBridge {
     const pending = this.mirroring.get(message.id);
     if (pending) return pending;
     const mirroring = (async () => {
-      if (!conversation.thread)
-        throw new Error("Team chat conversation has no Sekundo thread");
+      if (!conversation.thread) throw new Error("Team chat conversation has no Sekundo thread");
       // Fetchers cannot survive a restart; reuse any completed per-file uploads.
       const stored = attachments
         ? await this.storeAttachments(

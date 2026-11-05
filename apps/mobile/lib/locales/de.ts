@@ -1,4 +1,7 @@
 export const DE_MESSAGES: Record<string, string> = {
+  "Schedule delayed": "Ausführung verzögert",
+  "Add rule": "Regel hinzufügen",
+  "Tool name": "Tool-Name",
   "Not sent. Tap for options": "Nicht gesendet. Tippen für Optionen",
   "Image input is not configured for this model.":
     "Bildeingabe ist für dieses Modell nicht konfiguriert.",
@@ -872,7 +875,7 @@ export const DE_MESSAGES: Record<string, string> = {
   "AI models": "KI-Modelle",
   Memory: "Gedächtnis",
   "Privacy policies": "Datenschutzerklärungen",
-  "Sekundo": "Sekundo",
+  Sekundo: "Sekundo",
   "Withdraw all permissions": "Alle Berechtigungen widerrufen",
   "Withdraw all permissions?": "Alle Berechtigungen widerrufen?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":
@@ -1033,8 +1036,7 @@ export const DE_MESSAGES: Record<string, string> = {
   Work: "Arbeit",
   Both: "Beides",
   "How will you use Sekundo?": "Wie wirst du Sekundo nutzen?",
-  "What do you most want Sekundo to help with?":
-    "Wobei soll dir Sekundo am meisten helfen?",
+  "What do you most want Sekundo to help with?": "Wobei soll dir Sekundo am meisten helfen?",
   "How big is your team?": "Wie groß ist dein Team?",
   "How did you hear about us?": "Wie hast du von uns erfahren?",
   "Welcome to Sekundo": "Willkommen bei Sekundo",
@@ -1193,6 +1195,8 @@ export const DE_MESSAGES: Record<string, string> = {
   Invitations: "Einladungen",
   Invite: "Einladen",
   Join: "Beitreten",
+  "Delete team": "Team löschen",
+  "Delete this team?": "Dieses Team löschen?",
   "Leave team": "Team verlassen",
   "Leave this team?": "Dieses Team verlassen?",
   "Make admin": "Zum Admin machen",

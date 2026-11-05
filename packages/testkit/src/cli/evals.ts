@@ -566,7 +566,6 @@ async function main() {
               defaultProvider: connection.provider,
               defaultModel: connection.modelId!,
               deploymentModelKey: undefined,
-              composioApiKey: undefined,
               cursorApiKey: undefined,
               cloudAgentProvider: "none",
               signupsEnabled: "true",

@@ -12,6 +12,7 @@ function fixture() {
     botSecret: [{ id: "bot-row", ciphertext: "fake-bot-ref" }],
     vaultCredential: [{ id: "vault-row", ciphertext: "fake-vault-ref" }],
     integrationProviderConfig: [{ id: "composio", ciphertext: "fake-config-ref" }],
+    userIntegrationProviderConfig: [{ id: "composio:user-1", ciphertext: "fake-user-config-ref" }],
   };
   const client = Object.fromEntries(
     Object.entries(tables).map(([name, rows]) => [
@@ -56,12 +57,17 @@ describe("migration persistence", () => {
     const f = fixture();
     const rows = [];
     for await (const row of f.repository.rows()) rows.push(row);
-    expect(rows).toHaveLength(104);
+    expect(rows).toHaveLength(105);
     expect(rows[0]).toMatchObject({ ephemeral: true, id: "row-000", label: "secret" });
-    expect(rows.at(-1)).toMatchObject({
-      id: "composio",
+    expect(rows.find((row) => row.id === "composio")).toMatchObject({
       recordId: "integration-provider:composio",
       ref: "fake-config-ref",
+    });
+    expect(rows.at(-1)).toMatchObject({
+      id: "composio:user-1",
+      label: "userIntegrationProviderConfig",
+      recordId: "integration-provider:composio:user-1",
+      ref: "fake-user-config-ref",
     });
     expect(rows.find((row) => row.id === "bot-row")?.recordId).toBe("bot-row");
     expect(rows.find((row) => row.id === "vault-row")?.recordId).toBe("vault-row");

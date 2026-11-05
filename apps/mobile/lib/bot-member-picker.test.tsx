@@ -68,7 +68,6 @@ vi.mock("react-native", () => {
   };
 });
 vi.mock("./native", () => ({ native: {}, useMobileTokens: () => ({}) }));
-vi.mock("../components/native-switch", () => ({ NativeSwitch: () => null }));
 vi.mock("../components/settings-group", () => ({
   SettingsGroup: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   SettingsRow: ({ title, onPress }: { title: string; onPress?: () => void }) => (
@@ -174,10 +173,12 @@ async function filter(query: string) {
 
 it("loads members before mounting the collapsed picker and saves reversible edits", async () => {
   await act(async () => root.render(<GroupSettings />));
-  expect(switches().map((input) => input.getAttribute("aria-label"))).toEqual([
-    "Researcher",
-    "Writer",
-  ]);
+  await vi.waitFor(() =>
+    expect(switches().map((input) => input.getAttribute("aria-label"))).toEqual([
+      "Researcher",
+      "Writer",
+    ]),
+  );
   await act(async () => switches()[1]!.click());
   expect(switches()).toHaveLength(2);
   await act(async () => switches()[1]!.click());
@@ -216,7 +217,7 @@ it("limits additions while still allowing members to be removed", async () => {
     );
   }
   await act(async () => root.render(<Picker />));
-  expect(switches().at(-1)?.disabled).toBe(true);
+  await vi.waitFor(() => expect(switches().at(-1)?.disabled).toBe(true));
   expect(switches()[0]?.disabled).toBe(false);
   await act(async () => switches()[0]!.click());
   expect(switches().at(-1)?.disabled).toBe(false);
@@ -228,10 +229,12 @@ function openButtons() {
 
 it("opens a member's profile from group settings without touching membership", async () => {
   await act(async () => root.render(<GroupSettings />));
-  expect(openButtons().map((button) => button.getAttribute("aria-label"))).toEqual([
-    "Researcher",
-    "Writer",
-  ]);
+  await vi.waitFor(() =>
+    expect(openButtons().map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Researcher",
+      "Writer",
+    ]),
+  );
   await act(async () => switches()[1]!.click());
   expect(push).not.toHaveBeenCalled();
   await act(async () => openButtons()[0]!.click());

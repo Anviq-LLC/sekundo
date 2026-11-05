@@ -135,6 +135,7 @@ export interface RouterDeps {
     desktopHostChoiceEnabled?: boolean;
     mcpStdioEnabled?: boolean;
     mcpStdioAllowedCommands?: string[];
+    adminEmails?: string[];
   };
 }
 

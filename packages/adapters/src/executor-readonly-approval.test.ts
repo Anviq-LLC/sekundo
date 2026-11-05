@@ -2501,8 +2501,7 @@ describe("user_computer_shell", () => {
     await f.run();
     expect(f.results).toEqual([
       {
-        error:
-          "The user's computer is not connected. Ask them to open the Sekundo desktop app.",
+        error: "The user's computer is not connected. Ask them to open the Sekundo desktop app.",
       },
     ]);
     expect(requests).toEqual([]);

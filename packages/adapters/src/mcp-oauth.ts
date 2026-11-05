@@ -46,6 +46,8 @@ type OAuthState = {
 
 export type OAuthMaterial = {
   secret?: string;
+  /** Stdio launch arguments. */
+  args?: string[];
   env?: Record<string, string>;
   /** Credential files for a stdio server: the env variable that receives the file's
    * path, and the content template, which may use `{{oauth.*}}` references. */
@@ -56,6 +58,9 @@ export type OAuthMaterial = {
    * dynamic client registration for servers that do not offer it. */
   oauthClient?: PreRegisteredClient;
   oauth?: OAuthState;
+  /** Raised whenever the stored OAuth state is discarded, so a write from a flow that
+   * began before the discard cannot bring its tokens back. */
+  oauthGeneration?: number;
 };
 
 /** Values that must never appear in model-visible tool results or errors. */
@@ -76,30 +81,11 @@ export function oauthMaterialSecrets(material: OAuthMaterial): string[] {
     add(client.client_secret);
   }
   for (const [key, value] of Object.entries(material.headers ?? {})) {
-    if (isAuthHeaderKey(key)) {
-      // Cookie / X-Session / Authorization always carry auth material, including short values.
-      add(value);
-    } else if (
-      isExplicitCredentialKey(key) &&
-      looksLikeSecretValue(value, { allowNumeric: true })
-    ) {
-      add(value);
-    } else if (
-      isAmbiguousCredentialKey(key) &&
-      looksLikeSecretValue(value, { allowNumeric: false })
-    ) {
-      add(value);
-    }
+    // Cookie / X-Session / Authorization always carry auth material, including short values.
+    if (isAuthHeaderKey(key) || isConfiguredSecret(key, value)) add(value);
   }
   for (const [key, value] of Object.entries(material.env ?? {})) {
-    if (isExplicitCredentialKey(key) && looksLikeSecretValue(value, { allowNumeric: true })) {
-      add(value);
-    } else if (
-      isAmbiguousCredentialKey(key) &&
-      looksLikeSecretValue(value, { allowNumeric: false })
-    ) {
-      add(value);
-    }
+    if (isConfiguredSecret(key, value)) add(value);
   }
   // A file without references is a literal credential (for example a service-account key).
   // One that uses references is covered by the grant values it embeds.
@@ -111,6 +97,17 @@ export function oauthMaterialSecrets(material: OAuthMaterial): string[] {
       add(content);
   }
   return [...new Set(values)];
+}
+
+/** Redaction replaces substrings, so a short value under a neutral name would mangle output. */
+const MIN_NEUTRAL_SECRET_LENGTH = 8;
+
+/** A user can put a credential under any env or header name, so only short or ordinary
+ * config values under names that do not say credential stay visible. */
+function isConfiguredSecret(key: string, value: string): boolean {
+  if (isExplicitCredentialKey(key)) return looksLikeSecretValue(value, { allowNumeric: true });
+  if (!looksLikeSecretValue(value, { allowNumeric: false })) return false;
+  return isAmbiguousCredentialKey(key) || value.trim().length >= MIN_NEUTRAL_SECRET_LENGTH;
 }
 
 /** Headers whose values are credentials even when short (e.g. Cookie, X-Session). */
@@ -593,6 +590,8 @@ type Pending = {
   /** The MCP endpoint, or for a stdio server (which has none) its authorization server. */
   endpoint: string;
   stdio: boolean;
+  /** The stored authorization generation this flow began at. */
+  generation: number;
   provider: StoredMcpOAuthProvider;
   createdAt: number;
   expiry?: ReturnType<typeof setTimeout>;
@@ -899,11 +898,30 @@ function conflictsWithBinding(stored: PreRegisteredClient | undefined, flow: OAu
 export type McpOAuthSummary = {
   status: "none" | "connected" | "reconnect";
   clientId: string | null;
+  /** Whether the stored material holds a credential; a lone generation marker holds none. */
+  credential: boolean;
 };
+
+/** Whether the material holds anything beyond OAuth bookkeeping. */
+function hasCredential(material: OAuthMaterial): boolean {
+  return Boolean(
+    material.secret ||
+      material.args?.length ||
+      Object.keys(material.env ?? {}).length ||
+      Object.keys(material.files ?? {}).length ||
+      Object.keys(material.headers ?? {}).length ||
+      material.oauthClient ||
+      material.oauth,
+  );
+}
 
 function summarize(material: OAuthMaterial): McpOAuthSummary {
   const status = material.oauth?.tokens ? "connected" : material.oauth ? "reconnect" : "none";
-  return { status, clientId: material.oauthClient?.client_id ?? null };
+  return {
+    status,
+    clientId: material.oauthClient?.client_id ?? null,
+    credential: hasCredential(material),
+  };
 }
 
 export class McpOAuthBroker {
@@ -1065,6 +1083,7 @@ export class McpOAuthBroker {
       userId: input.userId,
       endpoint: target,
       stdio: !server.endpoint,
+      generation: loaded.material.oauthGeneration ?? 0,
       provider,
       createdAt: Date.now(),
       expiry,
@@ -1121,6 +1140,7 @@ export class McpOAuthBroker {
         userId: input.userId,
         endpoint: session.endpoint,
         stdio: !server.endpoint,
+        generation: loaded.material.oauthGeneration ?? 0,
         provider: this.createProvider(server, context, loaded, {
           redirectUri: session.redirectUri,
           state: session.id,
@@ -1178,6 +1198,25 @@ export class McpOAuthBroker {
     } finally {
       await networkFetch.close().catch(() => undefined);
     }
+    // A disconnect raised the stored generation after this sign-in began, so its tokens
+    // cannot connect the server; reject the completion instead of reporting it, however
+    // the exchange itself went.
+    // The secret read can be a remote call, so the lock gets refresh's limits, not the
+    // default transaction timeout.
+    const generation = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT set_config('lock_timeout', ${`${REFRESH_LOCK_WAIT_MS}ms`}, true)`;
+        await lockMaterial(tx, pending.serverId);
+        const snapshot = await this.snapshot(tx, pending.serverId, input);
+        const material = snapshot.secret
+          ? await this.read(snapshot.secret.ciphertext, snapshot.secret.id)
+          : {};
+        return material.oauthGeneration ?? 0;
+      },
+      { maxWait: REFRESH_LOCK_WAIT_MS, timeout: REFRESH_TRANSACTION_MS },
+    );
+    if (generation !== pending.generation)
+      throw new Error("MCP OAuth session is invalid or expired");
     if (!(await pending.provider.tokens())) throw new Error("MCP OAuth authorization failed");
     // Bump the revision so cached runtime sessions rebuild with the fresh tokens.
     await this.prisma.mcpServer.update({
@@ -1204,17 +1243,39 @@ export class McpOAuthBroker {
   }
 
   async disconnect(input: { serverId: string; spaceId: string; userId: string }): Promise<void> {
+    // End this actor's pending sign-ins for the server too, so a callback that lands after
+    // the disconnect cannot finish an authorization the user called off.
+    for (const [sessionId, pending] of this.pending) {
+      if (
+        pending.serverId === input.serverId &&
+        pending.spaceId === input.spaceId &&
+        pending.userId === input.userId
+      )
+        this.discardPending(sessionId, pending);
+    }
+    await this.prisma.mcpOAuthSession.deleteMany({
+      where: { serverId: input.serverId, spaceId: input.spaceId, userId: input.userId },
+    });
     const server = await this.prisma.mcpServer.findFirst({
       where: { id: input.serverId, spaceId: input.spaceId, userId: input.userId },
     });
-    if (!server?.secretId) return;
-    const row = await this.prisma.secret.findFirst({
-      where: { id: server.secretId, spaceId: input.spaceId, userId: input.userId },
-    });
-    if (!row) return;
-    const material = await this.read(row.ciphertext, row.id);
+    if (!server) return;
+    // With no stored credential the generation is still raised, so a first authorization
+    // still in flight cannot connect the server after the disconnect.
+    const row = server.secretId
+      ? await this.prisma.secret.findFirst({
+          where: { id: server.secretId, spaceId: input.spaceId, userId: input.userId },
+        })
+      : null;
+    const material = row ? await this.read(row.ciphertext, row.id) : {};
     delete material.oauth;
-    await this.replaceMaterial(server.id, material, input, { incrementRevision: true });
+    // The generation is raised from the stored value inside each retry of the write, so
+    // this disconnect ends every flow still in flight, including one that began after an
+    // earlier disconnect committed.
+    await this.replaceMaterial(server.id, material, input, {
+      incrementRevision: true,
+      raiseGeneration: true,
+    });
   }
 
   private async loadMaterial(
@@ -1378,6 +1439,8 @@ export class McpOAuthBroker {
       onPersisted?: ProviderOptions["onPersisted"];
       storedRefreshToken?: string | null;
       replaceCleared?: boolean;
+      /** Raise the stored authorization generation from the value each retry re-reads. */
+      raiseGeneration?: boolean;
       onKept?: (grant: TokenGrant) => void;
     } = {},
   ): Promise<TokenGrant | undefined> {
@@ -1403,33 +1466,51 @@ export class McpOAuthBroker {
         // the first binding saved wins and any other flow's state is refused.
         if (conflictsWithBinding(nextMaterial.oauthClient, material))
           throw new McpOAuthServerMismatchError();
+        // A disconnect discarded the stored state and raised its generation; a write from
+        // that earlier flow, issued tokens included, must not bring the grant back.
+        const superseded = (material.oauthGeneration ?? 0) !== (nextMaterial.oauthGeneration ?? 0);
         const bound = material.oauthClient?.authorization_server;
-        if (nextMaterial.oauthClient && bound && !nextMaterial.oauthClient.authorization_server)
+        // A superseded write keeps the stored client exactly as stored: a first-use
+        // binding belongs to an authorization the user ended.
+        if (
+          !superseded &&
+          nextMaterial.oauthClient &&
+          bound &&
+          !nextMaterial.oauthClient.authorization_server
+        )
           nextMaterial.oauthClient = { ...nextMaterial.oauthClient, authorization_server: bound };
         nextMaterial.oauth = structuredClone(material.oauth);
         // A process that spent the rotated-away token meanwhile cleared the grant this write renews.
         const staleClear = options.replaceCleared && storedOAuth && !storedOAuth.tokens;
         if (
-          options.storedRefreshToken !== undefined &&
-          (storedOAuth?.tokens?.refresh_token ?? null) !== options.storedRefreshToken &&
-          !staleClear
+          superseded ||
+          (options.storedRefreshToken !== undefined &&
+            (storedOAuth?.tokens?.refresh_token ?? null) !== options.storedRefreshToken &&
+            !staleClear)
         ) {
           // Another process rotated or replaced the grant; never overwrite it with an older one.
           // A disconnect removed the state altogether, and this write must not bring it back.
           kept = { tokens: storedOAuth?.tokens, obtainedAt: storedOAuth?.obtainedAt };
           options.onKept?.(kept);
-          if (storedOAuth) applyGrant(nextMaterial.oauth, kept);
+          if (superseded && storedOAuth) {
+            // The stored state belongs to a newer authorization, so keep it whole: its client
+            // and discovery too, not just its grant, or a later refresh pairs one flow's
+            // tokens with another's client.
+            nextMaterial.oauth = structuredClone(storedOAuth);
+          } else if (storedOAuth) applyGrant(nextMaterial.oauth, kept);
           else delete nextMaterial.oauth;
         }
       } else delete nextMaterial.oauth;
-      const hasMaterial = Boolean(
-        nextMaterial.secret ||
-          Object.keys(nextMaterial.env ?? {}).length ||
-          Object.keys(nextMaterial.files ?? {}).length ||
-          Object.keys(nextMaterial.headers ?? {}).length ||
-          nextMaterial.oauthClient ||
-          nextMaterial.oauth,
-      );
+      if (options.raiseGeneration) {
+        // Raised from what this attempt re-read, so a disconnect that commits after another
+        // one still ends flows that began after the earlier disconnect.
+        nextMaterial.oauthGeneration = (nextMaterial.oauthGeneration ?? 0) + 1;
+      } else {
+        // Never lower the stored generation, so a superseded flow cannot undo a disconnect.
+        nextMaterial.oauthGeneration =
+          Math.max(material.oauthGeneration ?? 0, nextMaterial.oauthGeneration ?? 0) || undefined;
+      }
+      const hasMaterial = hasCredential(nextMaterial) || Boolean(nextMaterial.oauthGeneration);
       const stored = hasMaterial ? await this.putMaterial(nextMaterial, context) : undefined;
       const committed = await persistPreparedSecret(
         this.prisma,

@@ -88,7 +88,9 @@ describe("settings links", () => {
     const close = vi.fn();
     const unregister = registerSettingsSheet(close);
 
-    expect(redirectSystemPath({ path: "sekundo:///voice", initial: false })).toBe("sekundo:///voice");
+    expect(redirectSystemPath({ path: "sekundo:///voice", initial: false })).toBe(
+      "sekundo:///voice",
+    );
     expect(redirectSystemPath({ path: "sekundo:///account?focus=usage", initial: false })).toBe(
       "sekundo:///account?focus=usage",
     );

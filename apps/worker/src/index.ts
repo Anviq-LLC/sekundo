@@ -1,8 +1,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import type { JobPublisher, JobWorkerHost } from "@anviq/adapter-kit";
-import { ComposioConnector, IntegrationProviderSettings } from "@anviq/adapters";
+import { IntegrationProviderSettings } from "@anviq/adapters";
 import { phoneCallSettings } from "@anviq/core";
 import { loadRootEnv } from "@anviq/core/node/load-root-env";
+import { stopOnShutdownSignals } from "@anviq/core/node/shutdown-signals";
 import { startWorkerHealth } from "./health.js";
 import { createWorkerSecretStore } from "./secret-store.js";
 
@@ -40,7 +41,6 @@ import {
   InMemoryJobQueue,
   InstalledConnectorProvider,
   installedMessaging,
-  isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
   McpConnector,
@@ -196,9 +196,6 @@ async function main() {
     secrets,
     resolveEncryptionKey(process.env),
     {
-      composio: isComposioEnabled(process.env.COMPOSIO_API_KEY)
-        ? new ComposioConnector({ apiKey: process.env.COMPOSIO_API_KEY })
-        : undefined,
       pipedream,
     },
   );
@@ -258,7 +255,7 @@ async function main() {
     connector: stack.connector,
     connectors: stack.connector,
     listConnectedPluginSlugs: async (userId) => {
-      const provider = await integrationSettings.resolve("composio");
+      const provider = await integrationSettings.resolve("composio", userId);
       if (!provider) return [];
       return provider.listConnectedExternalIds({
         userId,
@@ -270,13 +267,11 @@ async function main() {
     },
     secrets: [
       deploymentModelKey ?? "",
-      process.env.COMPOSIO_API_KEY ?? "",
       process.env.CURSOR_API_KEY ?? "",
       process.env.TYPESAFE_API_KEY ?? "",
     ].filter(Boolean),
     secretStore: secrets,
     mcpAllowPrivateEndpoint: process.env.MCP_ALLOW_PRIVATE_ENDPOINT === "true",
-    mcpStdio,
     deploymentModelKey,
     deploymentModelConfigured,
     dataDir,
@@ -377,8 +372,7 @@ async function main() {
       await logger.flush({ timeoutMs: 2_000 });
     }
   };
-  process.once("SIGTERM", () => void stop());
-  process.once("SIGINT", () => void stop());
+  stopOnShutdownSignals(stop);
   // graphile-worker fires completeJob() without awaiting it. When pool.connect()
   // then hits Postgres 53300, that rejection is unhandled. Exiting here is the
   // crash loop: Docker restarts the process before Postgres has reaped the old

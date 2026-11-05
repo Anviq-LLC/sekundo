@@ -56,7 +56,7 @@ describePostgres("account deletion on bot computers (PostgreSQL)", () => {
     userId: "test",
     signal: new AbortController().signal,
   };
-  const deleteAccount = (userId: string) =>
+  const deleteAccount = (userId: string, organizationId?: string) =>
     runAsSystem("account deletion test", () =>
       deleteAccountContent(
         {
@@ -68,6 +68,7 @@ describePostgres("account deletion on bot computers (PostgreSQL)", () => {
           dataDir: root,
         },
         userId,
+        organizationId,
       ),
     );
   /** Another API or worker host: same bucket and database, its own empty cache. */
@@ -290,6 +291,22 @@ describePostgres("account deletion on bot computers (PostgreSQL)", () => {
     expect(new Set([...storage.objects.keys()].map((key) => key.split("/")[1]))).toEqual(
       new Set([legacyStorage]),
     );
+  });
+
+  it("deletes one team's spaces, bots and computers and nothing else the person has", async () => {
+    await deleteAccount(ids.leaver, ids.personalOrg);
+
+    expect(sandbox.destroyed.sort()).toEqual(
+      [`sb-dedicated-${suffix}`, `sb-personal-${suffix}`].sort(),
+    );
+    expect(
+      (await system.space.findMany({ where: { id: { in: ids.spaces } } }))
+        .map(({ id }) => id)
+        .sort(),
+    ).toEqual([ids.sharedSpace, ids.soloSpace].sort());
+    expect(
+      (await system.bot.findMany({ where: { id: { in: ids.bots } } })).map(({ id }) => id).sort(),
+    ).toEqual([ids.leaverBot, ids.soloBot, ids.stayerBot].sort());
   });
 
   it("finishes on a retry after a provider fails, and a third run changes nothing", async () => {

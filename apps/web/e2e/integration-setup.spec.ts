@@ -12,7 +12,15 @@ test("signup never grants server authority and settings contain only account con
     ["deployment/update", { signupsEnabled: true }],
     ["updater/apply", {}],
     ["security/events", {}],
-    ["integrationSetup/save", { provider: "composio", apiKey: "fake-key" }],
+    [
+      "integrationSetup/save",
+      {
+        provider: "pipedream",
+        clientId: "client",
+        clientSecret: "fake-secret",
+        projectId: "project",
+      },
+    ],
   ] as const) {
     expect((await page.request.post(`/rpc/${path}`, { data: { json: input } })).status()).toBe(403);
   }

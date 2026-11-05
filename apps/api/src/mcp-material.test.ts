@@ -17,6 +17,68 @@ describe("buildMcpUpdateMaterial", () => {
     ).toEqual({ action: "keep" });
   });
 
+  it("clears a stored blob that holds only an empty env record", () => {
+    expect(
+      buildMcpUpdateMaterial(
+        { env: {} },
+        { transport: "stdio", slug: "x", name: "x", command: "/bin/mcp", args: [], env: {} },
+      ),
+    ).toEqual({ action: "store", material: {} });
+  });
+
+  it("clears a stored blob that holds only an empty headers record", () => {
+    expect(
+      buildMcpUpdateMaterial(
+        { headers: {} },
+        {
+          transport: "streamable_http",
+          slug: "x",
+          name: "x",
+          endpoint: "https://mcp.example.test",
+          headers: {},
+        },
+      ),
+    ).toEqual({ action: "store", material: {} });
+  });
+
+  it("clears an empty headers record left behind when a command change drops the arguments", () => {
+    // A remote server that became stdio can hold `{ headers: {}, args }`; once the new
+    // command discards the arguments, nothing real is left to store.
+    expect(
+      buildMcpUpdateMaterial(
+        { headers: {}, args: ["--token", "old"] },
+        { transport: "stdio", slug: "x", name: "x", command: "/bin/other", args: [], env: {} },
+        { commandChanged: true },
+      ),
+    ).toEqual({ action: "store", material: {} });
+  });
+
+  it("clears the credential when an update removes every stored header", () => {
+    expect(
+      buildMcpUpdateMaterial(
+        { headers: { Authorization: "Bearer fake-token" } },
+        {
+          transport: "streamable_http",
+          slug: "x",
+          name: "x",
+          endpoint: "https://mcp.example.test",
+          headers: {},
+        },
+      ),
+    ).toEqual({ action: "store", material: {} });
+  });
+
+  it("keeps a material without container keys when nothing is supplied", () => {
+    // A secret-less row reaches the builder as {} or with only synthesized empty
+    // arguments; keep must stay keep so the caller neither stores nor clears a row.
+    expect(
+      buildMcpUpdateMaterial(
+        { args: [] },
+        { transport: "stdio", slug: "x", name: "x", command: "/bin/mcp", args: [], env: {} },
+      ),
+    ).toEqual({ action: "keep" });
+  });
+
   it("stores a merged blob when a new secret is supplied, preserving OAuth state", () => {
     const existing = { secret: "old-token", oauth: { tokens: { access_token: "t" } } };
     const result = buildMcpUpdateMaterial(existing, {
@@ -29,7 +91,7 @@ describe("buildMcpUpdateMaterial", () => {
     });
     expect(result).toEqual({
       action: "store",
-      material: { secret: "new-token", oauth: { tokens: { access_token: "t" } }, headers: {} },
+      material: { secret: "new-token", oauth: { tokens: { access_token: "t" } } },
     });
   });
 
@@ -144,7 +206,7 @@ describe("buildMcpUpdateMaterial", () => {
     );
     expect(result).toEqual({
       action: "store",
-      material: { secret: "token", headers: {} },
+      material: { secret: "token" },
     });
   });
 
@@ -186,7 +248,7 @@ describe("buildMcpUpdateMaterial", () => {
           ...remote,
           oauthClient: { clientId: "client-a", authorizationParams: "access_type=offline" },
         }),
-      ).toEqual({ action: "store", material: { ...stored, headers: {} } });
+      ).toEqual({ action: "store", material: { ...stored } });
       expect(
         buildMcpUpdateMaterial(stored, {
           ...remote,
@@ -198,7 +260,6 @@ describe("buildMcpUpdateMaterial", () => {
       ).toEqual({
         action: "store",
         material: {
-          headers: {},
           oauthClient: {
             client_id: "client-a",
             authorization_params: "access_type=offline&prompt=consent",
@@ -216,7 +277,6 @@ describe("buildMcpUpdateMaterial", () => {
       ).toEqual({
         action: "store",
         material: {
-          headers: {},
           oauthClient: { client_id: "client-a", client_secret: "secret-a" },
         },
       });
@@ -225,14 +285,14 @@ describe("buildMcpUpdateMaterial", () => {
     it("keeps the client and its grant when the update leaves the client out", () => {
       expect(buildMcpUpdateMaterial(connected, remote)).toEqual({
         action: "store",
-        material: { ...connected, headers: {} },
+        material: { ...connected },
       });
     });
 
     it("keeps the stored secret and grant when the same client ID is resent without one", () => {
       expect(
         buildMcpUpdateMaterial(connected, { ...remote, oauthClient: { clientId: "client-a" } }),
-      ).toEqual({ action: "store", material: { ...connected, headers: {} } });
+      ).toEqual({ action: "store", material: { ...connected } });
     });
 
     it("drops the grant when the client changes, since its tokens belong to the old client", () => {
@@ -244,7 +304,6 @@ describe("buildMcpUpdateMaterial", () => {
       ).toEqual({
         action: "store",
         material: {
-          headers: {},
           oauthClient: { client_id: "client-b", client_secret: "secret-b" },
         },
       });
@@ -255,7 +314,7 @@ describe("buildMcpUpdateMaterial", () => {
         buildMcpUpdateMaterial(connected, { ...remote, oauthClient: { clientId: "client-b" } }),
       ).toEqual({
         action: "store",
-        material: { headers: {}, oauthClient: { client_id: "client-b" } },
+        material: { oauthClient: { client_id: "client-b" } },
       });
     });
 
@@ -269,7 +328,7 @@ describe("buildMcpUpdateMaterial", () => {
       };
       expect(
         buildMcpUpdateMaterial(bound, { ...remote, oauthClient: { clientId: "client-a" } }),
-      ).toEqual({ action: "store", material: { ...bound, headers: {} } });
+      ).toEqual({ action: "store", material: { ...bound } });
       expect(
         buildMcpUpdateMaterial(bound, {
           ...remote,
@@ -277,7 +336,7 @@ describe("buildMcpUpdateMaterial", () => {
         }),
       ).toEqual({
         action: "store",
-        material: { headers: {}, oauthClient: { client_id: "client-a", client_secret: "rotated" } },
+        material: { oauthClient: { client_id: "client-a", client_secret: "rotated" } },
       });
     });
 
@@ -297,7 +356,6 @@ describe("buildMcpUpdateMaterial", () => {
       ).toEqual({
         action: "store",
         material: {
-          headers: {},
           oauthClient: { client_id: "client-a", scope: "mail.read mail.send" },
         },
       });
@@ -305,7 +363,7 @@ describe("buildMcpUpdateMaterial", () => {
         buildMcpUpdateMaterial({}, { ...remote, oauthClient: { clientId: "client-a", scope: "" } }),
       ).toEqual({
         action: "store",
-        material: { headers: {}, oauthClient: { client_id: "client-a" } },
+        material: { oauthClient: { client_id: "client-a" } },
       });
     });
 
@@ -322,7 +380,6 @@ describe("buildMcpUpdateMaterial", () => {
       ).toEqual({
         action: "store",
         material: {
-          headers: {},
           oauthClient: {
             client_id: "client-a",
             client_secret: "secret-a",
@@ -411,7 +468,7 @@ describe("buildMcpUpdateMaterial", () => {
           ...remote,
           oauthClient: { clientId: "client-a", scope: "mail.read" },
         }),
-      ).toEqual({ action: "store", material: { ...bound, headers: {} } });
+      ).toEqual({ action: "store", material: { ...bound } });
     });
 
     it("keeps the client when only the static credential is cleared", () => {
@@ -455,7 +512,7 @@ describe("buildMcpUpdateMaterial", () => {
     it("stores supplied files with the rest of the material", () => {
       expect(
         buildMcpUpdateMaterial({}, { ...stdio, files: { CREDENTIALS_PATH: template } }),
-      ).toEqual({ action: "store", material: { env: {}, files: { CREDENTIALS_PATH: template } } });
+      ).toEqual({ action: "store", material: { files: { CREDENTIALS_PATH: template } } });
     });
 
     it("replaces the stored files with the supplied set", () => {
@@ -465,7 +522,7 @@ describe("buildMcpUpdateMaterial", () => {
       );
       expect(result).toEqual({
         action: "store",
-        material: { env: {}, files: { CREDENTIALS_PATH: template } },
+        material: { files: { CREDENTIALS_PATH: template } },
       });
     });
 
@@ -486,7 +543,7 @@ describe("buildMcpUpdateMaterial", () => {
           { secret: "s", files: { CREDENTIALS_PATH: template } },
           { ...stdio, files: {} },
         ),
-      ).toEqual({ action: "store", material: { secret: "s", env: {} } });
+      ).toEqual({ action: "store", material: { secret: "s" } });
     });
 
     it("drops the files when the static credential is cleared", () => {
@@ -517,7 +574,43 @@ describe("buildMcpUpdateMaterial", () => {
             headers: {},
           },
         ),
-      ).toEqual({ action: "store", material: { secret: "s", headers: {} } });
+      ).toEqual({ action: "store", material: { secret: "s" } });
+    });
+  });
+
+  describe("stdio arguments", () => {
+    const stdio = { transport: "stdio", slug: "x", name: "x", command: "npx" } as const;
+
+    it("stores new arguments in the material", () => {
+      expect(buildMcpUpdateMaterial({}, { ...stdio, args: ["--api-key", "fake-key"] })).toEqual({
+        action: "store",
+        material: { args: ["--api-key", "fake-key"] },
+      });
+    });
+
+    it("keeps the stored arguments when none are sent back", () => {
+      expect(
+        buildMcpUpdateMaterial({ args: ["--api-key", "fake-key"] }, { ...stdio, args: [] }),
+      ).toEqual({ action: "store", material: { args: ["--api-key", "fake-key"] } });
+    });
+
+    it("does not hand stored arguments to a different command", () => {
+      expect(
+        buildMcpUpdateMaterial(
+          { args: ["--api-key", "fake-key"] },
+          { ...stdio, command: "uvx", args: [] },
+          { commandChanged: true },
+        ),
+      ).toEqual({ action: "store", material: {} });
+    });
+
+    it("keeps the arguments when credentials are cleared", () => {
+      expect(
+        buildMcpUpdateMaterial(
+          { args: ["serve"], env: { API_KEY: "k" } },
+          { ...stdio, args: [], clearCredential: true },
+        ),
+      ).toEqual({ action: "store", material: { args: ["serve"] } });
     });
   });
 });

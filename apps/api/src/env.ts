@@ -62,6 +62,8 @@ export interface AppEnv {
   navLinks?: NavLink[];
   /** Customer name on the settings license notice (ANVIQ_LICENSEE). Unset shows no licensee. */
   licensee?: string;
+  /** Verified accounts that may add stdio MCP servers (ANVIQ_ADMIN_EMAILS), lowercased. */
+  adminEmails: string[];
   phoneCallsEnabled: boolean;
   phoneCallRingSeconds: number;
   phoneCallCooldownMinutes: number;
@@ -90,7 +92,6 @@ export interface AppEnv {
   daytonaTarget: string | undefined;
   boatApiKey: string | undefined;
   boatApiUrl: string | undefined;
-  composioApiKey: string | undefined;
   /** Optional integrations.sh-compatible catalog base URL. */
   integrationsCatalogUrl: string | undefined;
   pipedreamClientId: string | undefined;
@@ -237,6 +238,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     userDevicesEnabled: source.USER_DEVICES_ENABLED !== "false",
     navLinks: parseNavLinks(source.ANVIQ_NAV_LINKS),
     licensee: licenseeFromEnv(source.ANVIQ_LICENSEE),
+    adminEmails: list(source.ANVIQ_ADMIN_EMAILS).map((email) => email.toLowerCase()),
     ...phoneCallSettings(source),
     maxUploadSizeBytes: uploadSizeFromEnv(source),
     voiceSummaryMinChars: voiceSummaryMinCharsFromEnv(source.VOICE_SUMMARY_MIN_CHARS),
@@ -261,7 +263,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     daytonaTarget: source.DAYTONA_TARGET,
     boatApiKey: boatApiKeyFromEnv(source),
     boatApiUrl: boatApiUrlFromEnv(source),
-    composioApiKey: source.COMPOSIO_API_KEY,
     integrationsCatalogUrl: optional(source.INTEGRATIONS_CATALOG_URL),
     pipedreamClientId: optional(source.PIPEDREAM_CLIENT_ID),
     pipedreamClientSecret: optional(source.PIPEDREAM_CLIENT_SECRET),

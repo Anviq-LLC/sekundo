@@ -1,7 +1,13 @@
 import type { SecretMigrationRepository, SecretMigrationRow } from "@anviq/adapters";
 import type { PrismaClient } from "@anviq/db";
 
-const tables = ["secret", "botSecret", "vaultCredential", "integrationProviderConfig"] as const;
+const tables = [
+  "secret",
+  "botSecret",
+  "vaultCredential",
+  "integrationProviderConfig",
+  "userIntegrationProviderConfig",
+] as const;
 
 export function createSecretMigrationRepository(prisma: PrismaClient): SecretMigrationRepository {
   return {
@@ -23,7 +29,9 @@ export function createSecretMigrationRepository(prisma: PrismaClient): SecretMig
               label,
               ref: row.ciphertext,
               recordId:
-                label === "integrationProviderConfig" ? `integration-provider:${row.id}` : row.id,
+                label === "integrationProviderConfig" || label === "userIntegrationProviderConfig"
+                  ? `integration-provider:${row.id}`
+                  : row.id,
               ephemeral: row.kind?.startsWith("run-secret:"),
             };
           if (batch.length < 100) break;
@@ -43,7 +51,8 @@ export function createSecretMigrationRepository(prisma: PrismaClient): SecretMig
         (await prisma.secret.count({ where: { ciphertext: ref } })) ||
           (await prisma.botSecret.count({ where: { ciphertext: ref } })) ||
           (await prisma.vaultCredential.count({ where: { ciphertext: ref } })) ||
-          (await prisma.integrationProviderConfig.count({ where: { ciphertext: ref } })),
+          (await prisma.integrationProviderConfig.count({ where: { ciphertext: ref } })) ||
+          (await prisma.userIntegrationProviderConfig.count({ where: { ciphertext: ref } })),
       );
     },
   };

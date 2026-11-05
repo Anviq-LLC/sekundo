@@ -312,6 +312,8 @@ export const appContract = {
     transferOwnership: oc.input(TeamMemberInput).output(z.object({ ok: z.literal(true) })),
     removeMember: oc.input(TeamMemberInput).output(z.object({ ok: z.literal(true) })),
     leave: oc.input(TeamIdInput).output(z.object({ ok: z.literal(true) })),
+    /** Deletes a team and everything in it. Owner only, once nobody else is in it. */
+    remove: oc.input(TeamIdInput).output(z.object({ ok: z.literal(true) })),
     invitations: oc.input(TeamIdInput).output(z.array(TeamInvitationSchema)),
     invite: oc.input(InviteToTeamInput).output(TeamInvitationSchema),
     cancelInvitation: oc.input(InvitationIdInput).output(z.object({ ok: z.literal(true) })),
@@ -1133,9 +1135,9 @@ export const appContract = {
     set: oc
       .input(
         settingsScopeInput.extend({
-          effect: z.enum(["always_allow", "deny"]),
+          effect: z.enum(["always_allow", "require_approval", "deny"]),
           matchKind: z.enum(["tool", "connector", "site"]),
-          matchValue: z.string().min(1),
+          matchValue: z.string().trim().min(1),
         }),
       )
       .output(ActionApprovalRuleSchema),

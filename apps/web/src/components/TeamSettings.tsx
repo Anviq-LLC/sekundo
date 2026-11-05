@@ -21,6 +21,7 @@ import { useState } from "react";
 import { authClient } from "../lib/auth";
 import { rpc, selectSpace } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
+import { useIdentityConfirmation } from "./ConfirmIdentityDialog";
 import { SettingsGroup, SettingsRow } from "./SettingsRows";
 
 const TEAMS = ["organizations"] as const;
@@ -384,6 +385,11 @@ function TeamDetail({ team, onBack }: { team: Team; onBack: () => void }) {
   const [role, setRole] = useState<"member" | "admin">("member");
   const manager = canManage(team.role);
   const myId = authClient.useSession().data?.user.id;
+  const { withIdentityConfirmation, identityDialog } = useIdentityConfirmation();
+  const personal = useQuery({
+    queryKey: [...TEAMS, "personal"],
+    queryFn: () => rpc.organizations.personalSpace(),
+  });
   const [confirm, setConfirm] = useState<{
     title: string;
     action: string;
@@ -589,7 +595,28 @@ function TeamDetail({ team, onBack }: { team: Team; onBack: () => void }) {
         >
           {t`Leave team`}
         </Button>
-      ) : null}
+      ) : (
+        <Button
+          variant="ghost"
+          className="text-destructive"
+          disabled={busy}
+          onClick={() =>
+            setConfirm({
+              title: t`Delete ${team.name}?`,
+              action: t`Delete team`,
+              work: async () => {
+                await withIdentityConfirmation(() => rpc.organizations.remove({ organizationId }));
+                const spaceId = personal.data?.spaceId;
+                if (spaceId) openSpace(spaceId);
+                else onBack();
+              },
+            })
+          }
+        >
+          {t`Delete team`}
+        </Button>
+      )}
+      {identityDialog}
       {error ? (
         <p role="alert" className="text-[13px] text-destructive">
           {error}

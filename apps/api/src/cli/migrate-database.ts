@@ -6,6 +6,7 @@ import { migrateBuiltInMemory, migrateJobQueue } from "@anviq/adapters";
 import { loadRootEnv } from "@anviq/core/node/load-root-env";
 import {
   databaseUrls,
+  deployMigrations,
   provisionRuntimeRole,
   RUNTIME_ROLE,
   SINGLE_DATABASE_URL_WARNING,
@@ -13,9 +14,12 @@ import {
 
 loadRootEnv();
 const urls = databaseUrls(process.env);
-execFileSync("pnpm", ["--filter", "@anviq/db", "exec", "prisma", "migrate", "deploy"], {
-  stdio: "inherit",
-  env: { ...process.env, DATABASE_MIGRATION_URL: urls.migrationUrl },
+await deployMigrations({
+  migrationUrl: urls.migrationUrl,
+  previousMigrations: process.env.ANVIQ_DEPLOYED_MIGRATIONS?.split(","),
+  dbPackageDir: execFileSync("pnpm", ["--filter", "@anviq/db", "exec", "pwd"], {
+    encoding: "utf8",
+  }).trim(),
 });
 await migrateJobQueue(urls.migrationUrl);
 await migrateBuiltInMemory(urls.migrationUrl);

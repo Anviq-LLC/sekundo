@@ -34,7 +34,7 @@ const DROP = [
 const rules = [
   [/\b[\w.-]+@rakazo\.com\b/gi, "lvoss@anviq.net"],
   [/rakazo\.com/gi, "anviq.net"],
-  [/ghcr\.io\/elie222\/rakazo/g, "ghcr.io/leovoss/anviq-agents"],
+  [/ghcr\.io\/elie222\/rakazo/g, "ghcr.io/anviq-llc/anviq-agents"],
   [
     /(e)lie222(\\?\/)rakazo/gi,
     (_m, e, s) => (e === "E" ? `Leovoss${s}Anviq-agents` : `leovoss${s}anviq-agents`),

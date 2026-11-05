@@ -44,6 +44,7 @@ function database() {
     ["botSecret", []],
     ["vaultCredential", []],
     ["integrationProviderConfig", []],
+    ["userIntegrationProviderConfig", []],
     ["user", [{ id: "user" }]],
     ["space", [{ id: "space", organizationId: "organization" }]],
     ["organization", [{ id: "organization" }]],
@@ -90,7 +91,7 @@ function database() {
         const removed = rows.filter((row) => matches(row, args.where));
         for (const row of removed) rows.splice(rows.indexOf(row), 1);
         if (table === "user")
-          for (const target of ["secret", "botSecret"]) {
+          for (const target of ["secret", "botSecret", "userIntegrationProviderConfig"]) {
             const children = tables.get(target)!;
             for (let i = children.length - 1; i >= 0; i--)
               if (removed.some((parent) => children[i]?.userId === parent.id))
@@ -134,6 +135,7 @@ function database() {
       bot_secrets: "botSecret",
       vault_credentials: "vaultCredential",
       integration_provider_configs: "integrationProviderConfig",
+      user_integration_provider_configs: "userIntegrationProviderConfig",
       user: "user",
       spaces: "space",
       bots: "bot",
@@ -279,7 +281,13 @@ describe("secret persistence cleanup", () => {
     const config = await store.put("config", context, {
       recordId: "integration-provider:composio",
     });
+    const userKey = await store.put("user key", context, {
+      recordId: "integration-provider:composio:user",
+    });
     db.tables.get("botSecret")!.push({ id: "bot-row", ciphertext: bot.ref, userId: "user" });
+    db.tables
+      .get("userIntegrationProviderConfig")!
+      .push({ id: "composio:user", ciphertext: userKey.ref, userId: "user" });
     try {
       await prisma.user.deleteMany({ where: { id: "user" } });
       expect(fake.values.size).toBe(1);

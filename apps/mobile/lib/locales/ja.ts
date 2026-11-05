@@ -1,4 +1,7 @@
 export const JA_MESSAGES: Record<string, string> = {
+  "Schedule delayed": "予定の実行が遅れています",
+  "Add rule": "ルールを追加",
+  "Tool name": "ツール名",
   "Not sent. Tap for options": "未送信。タップしてオプションを表示",
   "Image input is not configured for this model.": "このモデルでは画像入力が設定されていません。",
   "Send as file": "ファイルとして送信",
@@ -784,8 +787,7 @@ export const JA_MESSAGES: Record<string, string> = {
   "Enter a server URL": "サーバーのURLを入力してください",
   "Public servers need https://. HTTP only works on your local network.":
     "公開サーバーには https:// が必要です。HTTPはローカルネットワークでのみ使用できます。",
-  "That URL did not look like a Sekundo server":
-    "そのURLはSekundoサーバーではないようです",
+  "That URL did not look like a Sekundo server": "そのURLはSekundoサーバーではないようです",
   "That URL is missing a host": "URLにホストがありません",
   "That doesn’t look like a URL": "URLではないようです",
   "Use an http or https URL": "http または https のURLを使用してください",
@@ -855,7 +857,7 @@ export const JA_MESSAGES: Record<string, string> = {
   "AI models": "AIモデル",
   Memory: "メモリ",
   "Privacy policies": "プライバシーポリシー",
-  "Sekundo": "Sekundo",
+  Sekundo: "Sekundo",
   "Withdraw all permissions": "すべての許可を取り消す",
   "Withdraw all permissions?": "すべての許可を取り消しますか？",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":
@@ -1015,8 +1017,7 @@ export const JA_MESSAGES: Record<string, string> = {
   Work: "仕事",
   Both: "両方",
   "How will you use Sekundo?": "Sekundoをどのように使いますか？",
-  "What do you most want Sekundo to help with?":
-    "Sekundoで一番手伝ってほしいことは何ですか？",
+  "What do you most want Sekundo to help with?": "Sekundoで一番手伝ってほしいことは何ですか？",
   "How big is your team?": "チームの規模はどのくらいですか？",
   "How did you hear about us?": "Sekundoを何で知りましたか？",
   "Welcome to Sekundo": "Sekundoへようこそ",
@@ -1218,6 +1219,8 @@ export const JA_MESSAGES: Record<string, string> = {
   Invitations: "招待",
   Invite: "招待する",
   Join: "参加",
+  "Delete team": "チームを削除",
+  "Delete this team?": "このチームを削除しますか？",
   "Leave team": "チームを退出",
   "Leave this team?": "このチームを退出しますか？",
   "Make admin": "管理者にする",

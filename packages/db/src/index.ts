@@ -19,6 +19,7 @@ export * from "./content-migration.js";
 export * from "./credential-secrets.js";
 export * from "./cross-space-communication.js";
 export * from "./database-access.js";
+export * from "./deferred-migrations.js";
 export * from "./events.js";
 export * from "./expire-stuck-run.js";
 export * from "./external-conversations.js";

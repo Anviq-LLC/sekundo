@@ -2055,8 +2055,10 @@ describeWithDatabase("API authorization and resource isolation", () => {
       await expectForbidden(app, cookie, "updater/check", {});
       await expectForbidden(app, cookie, "updater/apply", {});
       await expectForbidden(app, cookie, "integrationSetup/save", {
-        provider: "composio",
-        apiKey: "fake-key",
+        provider: "pipedream",
+        clientId: "client",
+        clientSecret: "fake-secret",
+        projectId: "project",
       });
     }
     expect(

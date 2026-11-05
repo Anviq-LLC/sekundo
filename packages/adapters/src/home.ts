@@ -178,9 +178,10 @@ export class LocalAgentHomeStore implements AgentHomeStore {
   ): Promise<string> {
     await this.waitForBotWrite(botId);
     await this.recoverInterruptedCommit(botId);
-    const full = await containedExistingPath(this.botDir(botId), filePath);
+    const { root, full } = await containedExistingPath(this.botDir(botId), filePath);
     const handle = await open(full, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
+      assertContained(root, await fileHandlePath(handle.fd));
       if (options?.maxBytes !== undefined) {
         const info = await handle.stat();
         if (info.size > options.maxBytes) {
@@ -371,8 +372,10 @@ function safeJoin(root: string, rel: string) {
 
 async function containedExistingPath(root: string, rel: string) {
   await mkdir(root, { recursive: true });
-  const candidate = safeJoin(root, rel);
-  return containedTarget(root, candidate);
+  const resolvedRoot = await realpath(root);
+  const full = await realpath(safeJoin(resolvedRoot, rel));
+  assertContained(resolvedRoot, full);
+  return { root: resolvedRoot, full };
 }
 
 async function containedWritePath(root: string, rel: string) {

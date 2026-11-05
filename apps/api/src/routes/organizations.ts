@@ -2,9 +2,11 @@
 import { teamInvitationEmail } from "@anviq/auth";
 import {
   acceptInvitation,
+  assertTeamCanBeDeleted,
   cancelInvitation,
   createOrganization,
   decideMemoryProposal,
+  deleteEmptyTeam,
   inviteToOrganization,
   leaveOrganization,
   listInvitations,
@@ -26,6 +28,8 @@ import {
 } from "@anviq/db";
 import { getLogger } from "@anviq/logging";
 import { ORPCError } from "@orpc/server";
+import { deleteAccountContent } from "../account-deletion.js";
+import { requireIdentityConfirmation } from "../identity-confirmation.js";
 import type { RouterContext } from "./context.js";
 
 const CODES = {
@@ -144,6 +148,16 @@ export function organizationsRoutes(ctx: RouterContext) {
           return done;
         }),
       ),
+      remove: authed.organizations.remove.handler(async ({ context, input }) => {
+        await requireIdentityConfirmation(deps.auth, context);
+        return system(async () => {
+          const target = { userId: context.actor.userId, organizationId: input.organizationId };
+          await assertTeamCanBeDeleted(prisma, target);
+          await deleteAccountContent(deps, target.userId, target.organizationId);
+          await deleteEmptyTeam(prisma, target);
+          return done;
+        });
+      }),
       invitations: authed.organizations.invitations.handler(({ context, input }) =>
         system(async () =>
           (await listInvitations(prisma, context.actor.userId, input.organizationId)).map(

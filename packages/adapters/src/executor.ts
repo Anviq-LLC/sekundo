@@ -171,7 +171,7 @@ import {
 } from "./run-turn-images.js";
 import { loadAgentScratchpadContext } from "./scratchpad-context.js";
 import { inferScript } from "./scripted-runtime.js";
-import { listAgentSkillRecords } from "./skill-tools.js";
+import { builtinAgentSkillRecords, listAgentSkillRecords } from "./skill-tools.js";
 import {
   continueRunClaimFence,
   refreshTakeoverContinuePlan,
@@ -1193,7 +1193,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           connectedPlugins.length > 0
             ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
             : "No plugins are connected yet.";
-        const taughtSkillIndex = savedSkills.slice(0, 20);
+        const ownerOnlySkills = sharedChat || messagingChannelRun;
+        const runSavedSkills = ownerOnlySkills ? [] : savedSkills;
+        const runAgentSkills = ownerOnlySkills ? builtinAgentSkillRecords() : agentSkills;
+        const taughtSkillIndex = runSavedSkills.slice(0, 20);
         const taughtSkillsLine =
           taughtSkillIndex.length > 0
             ? `Saved taught skills:\n${taughtSkillIndex
@@ -1206,16 +1209,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   "\n",
                 )}\nWhen the user asks to run a taught skill by name, follow that skill's playbook exactly. The full playbook is included in the user task when they invoke it.`
             : undefined;
-        const agentSkillsLine = formatSkillsCatalogInstruction(agentSkills);
+        const agentSkillsLine = formatSkillsCatalogInstruction(runAgentSkills);
         const missingImagesInstruction = missingTurnImagesInstruction(
           turnBlocks,
           currentTurnImages,
         );
         const taskPrompt = expandSkillReferencesInPrompt(
           [task.prompt, attachedFilesPrompt, missingImagesInstruction].filter(Boolean).join("\n\n"),
-          agentSkills,
+          runAgentSkills,
         );
-        const invokedSkill = savedSkills.find((skill) =>
+        const invokedSkill = runSavedSkills.find((skill) =>
           promptInvokesSkill(taskPrompt, skill.name || skill.goal),
         );
         const basePrompt = invokedSkill

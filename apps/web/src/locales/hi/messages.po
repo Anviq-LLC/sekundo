@@ -577,6 +577,10 @@ msgstr "पासकी जोड़ें"
 msgid "Add provider"
 msgstr "प्रोवाइडर जोड़ें"
 
+#: src/components/ApprovalRulesSettings.tsx
+msgid "Add rule"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "सर्वर जोड़ें"
@@ -1483,6 +1487,14 @@ msgstr "पूर्ण"
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "पूर्ण"
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio key"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2430,6 +2442,8 @@ msgstr "{0} डिलीट करें"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#. placeholder {0}: team.name
+#: src/components/TeamSettings.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0} डिलीट करें?"
@@ -2453,6 +2467,10 @@ msgstr "अनुभाग हटाएँ"
 #: src/pages/shell/shell-dialogs.tsx
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Delete space"
+msgstr ""
+
+#: src/components/TeamSettings.tsx
+msgid "Delete team"
 msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
@@ -5050,7 +5068,9 @@ msgstr ""
 msgid "Saturday"
 msgstr "शनिवार"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
@@ -5123,6 +5143,10 @@ msgstr "सहेजा जा रहा है…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "हां या ना कहें, या एक वाक्य में उत्तर दें।"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Schedule delayed"
+msgstr "निर्धारित निष्पादन में देरी"
 
 #: src/components/ModelCredits.tsx
 msgid "Scheduled routines"
@@ -6021,6 +6045,7 @@ msgstr "टूल आर्ग्युमेंट JSON ऑब्जेक्�
 msgid "Tool arguments must be JSON"
 msgstr "टूल आर्ग्युमेंट JSON होने चाहिए"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
 msgstr "टूल का नाम"

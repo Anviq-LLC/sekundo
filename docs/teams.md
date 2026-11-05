@@ -20,6 +20,20 @@ A person who still has active bots in a team cannot be removed, and cannot leave
 are archived or deleted. An account that is the only owner of a team with other people cannot be
 deleted until the team has another owner.
 
+## One sidebar
+
+The sidebar lists Personal and each team the person belongs to, one header per workspace, so
+everything is in view without switching first. Opening a chat in another workspace switches to it.
+The list holds only the person's own bots and the groups they host or are in, so nobody sees another
+member's chats here either.
+
+## Deleting a team
+
+Only the owner can delete a team, and only once nobody else is in it, so the other people have left
+or been removed first. The owner confirms their identity, and the team's spaces, bots, computers, files,
+company memory, invitations and activity log are then removed for good. The owner's personal workspace
+and their other teams are not touched.
+
 Limits: ten teams created per person, fifty pending invitations per team, fifty people in one shared
 chat.
 
@@ -42,7 +56,7 @@ in one transcript, and each message shows who wrote it.
   cannot be skipped on its behalf, bot management tools stay off, and the host's own computer is not
   reachable.
 - In a shared chat a bot does not read or write its own notes, its saved memories or its scratchpad, and
-  the person's own memory is not loaded. It still reads company memory, so nothing private from the
+  the person's own memory is not loaded. Its routines and taught skills are not offered either. It still reads company memory, so nothing private from the
   host's other chats appears in front of guests.
 - A group that already has messages cannot be shared until it is cleared, so something said in
   private is never handed to someone who joins later. Everyone keeps their own reading position.

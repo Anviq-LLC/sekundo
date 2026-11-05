@@ -588,3 +588,35 @@ export async function assertAccountCanBeDeleted(
       `Transfer ownership of ${stranded.organization.name} before deleting your account`,
     );
 }
+
+/** Only a team's owner can delete it, and only once nobody else is in it. */
+export async function assertTeamCanBeDeleted(
+  prisma: Pick<PrismaClient, "organization">,
+  input: { userId: string; organizationId: string },
+): Promise<void> {
+  const team = await prisma.organization.findFirst({
+    where: {
+      id: input.organizationId,
+      metadata: { contains: '"kind":"team"' },
+      members: { some: { userId: input.userId } },
+    },
+    select: { members: { select: { userId: true, role: true } } },
+  });
+  const self = team?.members.find((member) => member.userId === input.userId);
+  if (!team || !self) throw new OrganizationError("NOT_FOUND", "Team not found");
+  if (organizationRole(self.role) !== "owner")
+    throw new OrganizationError("FORBIDDEN", "Only the owner can delete a team");
+  if (team.members.length > 1)
+    throw new OrganizationError("CONFLICT", "Remove the other members before deleting the team");
+}
+
+/** Removes a team once its spaces are gone. Invitations, events and keys go with it. */
+export async function deleteEmptyTeam(
+  prisma: PrismaClient,
+  input: { userId: string; organizationId: string },
+): Promise<void> {
+  await assertTeamCanBeDeleted(prisma, input);
+  if ((await prisma.space.count({ where: { organizationId: input.organizationId } })) > 0)
+    throw new OrganizationError("CONFLICT", "The team still has content. Try again");
+  await prisma.organization.delete({ where: { id: input.organizationId } });
+}

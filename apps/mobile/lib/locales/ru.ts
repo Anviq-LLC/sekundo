@@ -1,4 +1,7 @@
 export const RU_MESSAGES: Record<string, string> = {
+  "Schedule delayed": "Запуск по расписанию задерживается",
+  "Add rule": "Добавить правило",
+  "Tool name": "Название инструмента",
   "Not sent. Tap for options": "Не отправлено. Нажмите для выбора действий",
   "Image input is not configured for this model.": "Ввод изображений не настроен для этой модели.",
   "Send as file": "Отправить как файл",
@@ -905,7 +908,7 @@ export const RU_MESSAGES: Record<string, string> = {
   "AI models": "Модели ИИ",
   Memory: "Память",
   "Privacy policies": "Политики конфиденциальности",
-  "Sekundo": "Sekundo",
+  Sekundo: "Sekundo",
   "Withdraw all permissions": "Отозвать все разрешения",
   "Withdraw all permissions?": "Отозвать все разрешения?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":
@@ -1223,6 +1226,8 @@ export const RU_MESSAGES: Record<string, string> = {
   Invitations: "Приглашения",
   Invite: "Пригласить",
   Join: "Присоединиться",
+  "Delete team": "Удалить команду",
+  "Delete this team?": "Удалить эту команду?",
   "Leave team": "Покинуть команду",
   "Leave this team?": "Покинуть эту команду?",
   "Make admin": "Сделать администратором",

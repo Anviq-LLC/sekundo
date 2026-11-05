@@ -577,6 +577,10 @@ msgstr "パスキーを追加"
 msgid "Add provider"
 msgstr "プロバイダーを追加"
 
+#: src/components/ApprovalRulesSettings.tsx
+msgid "Add rule"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "サーバーを追加"
@@ -1483,6 +1487,14 @@ msgstr "完了"
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "完了"
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio key"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2430,6 +2442,8 @@ msgstr "{0}を削除"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#. placeholder {0}: team.name
+#: src/components/TeamSettings.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "{0}を削除しますか？"
@@ -2454,6 +2468,10 @@ msgstr "セクションを削除"
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Delete space"
 msgstr "スペースを削除"
+
+#: src/components/TeamSettings.tsx
+msgid "Delete team"
+msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Delete this Space's credentials?"
@@ -5050,7 +5068,9 @@ msgstr ""
 msgid "Saturday"
 msgstr "土曜日"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
@@ -5123,6 +5143,10 @@ msgstr "保存中…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "「はい」か「いいえ」、または文章で答えてください。"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Schedule delayed"
+msgstr "予定の実行が遅れています"
 
 #: src/components/ModelCredits.tsx
 msgid "Scheduled routines"
@@ -6021,6 +6045,7 @@ msgstr "ツールの引数はJSONオブジェクトである必要がありま�
 msgid "Tool arguments must be JSON"
 msgstr "ツールの引数はJSONである必要があります"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
 msgstr "ツール名"

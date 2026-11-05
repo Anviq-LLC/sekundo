@@ -4,8 +4,10 @@ import { createDb } from "./client.js";
 import {
   acceptInvitation,
   assertAccountCanBeDeleted,
+  assertTeamCanBeDeleted,
   cancelInvitation,
   createOrganization,
+  deleteEmptyTeam,
   inviteToOrganization,
   leaveOrganization,
   listInvitations,
@@ -370,5 +372,35 @@ describePostgres("organization membership (PostgreSQL)", () => {
       expect(await codeOf(createOrganization(db.prisma, { userId: ids.cara, name: "   " }))).toBe(
         "INVALID",
       );
+    }));
+  it("deletes a team only for its owner, once nobody else is in it and its spaces are gone", () =>
+    run(async () => {
+      const solo = await createOrganization(db.prisma, { userId: ids.dan, name: "Solo" });
+      const busy = await createOrganization(db.prisma, { userId: ids.dan, name: "Busy" });
+      created.push(solo.id, busy.id);
+      await db.prisma.member.create({
+        data: {
+          id: `mem-${suffix}`,
+          organizationId: busy.id,
+          userId: ids.ben,
+          role: "member",
+          createdAt: new Date(),
+        },
+      });
+      const target = (userId: string, organizationId: string) => ({ userId, organizationId });
+      expect(await codeOf(assertTeamCanBeDeleted(db.prisma, target(ids.cara, solo.id)))).toBe(
+        "NOT_FOUND",
+      );
+      expect(await codeOf(assertTeamCanBeDeleted(db.prisma, target(ids.ben, busy.id)))).toBe(
+        "FORBIDDEN",
+      );
+      expect(await codeOf(assertTeamCanBeDeleted(db.prisma, target(ids.dan, busy.id)))).toBe(
+        "CONFLICT",
+      );
+      expect(await codeOf(deleteEmptyTeam(db.prisma, target(ids.dan, solo.id)))).toBe("CONFLICT");
+      await db.prisma.space.deleteMany({ where: { organizationId: solo.id } });
+      await deleteEmptyTeam(db.prisma, target(ids.dan, solo.id));
+      expect(await db.prisma.organization.findUnique({ where: { id: solo.id } })).toBeNull();
+      expect(await db.prisma.organization.findUnique({ where: { id: busy.id } })).not.toBeNull();
     }));
 });

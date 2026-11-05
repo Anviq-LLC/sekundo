@@ -578,6 +578,10 @@ msgstr "新增通行金鑰"
 msgid "Add provider"
 msgstr "新增供應商"
 
+#: src/components/ApprovalRulesSettings.tsx
+msgid "Add rule"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "新增伺服器"
@@ -1484,6 +1488,14 @@ msgstr "完成"
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "已完成"
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio key"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2431,6 +2443,8 @@ msgstr "刪除 {0}"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#. placeholder {0}: team.name
+#: src/components/TeamSettings.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "刪除 {0}？"
@@ -2455,6 +2469,10 @@ msgstr "刪除分組"
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Delete space"
 msgstr "刪除空間"
+
+#: src/components/TeamSettings.tsx
+msgid "Delete team"
+msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Delete this Space's credentials?"
@@ -5051,7 +5069,9 @@ msgstr ""
 msgid "Saturday"
 msgstr "週六"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
@@ -5124,6 +5144,10 @@ msgstr "正在儲存…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "回答是或否，或一句話說明。"
+
+#: src/pages/RoutineEditor.tsx
+msgid "Schedule delayed"
+msgstr "排程執行延遲"
 
 #: src/components/ModelCredits.tsx
 msgid "Scheduled routines"
@@ -6022,6 +6046,7 @@ msgstr "工具參數必須是 JSON 物件"
 msgid "Tool arguments must be JSON"
 msgstr "工具參數必須是 JSON"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
 msgstr "工具名稱"

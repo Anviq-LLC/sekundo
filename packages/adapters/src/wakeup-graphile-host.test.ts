@@ -321,6 +321,12 @@ describe("reserved Graphile workloads", () => {
     await host.start(handlers());
     const configurations = run.mock.calls.map(([options]) => options);
     expect(configurations.map(({ concurrency }) => concurrency)).toEqual([4, 1, 1]);
+    // The worker's own shutdown hands back runs first; Graphile must not kill the process.
+    expect(configurations.map(({ noHandleSignals }) => noHandleSignals)).toEqual([
+      true,
+      true,
+      true,
+    ]);
     expect(Object.keys(configurations[0].taskList)).toEqual(["run.interactive"]);
     expect(Object.keys(configurations[1].taskList)).toEqual(["run.continue"]);
     expect(Object.keys(configurations[2].taskList)).not.toContain("run.continue");

@@ -1,4 +1,7 @@
 export const ZH_MESSAGES: Record<string, string> = {
+  "Schedule delayed": "计划执行延迟",
+  "Add rule": "添加规则",
+  "Tool name": "工具名称",
   "Not sent. Tap for options": "未发送。轻点查看选项",
   "Image input is not configured for this model.": "此模型尚未配置图片输入。",
   "Send as file": "作为文件发送",
@@ -869,7 +872,7 @@ export const ZH_MESSAGES: Record<string, string> = {
   "AI models": "AI 模型",
   Memory: "记忆",
   "Privacy policies": "隐私政策",
-  "Sekundo": "Sekundo",
+  Sekundo: "Sekundo",
   "Withdraw all permissions": "撤销所有权限",
   "Withdraw all permissions?": "撤销所有权限？",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":
@@ -1180,6 +1183,8 @@ export const ZH_MESSAGES: Record<string, string> = {
   Invitations: "邀请",
   Invite: "邀请",
   Join: "加入",
+  "Delete team": "删除团队",
+  "Delete this team?": "要删除这个团队吗？",
   "Leave team": "退出团队",
   "Leave this team?": "要退出这个团队吗？",
   "Make admin": "设为管理员",

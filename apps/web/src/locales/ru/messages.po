@@ -577,6 +577,10 @@ msgstr "Добавить ключ доступа"
 msgid "Add provider"
 msgstr "Добавить поставщика"
 
+#: src/components/ApprovalRulesSettings.tsx
+msgid "Add rule"
+msgstr ""
+
 #: src/pages/McpServersOverlay.tsx
 msgid "Add server"
 msgstr "Добавить сервер"
@@ -1483,6 +1487,14 @@ msgstr "Завершить"
 #: src/components/SubagentCard.tsx
 msgid "Completed"
 msgstr "Завершено"
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio API key"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+msgid "Composio key"
+msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2430,6 +2442,8 @@ msgstr "Удалить {0}"
 
 #. placeholder {0}: bot.name
 #. placeholder {0}: item.name
+#. placeholder {0}: team.name
+#: src/components/TeamSettings.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete {0}?"
 msgstr "Удалить {0}?"
@@ -2454,6 +2468,10 @@ msgstr "Удалить раздел"
 #: src/pages/SpaceSettingsPanel.tsx
 msgid "Delete space"
 msgstr "Удалить пространство"
+
+#: src/components/TeamSettings.tsx
+msgid "Delete team"
+msgstr ""
 
 #: src/pages/SpaceSettingOverrides.tsx
 msgid "Delete this Space's credentials?"
@@ -5050,7 +5068,9 @@ msgstr ""
 msgid "Saturday"
 msgstr "суббота"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
+#: src/components/integrations/IntegrationSetup.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
@@ -5123,6 +5143,10 @@ msgstr "Сохранение…"
 #: src/lib/call-session.ts
 msgid "Say yes or no, or answer in a sentence."
 msgstr "Скажите «да» или «нет» или ответьте предложением."
+
+#: src/pages/RoutineEditor.tsx
+msgid "Schedule delayed"
+msgstr "Запуск по расписанию задерживается"
 
 #: src/components/ModelCredits.tsx
 msgid "Scheduled routines"
@@ -6021,6 +6045,7 @@ msgstr "Аргументы должны быть объектом JSON"
 msgid "Tool arguments must be JSON"
 msgstr "Аргументы должны быть в формате JSON"
 
+#: src/components/ApprovalRulesSettings.tsx
 #: src/pages/RoutineEditor.tsx
 msgid "Tool name"
 msgstr "Название инструмента"
