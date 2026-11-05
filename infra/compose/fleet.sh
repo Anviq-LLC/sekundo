@@ -2,11 +2,13 @@
 # Update or inspect a list of published-image instances over SSH.
 #
 #   ./fleet.sh update <image tag> [--dry-run] [--canary a,b] [--parallel N] [--only a,b]
+#                                 [--registry <path>]
 #   ./fleet.sh versions [--parallel N] [--only a,b]
 #
 # An update goes in two stages. The canary instances (default: the first in the list) update one
 # after another; if any fails, nothing else is touched. The rest then update N at a time (default
-# 1). After any failure no new instance is started, the ones already running finish, and the exit
+# 1). --registry moves the instances to the images under that path, for example
+# ghcr.io/anviq-llc/sekundo. After any failure no new instance is started, the ones already running finish, and the exit
 # status is 1. Run the same command again to carry on: an instance already on the tag is skipped.
 #
 # The list is a private file outside the repository (default ~/.config/anviq/fleet, or
@@ -19,7 +21,7 @@ list="${ANVIQ_FLEET_FILE:-${HOME}/.config/anviq/fleet}"
 [[ -f "${list}" ]] || { echo "No instance list at ${list}" >&2; exit 1; }
 
 usage() {
-  echo "Usage: $0 update <image tag> [--dry-run] [--canary a,b] [--parallel N] [--only a,b] | versions [--parallel N] [--only a,b]" >&2
+  echo "Usage: $0 update <image tag> [--dry-run] [--canary a,b] [--parallel N] [--only a,b] [--registry path] | versions [--parallel N] [--only a,b]" >&2
   exit 1
 }
 
@@ -43,7 +45,7 @@ update() {
   scp -q "${here}/update-instance.sh" "${target}:${remote}"
   scp -q "${compose}" "${target}:${remote}.yml"
   rm -f "${compose}"
-  ssh -n "${target}" "ANVIQ_DIR=$(printf %q "${dir}") ANVIQ_COMPOSE_FILE=${remote}.yml bash ${remote} ${tag} ${flag}; code=\$?; rm -f ${remote} ${remote}.yml; exit \$code"
+  ssh -n "${target}" "ANVIQ_DIR=$(printf %q "${dir}") ANVIQ_COMPOSE_FILE=${remote}.yml ${registry:+ANVIQ_REGISTRY=$(printf %q "${registry}")} bash ${remote} ${tag} ${flag}; code=\$?; rm -f ${remote} ${remote}.yml; exit \$code"
 }
 
 versions() {
@@ -54,7 +56,7 @@ versions() {
 command="${1:-}"
 [[ "${command}" == update || "${command}" == versions ]] || usage
 shift
-tag="" flag="" canary="" only="" parallel=1
+tag="" flag="" canary="" only="" parallel=1 registry=""
 if [[ "${command}" == update ]]; then
   tag="${1:-}"
   [[ -n "${tag}" && "${tag}" != --* ]] || usage
@@ -64,6 +66,7 @@ while (( $# )); do
   case "$1" in
     --dry-run) [[ "${command}" == update ]] || usage; flag="--dry-run" ;;
     --canary) [[ "${command}" == update && -n "${2:-}" ]] || usage; canary="$2"; shift ;;
+    --registry) [[ "${command}" == update && -n "${2:-}" ]] || usage; registry="$2"; shift ;;
     --only) [[ -n "${2:-}" ]] || usage; only="$2"; shift ;;
     --parallel) [[ "${2:-}" =~ ^[1-9][0-9]*$ ]] || usage; parallel="$2"; shift ;;
     *) usage ;;

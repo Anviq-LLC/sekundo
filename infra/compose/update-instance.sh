@@ -8,6 +8,10 @@
 # --dry-run checks the tag, the Compose file and free disk, prints what would change, and stops
 # before touching .env, the database or the running containers.
 #
+# ANVIQ_REGISTRY, for example ghcr.io/anviq-llc/sekundo, moves the instance to the app and computer
+# images under that path (<path>/app and <path>/computer); the previous paths are restored if the
+# update rolls back.
+#
 # ANVIQ_COMPOSE_FILE names a docker-compose.images.yml that matches the tag (fleet.sh sends one). It
 # is checked first and replaces the instance's copy only once the update starts; the old copy is
 # kept next to it and restored if the update rolls back.
@@ -21,6 +25,12 @@ DRY_RUN=0
 [[ "${2:-}" == --dry-run ]] && DRY_RUN=1
 [[ "${TAG}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || {
   echo "Usage: $0 <image tag, for example sha-1a2b3c4 or edge> [--dry-run]" >&2
+  exit 1
+}
+
+REGISTRY="${ANVIQ_REGISTRY:-}"
+[[ -z "${REGISTRY}" || "${REGISTRY}" =~ ^[a-z0-9.-]+(:[0-9]+)?(/[a-z0-9._-]+)+$ ]] || {
+  echo "ANVIQ_REGISTRY must look like ghcr.io/owner/name" >&2
   exit 1
 }
 
@@ -48,6 +58,11 @@ set_env() {
   sed -i "/^${key}=/d" .env
   printf '%s=%s\n' "${key}" "${value}" >>.env
 }
+env_value() { sed -n "s/^$1=//p" .env | tail -n 1; }
+# Put a setting back as it was: its old value, or absent when it had none.
+restore_env() {
+  if [[ -n "$2" ]]; then set_env "$1" "$2"; else sed -i "/^$1=/d" .env; fi
+}
 
 if (( DRY_RUN )); then
   [[ -f .env || -f secrets.enc.yaml ]] || { echo "No .env and no secrets.enc.yaml in $(pwd)" >&2; exit 1; }
@@ -62,11 +77,12 @@ if (( DRY_RUN )); then
         exit 1
       }
       echo "Found ${image}"
-    done < <(ANVIQ_IMAGE_TAG="${TAG}" ANVIQ_COMPUTER_IMAGE_TAG="${TAG}" docker compose --env-file .env "${files[@]}" config --images | sort -u)
+    done < <(env ANVIQ_IMAGE_TAG="${TAG}" ANVIQ_COMPUTER_IMAGE_TAG="${TAG}" ${REGISTRY:+ANVIQ_IMAGE="${REGISTRY}/app" ANVIQ_COMPUTER_IMAGE="${REGISTRY}/computer"} docker compose --env-file .env "${files[@]}" config --images | sort -u)
   fi
   free_gb="$(df -BG --output=avail . | tail -n 1 | tr -dc '0-9')"
   (( free_gb >= MIN_FREE_GB )) || { echo "Only ${free_gb} GB free; need ${MIN_FREE_GB}" >&2; exit 1; }
   [[ -z "${new_compose}" ]] || echo "Would replace ${COMPOSE_BASE} with the one for ${TAG}"
+  [[ -z "${REGISTRY}" ]] || echo "Would move the images to ${REGISTRY}"
   echo "Dry run ok: would update to ${TAG} with ${free_gb} GB free"
   exit 0
 fi
@@ -86,8 +102,11 @@ free_gb="$(df -BG --output=avail . | tail -n 1 | tr -dc '0-9')"
 previous_image="$(docker inspect --format '{{.Image}}' "$(compose ps -q api)" 2>/dev/null || true)"
 previous_tag="$(sed -n 's/^ANVIQ_IMAGE_TAG=//p' .env | tail -n 1)"
 previous_computer_tag="$(sed -n 's/^ANVIQ_COMPUTER_IMAGE_TAG=//p' .env | tail -n 1)"
+previous_image_path="$(env_value ANVIQ_IMAGE)"
+previous_computer_path="$(env_value ANVIQ_COMPUTER_IMAGE)"
 
-if [[ "${previous_tag}" == "${TAG}" && -z "${new_compose}" ]]; then
+if [[ "${previous_tag}" == "${TAG}" && -z "${new_compose}" &&
+  ( -z "${REGISTRY}" || "${previous_image_path}" == "${REGISTRY}/app" ) ]]; then
   echo "Already on ${TAG}"
   exit 0
 fi
@@ -118,6 +137,7 @@ rollback() {
   echo "Update failed; going back to ${previous_tag:-the previous images}" >&2
   [[ -z "${saved_compose}" ]] || cp -p "${saved_compose}" "${COMPOSE_BASE}"
   if [[ -n "${previous_tag}" ]]; then
+    [[ -z "${REGISTRY}" ]] || { restore_env ANVIQ_IMAGE "${previous_image_path}"; restore_env ANVIQ_COMPUTER_IMAGE "${previous_computer_path}"; }
     set_env ANVIQ_IMAGE_TAG "${previous_tag}"
     set_env ANVIQ_COMPUTER_IMAGE_TAG "${previous_computer_tag:-${previous_tag}}"
     timeout "${UP_TIMEOUT}" docker compose --env-file .env "${files[@]}" up -d --wait --pull never || true
@@ -126,6 +146,7 @@ rollback() {
   exit 1
 }
 
+[[ -z "${REGISTRY}" ]] || { set_env ANVIQ_IMAGE "${REGISTRY}/app"; set_env ANVIQ_COMPUTER_IMAGE "${REGISTRY}/computer"; }
 set_env ANVIQ_IMAGE_TAG "${TAG}"
 set_env ANVIQ_COMPUTER_IMAGE_TAG "${TAG}"
 trap 'echo "Failed at line ${LINENO}: ${BASH_COMMAND}" >&2; rollback' ERR

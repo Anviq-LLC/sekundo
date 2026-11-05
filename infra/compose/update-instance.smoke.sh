@@ -12,7 +12,7 @@ echo "docker $*" >> "$CALLS"
 case "$*" in
   *"config --images"*)
     printf '%s
-' "registry.example.test/app:${ANVIQ_IMAGE_TAG:-edge}"       "registry.example.test/computer:${ANVIQ_COMPUTER_IMAGE_TAG:-edge}" "postgres:16"
+' "${ANVIQ_IMAGE:-registry.example.test/app}:${ANVIQ_IMAGE_TAG:-edge}"       "${ANVIQ_COMPUTER_IMAGE:-registry.example.test/computer}:${ANVIQ_COMPUTER_IMAGE_TAG:-edge}" "postgres:16"
     ;;
   *"manifest inspect"*) [[ "${FAKE_MISSING:-0}" != 1 ]] || exit 1 ;;
   *" up "*) [[ "${FAKE_UP_FAIL:-0}" != 1 ]] || exit 1 ;;
@@ -52,4 +52,21 @@ ls "$scratch"/inst/docker-compose.images.yml.pre-update-* >/dev/null 2>&1 || fai
 out="$(ANVIQ_COMPOSE_FILE="$scratch/new.yml" bash "$root/update-instance.sh" sha-new 2>&1)" || fail "second run failed: $out"
 [[ "$out" == *"Already on sha-new"* ]] || fail "re-running the same release was not skipped: $out"
 ! grep -qE ' (up|pull|exec) ' "$CALLS" || fail "a skipped update touched containers"
+# Moving to another registry path: checked in the dry run, applied with the update, undone on rollback.
+printf 'ANVIQ_IMAGE_TAG=sha-r
+ANVIQ_IMAGE=old.example.test/anviq/app
+ANVIQ_COMPUTER_IMAGE=old.example.test/anviq/computer
+' > "$scratch/inst/.env"
+! ANVIQ_REGISTRY='bad path' bash "$root/update-instance.sh" sha-r2 --dry-run >/dev/null 2>&1 || fail "accepted a bad registry path"
+out="$(ANVIQ_REGISTRY=new.example.test/sekundo bash "$root/update-instance.sh" sha-r2 --dry-run 2>&1)" || fail "registry dry run failed: $out"
+[[ "$out" == *"Found new.example.test/sekundo/app:sha-r2"* && "$out" == *"Would move the images to new.example.test/sekundo"* ]] || fail "registry dry run did not check the new path: $out"
+grep -q 'old.example.test/anviq/app' "$scratch/inst/.env" || fail "dry run changed the image path"
+if FAKE_UP_FAIL=1 ANVIQ_REGISTRY=new.example.test/sekundo bash "$root/update-instance.sh" sha-r2 >/dev/null 2>&1; then fail "a failed registry move did not fail"; fi
+[[ "$(sed -n 's/^ANVIQ_IMAGE=//p' "$scratch/inst/.env")" == "old.example.test/anviq/app" ]] || fail "rollback kept the new image path"
+[[ "$(sed -n 's/^ANVIQ_COMPUTER_IMAGE=//p' "$scratch/inst/.env")" == "old.example.test/anviq/computer" ]] || fail "rollback kept the new computer image path"
+out="$(ANVIQ_REGISTRY=new.example.test/sekundo bash "$root/update-instance.sh" sha-r 2>&1)" || fail "moving registry on the same tag failed: $out"
+[[ "$out" != *"Already on"* ]] || fail "skipped a registry move because the tag matched"
+[[ "$(sed -n 's/^ANVIQ_IMAGE=//p' "$scratch/inst/.env")" == "new.example.test/sekundo/app" ]] || fail "registry move not applied"
+out="$(ANVIQ_REGISTRY=new.example.test/sekundo bash "$root/update-instance.sh" sha-r 2>&1)" || fail "second run failed: $out"
+[[ "$out" == *"Already on sha-r"* ]] || fail "repeat registry move not skipped: $out"
 echo "update-instance smoke ok"

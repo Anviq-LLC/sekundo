@@ -27,7 +27,7 @@ LIST
 
 out="$(bash "$root/fleet.sh" update sha-1 --dry-run 2>&1)" || fail "dry run failed: $out"
 [[ "$out" == *"Done: 2 of 2"* ]] || fail "missing summary: $out"
-grep -q 'ANVIQ_DIR=/srv/two ANVIQ_COMPOSE_FILE=.*\.yml bash .* sha-1 --dry-run' "$CALLS" || fail "dry run flag, directory or Compose file not passed"
+grep -q 'ANVIQ_DIR=/srv/two ANVIQ_COMPOSE_FILE=.*\.yml  *bash .* sha-1 --dry-run' "$CALLS" || fail "dry run flag, directory or Compose file not passed"
 grep -qE '^scp .*\.yml' "$CALLS" || fail "Compose file not copied"
 if out="$(bash "$root/fleet.sh" update sha-deadbeef 2>&1)"; then fail "accepted a tag whose commit is not here"; fi
 [[ "$out" == *"not in this checkout"* && "$out" == *"Failed: one"* && "$out" == *"Not started: two"* ]] || fail "unknown commit not reported: $out"
@@ -61,6 +61,19 @@ printf 'a deploy@a.example.test\nb deploy@b.example.test\nc deploy@c.example.tes
 out="$(bash "$root/fleet.sh" update sha-1 --parallel 3 2>&1)" || fail "parallel update failed: $out"
 [[ "$out" == *"Done: 4 of 4"* ]] || fail "parallel run did not finish everything: $out"
 for host in a b c d; do grep -q "$host.example.test" "$CALLS" || fail "$host was not updated"; done
+
+# A registry path is handed to each instance.
+printf 'a deploy@a.example.test
+' > "$ANVIQ_FLEET_FILE"
+: > "$CALLS"
+out="$(bash "$root/fleet.sh" update sha-1 --dry-run --registry ghcr.io/example/sekundo 2>&1)" || fail "registry run failed: $out"
+grep -q 'ANVIQ_REGISTRY=ghcr.io/example/sekundo bash' "$CALLS" || fail "registry not passed to the host"
+! bash "$root/fleet.sh" update sha-1 --registry 2>/dev/null || fail "accepted --registry without a value"
+printf 'a deploy@a.example.test
+b deploy@b.example.test
+c deploy@c.example.test
+d deploy@d.example.test
+' > "$ANVIQ_FLEET_FILE"
 
 # A subset can be named, and versions reports an unreachable instance without stopping.
 : > "$CALLS"
