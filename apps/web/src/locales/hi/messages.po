@@ -1483,12 +1483,8 @@ msgstr "पूर्ण"
 msgid "Completed"
 msgstr "पूर्ण"
 
-#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/ComposioKeySettings.tsx
 msgid "Composio API key"
-msgstr ""
-
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Composio key"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
@@ -2142,6 +2138,10 @@ msgstr "वह आवाज़ सहेजी नहीं जा सकी"
 
 #: src/components/VaultSettings.tsx
 msgid "Could not save the credential"
+msgstr ""
+
+#: src/components/ComposioKeySettings.tsx
+msgid "Could not save the key"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -3254,6 +3254,7 @@ msgid "Integration domain"
 msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
+#: src/pages/SettingsOverlay.tsx
 msgid "Integrations"
 msgstr "इंटीग्रेशन"
 
@@ -5065,7 +5066,7 @@ msgstr "शनिवार"
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
-#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/ComposioKeySettings.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx

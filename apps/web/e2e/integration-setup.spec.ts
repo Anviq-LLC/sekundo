@@ -79,3 +79,14 @@ test("ordinary accounts can add personal MCP connections without server setup", 
   await expect(page.getByRole("button", { name: "Connected", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "personal-mcp-without-server-admin");
 });
+
+test("any account can add its own Composio key in settings", async ({ page }, testInfo) => {
+  await signup(page, `composio-key-${Date.now()}@anviq.test`, "password12", "Composio Key");
+  await completeOnboarding(page);
+  await page.getByTestId("user-menu-trigger").click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByTestId("settings-nav-integrations").click();
+  await expect(page.getByLabel("Composio API key", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await captureScreenshot(page, testInfo, "settings-composio-key");
+});

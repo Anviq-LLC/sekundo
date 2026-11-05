@@ -1483,13 +1483,9 @@ msgstr "Complete"
 msgid "Completed"
 msgstr "Completed"
 
-#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/ComposioKeySettings.tsx
 msgid "Composio API key"
 msgstr "Composio API key"
-
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Composio key"
-msgstr "Composio key"
 
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -2143,6 +2139,10 @@ msgstr "Could not save that voice"
 #: src/components/VaultSettings.tsx
 msgid "Could not save the credential"
 msgstr "Could not save the credential"
+
+#: src/components/ComposioKeySettings.tsx
+msgid "Could not save the key"
+msgstr "Could not save the key"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
@@ -3254,6 +3254,7 @@ msgid "Integration domain"
 msgstr "Integration domain"
 
 #: src/pages/PluginsOverlay.tsx
+#: src/pages/SettingsOverlay.tsx
 msgid "Integrations"
 msgstr "Integrations"
 
@@ -5065,7 +5066,7 @@ msgstr "Saturday"
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
-#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/ComposioKeySettings.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx
