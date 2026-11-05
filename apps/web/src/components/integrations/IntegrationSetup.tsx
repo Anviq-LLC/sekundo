@@ -2,12 +2,12 @@ import type { IntegrationCatalogResult } from "@anviq/contracts";
 import { newClientId } from "@anviq/core";
 import { Button, Disclosure, Input } from "@anviq/ui-web";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
-/** Personal MCP connections for everyone; the Composio key form is offered to administrators only. */
+/** Personal MCP connections; provider keys are not configured here. */
 export function IntegrationSetup({ onDone, botId }: { onDone?: () => void; botId?: string }) {
   const { t } = useLingui();
   const [endpoint, setEndpoint] = useState("");
@@ -17,23 +17,6 @@ export function IntegrationSetup({ onDone, botId }: { onDone?: () => void; botId
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState<string[]>([]);
-  const [composio, setComposio] = useState<{ configured: boolean } | null>(null);
-  const [composioKey, setComposioKey] = useState("");
-  useEffect(() => {
-    let cancelled = false;
-    void rpc.integrationSetup
-      .get()
-      .then((state) => {
-        if (cancelled || !state.canConfigure) return;
-        setComposio({
-          configured: state.providers.some((p) => p.id === "composio" && p.configured),
-        });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   const remoteResults = [
     ...new Map(
       results.flatMap((result) =>
@@ -138,36 +121,6 @@ export function IntegrationSetup({ onDone, botId }: { onDone?: () => void; botId
           </Button>
         </div>
       </Disclosure>
-      {composio ? (
-        <Disclosure className="text-sm text-muted-foreground" summary={<Trans>Composio key</Trans>}>
-          <form
-            className="mt-3 flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void run(async () => {
-                await rpc.integrationSetup.save({
-                  provider: "composio",
-                  apiKey: composioKey.trim(),
-                });
-                setComposioKey("");
-                setComposio({ configured: true });
-              });
-            }}
-          >
-            <Input
-              type="password"
-              autoComplete="off"
-              aria-label={t`Composio API key`}
-              placeholder={composio.configured ? "••••••••" : undefined}
-              value={composioKey}
-              onChange={(event) => setComposioKey(event.target.value)}
-            />
-            <Button type="submit" disabled={busy || !composioKey.trim()}>
-              <Trans>Save</Trans>
-            </Button>
-          </form>
-        </Disclosure>
-      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

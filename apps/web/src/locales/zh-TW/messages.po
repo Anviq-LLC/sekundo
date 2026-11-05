@@ -1484,12 +1484,8 @@ msgstr "完成"
 msgid "Completed"
 msgstr "已完成"
 
-#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/ComposioKeySettings.tsx
 msgid "Composio API key"
-msgstr ""
-
-#: src/components/integrations/IntegrationSetup.tsx
-msgid "Composio key"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
@@ -2144,6 +2140,10 @@ msgstr "無法儲存該語音"
 #: src/components/VaultSettings.tsx
 msgid "Could not save the credential"
 msgstr "無法儲存憑證"
+
+#: src/components/ComposioKeySettings.tsx
+msgid "Could not save the key"
+msgstr ""
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"
@@ -3255,6 +3255,7 @@ msgid "Integration domain"
 msgstr "整合服務網域"
 
 #: src/pages/PluginsOverlay.tsx
+#: src/pages/SettingsOverlay.tsx
 msgid "Integrations"
 msgstr "整合"
 
@@ -5066,7 +5067,7 @@ msgstr "週六"
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
-#: src/components/integrations/IntegrationSetup.tsx
+#: src/components/ComposioKeySettings.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx

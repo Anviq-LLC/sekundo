@@ -12,6 +12,7 @@ import {
   KeyRound,
   MessageCircle,
   Monitor,
+  Plug,
   Settings,
   ShieldCheck,
   Users,
@@ -22,6 +23,7 @@ import {
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
+import { ComposioKeySettings } from "../components/ComposioKeySettings";
 import { computersAreUnavailable } from "../components/ComputersUnavailableHint";
 import { SETTINGS_CONTENT_WIDTH, SettingsGroup, SettingsRow } from "../components/SettingsRows";
 import { TeamSettings } from "../components/TeamSettings";
@@ -161,6 +163,7 @@ export function SettingsOverlay({
     { id: "voice", label: t`Voice`, icon: Volume2 },
     { id: "confirmations", label: t`Approvals`, icon: ShieldCheck },
     { id: "vault", label: t`Vault`, icon: KeyRound },
+    { id: "integrations", label: t`Integrations`, icon: Plug },
     ...(messagingEnabled
       ? [{ id: "messaging" as const, label: t`Messaging`, icon: MessageCircle }]
       : []),
@@ -421,6 +424,7 @@ export function SettingsOverlay({
                   {section === "team" ? <TeamSettings /> : null}
                   {section === "confirmations" ? <ApprovalRulesSettings scope="account" /> : null}
                   {section === "vault" ? <VaultSettings scope="account" /> : null}
+                  {section === "integrations" ? <ComposioKeySettings /> : null}
                   {section === "messaging" && messagingEnabled ? <MessagingSettingsPanel /> : null}
                   {section === "wallet" && paymentWalletProvider ? (
                     <PaymentWalletSettingsPanel provider={paymentWalletProvider} />
