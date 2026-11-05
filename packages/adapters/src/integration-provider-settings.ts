@@ -12,8 +12,8 @@ import { ComposioConnector } from "./composio-connector.js";
 import { credentialDigest } from "./credential-digest.js";
 import { PipedreamConnector } from "./pipedream-connector.js";
 
-/** Providers whose key belongs to each user; the rest are configured once for the deployment. */
-const PER_USER: ReadonlySet<IntegrationProviderId> = new Set(["composio"]);
+/** Providers whose credentials belong to each user; any other is configured once for the deployment. */
+const PER_USER: ReadonlySet<IntegrationProviderId> = new Set(["composio", "pipedream"]);
 
 /** Resolve persisted credentials on every operation so API and workers observe changes.
  * Cache adapters by ciphertext to preserve sessions without retaining old credentials. */
@@ -154,16 +154,6 @@ export class IntegrationProviderSettings {
     return IntegrationProviderIdSchema.options.map(
       (id) => new ConfiguredIntegrationProvider(id, this),
     );
-  }
-
-  /** Warm catalogs for env- and DB-configured providers. Fire-and-forget. */
-  warmDirectories(): void {
-    for (const id of IntegrationProviderIdSchema.options) {
-      if (PER_USER.has(id)) continue;
-      void this.resolve(id)
-        .then((provider) => provider?.warmDirectory?.())
-        .catch(() => undefined);
-    }
   }
 }
 

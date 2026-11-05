@@ -1483,7 +1483,7 @@ msgstr "完了"
 msgid "Completed"
 msgstr "完了"
 
-#: src/components/ComposioKeySettings.tsx
+#: src/components/IntegrationKeysSettings.tsx
 msgid "Composio API key"
 msgstr ""
 
@@ -2140,8 +2140,8 @@ msgstr "そのボイスを保存できませんでした"
 msgid "Could not save the credential"
 msgstr "認証情報を保存できませんでした"
 
-#: src/components/ComposioKeySettings.tsx
-msgid "Could not save the key"
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Could not save the credentials"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -2521,6 +2521,10 @@ msgstr "詳細"
 msgid "Developer"
 msgstr ""
 
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Development"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Disable a tool"
 msgstr "ツールを無効にする"
@@ -2736,6 +2740,10 @@ msgstr "画像の上限には1〜1000の整数を入力してください。"
 #: src/lib/model-connection-preflight.ts
 msgid "Enter an API key before testing."
 msgstr "テストする前にAPIキーを入力してください。"
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Environment"
+msgstr ""
 
 #: src/pages/McpServersOverlay.tsx
 msgid "Environment variables"
@@ -4479,6 +4487,18 @@ msgstr "ピン留め"
 msgid "Pinned"
 msgstr "ピン留め済み"
 
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream client ID"
+msgstr ""
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream client secret"
+msgstr ""
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Pipedream project ID"
+msgstr ""
+
 #: src/components/ArtifactFileCard.tsx
 msgid "Play {name}"
 msgstr "{name}を再生"
@@ -4545,6 +4565,10 @@ msgstr "非公開"
 #: src/pages/shell/bot-picker.tsx
 msgid "Private workspace with its own bots and groups."
 msgstr "専用のボットとグループを持つ非公開のワークスペースです。"
+
+#: src/components/IntegrationKeysSettings.tsx
+msgid "Production"
+msgstr ""
 
 #: src/pages/PluginsOverlay.tsx
 msgid "Productivity"
@@ -5066,7 +5090,7 @@ msgstr "土曜日"
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/AskCard.tsx
-#: src/components/ComposioKeySettings.tsx
+#: src/components/IntegrationKeysSettings.tsx
 #: src/components/PasskeySettings.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/components/TeamSettings.tsx

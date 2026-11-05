@@ -2054,12 +2054,6 @@ describeWithDatabase("API authorization and resource isolation", () => {
       await expectForbidden(app, cookie, "updater/status", {});
       await expectForbidden(app, cookie, "updater/check", {});
       await expectForbidden(app, cookie, "updater/apply", {});
-      await expectForbidden(app, cookie, "integrationSetup/save", {
-        provider: "pipedream",
-        clientId: "client",
-        clientSecret: "fake-secret",
-        projectId: "project",
-      });
     }
     expect(
       await handles.prisma.deploymentSettings.findUniqueOrThrow({ where: { id: "default" } }),

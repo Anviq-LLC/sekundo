@@ -23,8 +23,8 @@ import {
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
-import { ComposioKeySettings } from "../components/ComposioKeySettings";
 import { computersAreUnavailable } from "../components/ComputersUnavailableHint";
+import { IntegrationKeysSettings } from "../components/IntegrationKeysSettings";
 import { SETTINGS_CONTENT_WIDTH, SettingsGroup, SettingsRow } from "../components/SettingsRows";
 import { TeamSettings } from "../components/TeamSettings";
 import { VaultSettings } from "../components/VaultSettings";
@@ -424,7 +424,7 @@ export function SettingsOverlay({
                   {section === "team" ? <TeamSettings /> : null}
                   {section === "confirmations" ? <ApprovalRulesSettings scope="account" /> : null}
                   {section === "vault" ? <VaultSettings scope="account" /> : null}
-                  {section === "integrations" ? <ComposioKeySettings /> : null}
+                  {section === "integrations" ? <IntegrationKeysSettings /> : null}
                   {section === "messaging" && messagingEnabled ? <MessagingSettingsPanel /> : null}
                   {section === "wallet" && paymentWalletProvider ? (
                     <PaymentWalletSettingsPanel provider={paymentWalletProvider} />

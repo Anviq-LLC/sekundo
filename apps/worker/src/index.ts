@@ -42,17 +42,14 @@ import {
   InstalledConnectorProvider,
   installedMessaging,
   isMessagingSurfaceEnabled,
-  isPipedreamEnabled,
   McpConnector,
   McpOAuthBroker,
   mcpStdioOptionsFromEnv,
   messagingEnvFromProcess,
   messagingPlatformsFromEnv,
   PiAgentRuntime,
-  PipedreamConnector,
   PostgresRealtimeFanout,
   PrismaPushTokenStore,
-  pipedreamConfigFromEnv,
   RunJobPublisher,
   RunWorkerHost,
   reconcileCloudAgents,
@@ -170,16 +167,6 @@ async function main() {
     },
     mcpOAuth,
   );
-  const pipedreamConfig = pipedreamConfigFromEnv({
-    pipedreamClientId: process.env.PIPEDREAM_CLIENT_ID,
-    pipedreamClientSecret: process.env.PIPEDREAM_CLIENT_SECRET,
-    pipedreamProjectId: process.env.PIPEDREAM_PROJECT_ID,
-    pipedreamEnvironment: process.env.PIPEDREAM_ENVIRONMENT,
-    encryptionKey: resolveEncryptionKey(process.env),
-  });
-  const pipedream = isPipedreamEnabled(pipedreamConfig)
-    ? new PipedreamConnector(pipedreamConfig)
-    : undefined;
   // Never poll inbound here: Telegram allows a single getUpdates consumer,
   // and that is the API process, which owns the inbound sink.
   const messagingPlatforms = messagingPlatformsFromEnv(messagingEnvFromProcess(process.env)).filter(
@@ -195,16 +182,13 @@ async function main() {
     prisma,
     secrets,
     resolveEncryptionKey(process.env),
-    {
-      pipedream,
-    },
+    {},
   );
   const stack = createConnectorStack(undefined, [
     new InstalledConnectorProvider(prisma, secrets, {}, allowPrivateEndpoint),
     ...integrationSettings.providers(),
     mcp,
   ]);
-  integrationSettings.warmDirectories();
   const memoryProviders = new SpaceMemoryProviderResolver(prisma, secrets);
   startMemoryMirror(memoryProviders, process.env, dataDir, logger);
   const home = createAgentHomeStore(dataDir, prisma);
