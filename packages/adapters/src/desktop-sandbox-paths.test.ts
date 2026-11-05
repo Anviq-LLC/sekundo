@@ -6,7 +6,7 @@ describe("desktop sandbox path rules", () => {
   it("compares Windows roots case-insensitively without accepting siblings or other drives", () => {
     const roots = ["C:\\Users\\Owner\\Sekundo\\bot"];
 
-    expect(isAllowedDesktopPath("c:\\users\\owner\\anviq\\BOT\\notes.txt", roots, path.win32)).toBe(
+    expect(isAllowedDesktopPath("c:\\users\\owner\\sekundo\\BOT\\notes.txt", roots, path.win32)).toBe(
       true,
     );
     expect(

@@ -565,13 +565,13 @@ describe("OIDC callbacks", () => {
       name: "Local",
     });
     rows("user")[0]!.emailVerified = true;
-    const callback = await start(undefined, true, "anviq://account");
+    const callback = await start(undefined, true, "sekundo://account");
     const authorize = `${issuer}/authorize?state=${new URL(`${origin}${callback}`).searchParams.get("state")}`;
     cookies = "";
     await request(
       `/expo-authorization-proxy?${new URLSearchParams({ authorizationURL: authorize })}`,
     );
-    expect(new URL((await request(callback)).headers.get("location")!).protocol).toBe("anviq:");
+    expect(new URL((await request(callback)).headers.get("location")!).protocol).toBe("sekundo:");
     expect(rows("account").filter((account) => account.providerId === "oidc")).toHaveLength(1);
   });
   it("drops an unverified account's SSO links when its mailbox owner resets the password", async () => {
