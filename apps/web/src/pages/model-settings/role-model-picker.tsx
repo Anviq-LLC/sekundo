@@ -1,13 +1,13 @@
-import { filterModelCatalog } from "@anviq/core";
+import { modelCatalogSearchText, newestModelsFirst } from "@anviq/core";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
   CommandSeparator,
   CommandShortcut,
+  ListSearchInput,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -15,16 +15,20 @@ import {
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactElement } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ModelCatalogEntry } from "../../lib/model-auth";
+import type { ModelCatalogEntry } from "../../lib/models/model-auth";
+import { useListSearch } from "../../lib/use-list-search";
 
-/** `baseUrl` presets an OpenAI-compatible server, such as Ollama Cloud. */
+/** `baseUrl` presets an OpenAI-compatible server, such as a hosted preset. */
 export type ConnectableProvider = { id: string; name: string; baseUrl?: string };
 
 /** A model on one connection; `providerName` is that connection's name. */
-export type RoleModelOption = ModelCatalogEntry & { credentialId?: string };
+export type RoleModelOption = ModelCatalogEntry & {
+  credentialId?: string;
+  creditOfferingId?: string;
+};
 
 const optionValue = (option: RoleModelOption) =>
-  `${option.provider}:${option.id}:${option.credentialId ?? ""}`;
+  `${option.provider}:${option.id}:${option.creditOfferingId ? `credits:${option.creditOfferingId}` : (option.credentialId ?? "")}`;
 
 /**
  * One picker for every model a role can use: connected models pick directly, and
@@ -62,19 +66,25 @@ export function RoleModelPicker({
   const { t } = useLingui();
   const searchRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const rows = [
+    ...options.map((option) => ({ option, provider: undefined })),
+    ...providers.map((provider) => ({ option: undefined, provider })),
+  ];
+  const { query, setQuery, showSearch, visible } = useListSearch(rows, {
+    text: (row) => (row.option ? modelCatalogSearchText(row.option) : row.provider!.name),
+  });
   const groups = useMemo(() => {
     const grouped = new Map<string, RoleModelOption[]>();
-    for (const option of filterModelCatalog(options, query) as RoleModelOption[]) {
+    for (const row of visible) {
+      if (!row.option) continue;
+      const option = row.option;
       const name = option.providerName ?? option.provider;
       grouped.set(name, [...(grouped.get(name) ?? []), option]);
     }
-    return [...grouped];
-  }, [options, query]);
-  const needle = query.trim().toLowerCase();
-  const matchingProviders = providers.filter((provider) =>
-    provider.name.toLowerCase().includes(needle),
-  );
+    return [...grouped].map(([name, entries]) => [name, newestModelsFirst(entries)] as const);
+  }, [visible]);
+  const needle = query.trim();
+  const matchingProviders = visible.flatMap((row) => (row.provider ? [row.provider] : []));
   const values = [
     ...(defaultOption && !needle ? ["default"] : []),
     ...groups.flatMap(([, entries]) => entries.map(optionValue)),
@@ -118,10 +128,11 @@ export function RoleModelPicker({
       <PopoverContent
         align="start"
         sideOffset={6}
-        initialFocus={searchRef}
+        initialFocus={showSearch ? searchRef : undefined}
         className="w-[min(360px,var(--available-width))] gap-0 overflow-hidden p-0 motion-reduce:animate-none"
       >
         <Command
+          tabIndex={showSearch ? undefined : 0}
           ref={(command) => {
             if (!command || !searchRef.current) return;
             // cmdk can keep a stale selected item when the controlled value changes before
@@ -138,13 +149,16 @@ export function RoleModelPicker({
           value={activeValue}
           onValueChange={setActiveValue}
         >
-          <CommandInput
-            ref={searchRef}
-            value={query}
-            onValueChange={setQuery}
-            aria-label={t`Search models`}
-            placeholder={t`Search`}
-          />
+          {showSearch ? (
+            <ListSearchInput
+              command
+              inputRef={searchRef}
+              query={query}
+              setQuery={setQuery}
+              label={t`Search models`}
+              placeholder={t`Search`}
+            />
+          ) : null}
           <CommandList label={t`Model options`} className="rk-scroll max-h-80">
             <CommandEmpty>
               <Trans>No matching models</Trans>
@@ -159,7 +173,7 @@ export function RoleModelPicker({
                   }}
                 >
                   <span className="min-w-0 truncate">{defaultOption}</span>
-                  <CommandShortcut className="text-[13px] tracking-normal">
+                  <CommandShortcut className="text-body-sm tracking-normal">
                     <Trans>Default</Trans>
                   </CommandShortcut>
                 </CommandItem>
@@ -194,7 +208,7 @@ export function RoleModelPicker({
                     }}
                   >
                     <span className="min-w-0 truncate">{provider.name}</span>
-                    <CommandShortcut className="text-[13px] tracking-normal">
+                    <CommandShortcut className="text-body-sm tracking-normal">
                       <Trans>Connect</Trans>
                     </CommandShortcut>
                   </CommandItem>

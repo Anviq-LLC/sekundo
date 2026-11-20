@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="anviq_call_channel">Trwająca rozmowa</string>
+  <string name="anviq_call_title">Rozmowa w Sekundo</string>
+  <string name="anviq_call_text">Mikrofon jest aktywny</string>
+  <string name="anviq_call_answer">Odbierz</string>
+  <string name="anviq_call_decline">Odrzuć</string>
+</resources>

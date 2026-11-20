@@ -102,6 +102,63 @@ class AuditShipTests(unittest.TestCase):
         self.assertEqual((invalid["event"], invalid["user"]), ("ssh.failed", "oracle"))
         self.assertIsNone(self.auth("Connection closed by 198.51.100.9 port 6"))
 
+    def test_command_redaction(self):
+        cases = [
+            ("docker exec -e PGPASSWORD=fake-value app psql", "fake-value", "docker exec", "app"),
+            ("sh <<'EOF'\nFAKE_SECRET_ACCESS_KEY=fake-value\npsql\nEOF", "fake-value", "sh", "psql"),
+            ("psql -c \"select 'user@example.com'\"", "user@example.com", "psql", "select"),
+            ("psql postgres://app:fake-pass@db.example.com/app", "app:fake-pass", "psql", "db.example.com"),
+            ("curl -H 'Authorization: Bearer fake-value' https://example.com", "fake-value", "curl", "example.com"),
+            ("cat <<'EOF'\n-----BEGIN RSA PRIVATE KEY-----\nfake-value\n-----END RSA PRIVATE KEY-----\nEOF", "fake-value", "cat", "EOF"),
+            ("curl 'https://example.com/?token=fake-value&mode=test'", "fake-value", "curl", "mode=test"),
+        ]
+        for command, secret, executable, useful in cases:
+            with self.subTest(command=command):
+                event = self.auth("app : USER=root ; COMMAND=" + command, "sudo")
+                self.assertEqual((event["user"], event["as_user"]), ("app", "root"))
+                for field in ("command", "message"):
+                    self.assertNotIn(secret, event[field])
+                    self.assertIn("[Redacted]", event[field])
+                    self.assertIn(executable, event[field])
+                    self.assertIn(useful, event[field])
+
+    def test_text_redaction_patterns(self):
+        secrets = [
+            "PGPASSWORD=fake-value", "AWS_SECRET_ACCESS_KEY=fake-value",
+            "API_KEY=fake-value", "CREDENTIAL=fake-value", "PASSWD=fake-value",
+            '--password="fake-value with spaces"', "--password fake-value",
+            "--token fake-value", "--api-key fake-value", 'API_KEY="fake-value with spaces"',
+            '\"password\":\"fake-value with spaces\"', '\"api_key\":\"fake-value\"',
+            "Bearer fake-value", "sk-test-" + "x" * 24,
+            *[prefix + "x" * 40 for prefix in ("ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_")],
+            *[prefix + "-" + "x" * 24 for prefix in ("xoxa", "xoxb", "xoxp", "xoxr", "xoxs")],
+            "AKIAEXAMPLEEXAMPLE12", "eyJfake.eyJfake.fake", "owner@example.org",
+            "-----BEGIN PRIVATE KEY-----\nfake-value",
+            *["https://example.com/?" + key + "=fake-value&mode=test" for key in (
+                "token", "access_token", "refresh_token", "id_token", "code", "key", "api_key",
+                "apikey", "secret", "password", "sig", "signature", "X-Amz-Signature", "auth",
+            )],
+        ]
+        for text in secrets:
+            with self.subTest(text=text):
+                redacted = audit_ship.redact_sensitive_text(text)
+                self.assertIn("[Redacted]", redacted)
+                self.assertNotIn("fake-value", redacted)
+                self.assertNotIn("x" * 24, redacted)
+                self.assertNotIn("eyJfake", redacted)
+                self.assertNotIn("AKIAEXAMPLEEXAMPLE12", redacted)
+                self.assertNotIn("owner@example.org", redacted)
+        for program in ("su", "useradd"):
+            event = self.auth("PGPASSWORD=fake-value owner@example.org", program)
+            self.assertNotIn("fake-value", event["message"])
+            self.assertNotIn("owner@example.org", event["message"])
+
+    def test_redaction_precedes_truncation(self):
+        command = "docker exec app -e PGPASSWORD=" + "x" * 1500
+        event = self.auth("app : USER=root ; COMMAND=" + command, "sudo")
+        self.assertEqual(event["command"], "docker exec app -e PGPASSWORD=[Redacted]")
+        self.assertTrue(event["message"].endswith("PGPASSWORD=[Redacted]"))
+
     def test_sudo_identity_su_and_truncation(self):
         command = "/usr/bin/echo " + "x" * 2000
         sudo = self.auth("  deploy : TTY=pts/0 ; PWD=/home/deploy ; USER=root ; COMMAND=" + command, "sudo")
@@ -294,6 +351,14 @@ class ServiceHealthTests(unittest.TestCase):
     def test_rolling_replacement_accepts_one_healthy_replica(self):
         rows = [{"service": "api", "state": "running", "health": "healthy"}, {"service": "worker", "state": "exited", "health": ""}, {"service": "worker", "state": "running", "health": "healthy"}]
         self.assertEqual(service_health.service_failures(rows), [])
+
+    def test_point_in_time_recovery_is_checked_only_when_enabled(self):
+        healthy = [{"service": "api", "state": "running", "health": "healthy"}, {"service": "worker", "state": "running", "health": "healthy"}]
+        self.assertEqual(service_health.service_failures(healthy), [])
+        stalled = [*healthy, {"service": "pitr", "state": "running", "health": "unhealthy"}]
+        self.assertEqual(service_health.service_failures(stalled), ["pitr has no healthy running container"])
+        stalled[2]["health"] = "healthy"
+        self.assertEqual(service_health.service_failures(stalled), [])
 
 
 class AlertTests(unittest.TestCase):
@@ -590,6 +655,7 @@ class HostCheckTests(unittest.TestCase):
                 "stat": 'if [[ "$3" == / ]]; then echo 1; else echo 2; fi',
                 "systemctl": "exit 1",
                 "sshd": 'echo "port 2222"',
+                "nproc": "echo 4",
                 "alert": 'echo "$*" >> "$ALERT_LOG"; if (($# < 2)); then cat >> "$ALERT_LOG"; fi',
             }
             for name, command in commands.items():
@@ -602,6 +668,20 @@ class HostCheckTests(unittest.TestCase):
             audit_env = root / "audit-ship.env"
             source = source.replace("/etc/anviq/audit-ship.env", str(audit_env))
             source = source.replace("/usr/sbin/sshd", str(bin_dir / "sshd"))
+            reboot_required = root / "reboot-required"
+            source = source.replace("/run/reboot-required", str(reboot_required))
+            loadavg = root / "loadavg"
+            loadavg.write_text("0.50 0.50 0.50 1/100 1\n")
+            source = source.replace("/proc/loadavg", str(loadavg))
+            pressure = root / "pressure-cpu"
+            source = source.replace("/proc/pressure/cpu", str(pressure))
+            meminfo = root / "meminfo"
+            healthy_memory = (
+                "MemTotal: 8000000 kB\nMemAvailable: 4000000 kB\n"
+                "SwapTotal: 4000000 kB\nSwapFree: 4000000 kB\n"
+            )
+            meminfo.write_text(healthy_memory)
+            source = source.replace("/proc/meminfo", str(meminfo))
             source = source.replace(
                 "/usr/local/sbin/anviq-host-alert", str(bin_dir / "alert")
             )
@@ -642,6 +722,61 @@ class HostCheckTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             plaintext.unlink()
+            reboot_required.touch()
+            result = subprocess.run(
+                ["bash", str(script)], env=env, capture_output=True, text=True
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("need a reboot", alert_log.read_text())
+            reboot_required.unlink()
+            # Without pressure information, a load above the core count alerts.
+            loadavg.write_text("6.00 5.50 5.00 1/100 1\n")
+            result = subprocess.run(
+                ["bash", str(script)], env=env, capture_output=True, text=True
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("CPU is overloaded", alert_log.read_text())
+            # With it, a high load alone does not: only work waiting for a core does.
+            alert_log.write_text("")
+            pressure.write_text(
+                "some avg10=30.00 avg60=25.00 avg300=24.00 total=1\n"
+                "full avg10=0.00 avg60=0.00 avg300=0.00 total=0\n"
+            )
+            result = subprocess.run(
+                ["bash", str(script)], env=env, capture_output=True, text=True
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            pressure.write_text(
+                "some avg10=80.00 avg60=70.00 avg300=65.00 total=1\n"
+                "full avg10=0.00 avg60=0.00 avg300=0.00 total=0\n"
+            )
+            result = subprocess.run(
+                ["bash", str(script)], env=env, capture_output=True, text=True
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("CPU is overloaded", alert_log.read_text())
+            pressure.unlink()
+            loadavg.write_text("0.50 0.50 0.50 1/100 1\n")
+            meminfo.write_text(
+                "MemTotal: 8000000 kB\nMemAvailable: 500000 kB\n"
+                "SwapTotal: 4000000 kB\nSwapFree: 4000000 kB\n"
+            )
+            result = subprocess.run(
+                ["bash", str(script)], env=env, capture_output=True, text=True
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Memory is low", alert_log.read_text())
+            meminfo.write_text(
+                "MemTotal: 8000000 kB\nMemAvailable: 4000000 kB\n"
+                "SwapTotal: 4000000 kB\nSwapFree: 2000000 kB\n"
+            )
+            alert_log.write_text("")
+            result = subprocess.run(
+                ["bash", str(script)], env=env, capture_output=True, text=True
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Memory is low", alert_log.read_text())
+            meminfo.write_text(healthy_memory)
             rules.write_text(
                 "### tuple ### allow any 2222 0.0.0.0/0 any 0.0.0.0/0 in\n"
             )

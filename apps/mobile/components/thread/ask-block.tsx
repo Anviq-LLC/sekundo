@@ -1,22 +1,30 @@
 import type { LoginFieldInput } from "@anviq/contracts";
-import { isSecretAskBlock } from "@anviq/core";
+import { normalizeOneTimeCode, vaultKind } from "@anviq/contracts";
+import { isQuestionAskBlock, isSecretAskBlock } from "@anviq/core";
+import { secretAnswerErrorText } from "@anviq/i18n/vault";
 import { fontWeight, typeScale } from "@anviq/ui-tokens";
+import { ph } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useRef, useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
-import type { MobileMessage } from "../../lib/api";
-import { plainAskTitle } from "../../lib/ask-title";
-import { useI18n } from "../../lib/i18n";
-import { useMobileTokens } from "../../lib/native";
-import { secretDestinationLabel } from "../../lib/secret-destination";
-import { secretFieldTraits } from "../../lib/secret-field-traits";
-import { errorText } from "../../lib/user-error";
-import { NativeActionButton } from "../native-action-button";
-import { SecretAskSheet } from "../secret-ask-sheet";
+import type { MobileMessage } from "../../lib/api/mobile-types";
+import { errorText } from "../../lib/api/user-error";
+import { plainAskTitle } from "../../lib/cards/ask-title";
+import { useMobileTokens } from "../../lib/native/native";
+import { secretDestinationLabel, siteHost } from "../../lib/vault/secret-destination";
+import { secretFieldTraits } from "../../lib/vault/secret-field-traits";
+import { vaultKindSymbol } from "../../lib/vault/vault";
+import { SecretAskSheet } from "../cards/secret-ask-sheet";
+import { NativeActionButton } from "../native/native-action-button";
+import { NativeSymbol } from "../native/native-symbol";
+import { VaultItemEditor } from "../vault/vault-item-editor";
+import { VaultTile } from "../vault/vault-tile";
 import type { MessageActionProps } from "./message-bubble";
 
 export function AskBlock({
   ask,
   canAnswer,
+  answerIsSeparate,
   canDismiss,
   onAnswer,
   onDismiss,
@@ -24,14 +32,19 @@ export function AskBlock({
 }: {
   ask: Extract<MobileMessage["blocks"][number], { kind: "ask" }>;
   canAnswer: boolean;
+  answerIsSeparate?: boolean;
   canDismiss: boolean;
-  onAnswer: (answer: string, fields?: readonly LoginFieldInput[]) => Promise<void>;
+  onAnswer: (
+    answer: string,
+    fields?: readonly LoginFieldInput[],
+    remember?: false,
+  ) => Promise<void>;
   /** Turns down a secret request without a value. */
   onDismiss: () => Promise<void>;
   actionProps: MessageActionProps;
 }) {
   const tokens = useMobileTokens();
-  const { t } = useI18n();
+  const { t } = useLingui();
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -39,21 +52,30 @@ export function AskBlock({
   const sheetSession = useRef(0);
   const session = sheetSession.current;
   const [saved, setSaved] = useState(false);
+  const [sentOnce, setSentOnce] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const answered = saved || dismissed || ask.status === "answered";
+  const answeredQuestion = answered && isQuestionAskBlock(ask);
   const secretInput = isSecretAskBlock(ask);
   const loginInput = secretInput && ask.credential?.auth.type === "login";
-  // A login or credential is saved for the run's user, so only they can fill one in; others see
+  const itemType = secretInput ? ask.credential?.auth.type : undefined;
+  // A login, card or contact is filled in a sheet; the card itself is one compact row.
+  const sheetInput = itemType === "login" || itemType === "card" || itemType === "contact";
+  // A login, credential or code is for the run's user, so only they can fill one in; others see
   // the card without fields or buttons.
-  const ownerOnly = secretInput && Boolean(ask.credential) && !canDismiss;
-  const incomplete = secretInput ? answer.length === 0 : !answer.trim();
+  const ownerOnly = secretInput && Boolean(ask.credential || ask.oneTimeCode) && !canDismiss;
+  const destination = ask.credential
+    ? secretDestinationLabel(ask.credential)
+    : ask.oneTimeCode &&
+      t`Only enter a code ${ph({ host: siteHost(ask.oneTimeCode.origin) })} sent you.`;
+  const incomplete = ask.oneTimeCode
+    ? !normalizeOneTimeCode(answer)
+    : secretInput
+      ? answer.length === 0
+      : !answer.trim();
   const secretLabel =
-    ask.purpose === "password"
-      ? t("Password")
-      : ask.purpose === "api_key"
-        ? t("API key")
-        : t("Code");
-  const submitLabel = secretInput ? t("Save") : t("Send answer");
+    ask.purpose === "password" ? t`Password` : ask.purpose === "api_key" ? t`API key` : t`Code`;
+  const submitLabel = ask.oneTimeCode ? t`Continue` : secretInput ? t`Save` : t`Send answer`;
 
   async function dismiss() {
     if (submitting) return;
@@ -64,7 +86,7 @@ export function AskBlock({
       await onDismiss();
       setDismissed(true);
     } catch {
-      setError(t("Could not send answer"));
+      setError(t`Could not send answer`);
     } finally {
       setSubmitting(false);
     }
@@ -82,11 +104,143 @@ export function AskBlock({
       if (secretInput) setSaved(true);
     } catch (cause) {
       setError(
-        secretInput ? t("Could not send answer") : errorText(cause, t("Could not send answer")),
+        secretInput
+          ? secretAnswerErrorText(cause, t`Could not send answer`)
+          : errorText(cause, t`Could not send answer`),
       );
     } finally {
       setSubmitting(false);
     }
+  }
+
+  const answeredLabel =
+    dismissed || ask.dismissed
+      ? t`Dismissed`
+      : sentOnce || ask.remembered === false || ask.oneTimeCode
+        ? t`Sent`
+        : t`Saved`;
+
+  if (sheetInput && itemType && ask.credential) {
+    const symbol = vaultKindSymbol(vaultKind(itemType));
+    const title = plainAskTitle(ask.text);
+    const openSheet = () => {
+      sheetSession.current += 1;
+      setSheetOpen(true);
+    };
+    const closeSheet = () => {
+      if (session === sheetSession.current) setSheetOpen(false);
+    };
+    return (
+      <View style={[askRowStyles.card, { backgroundColor: tokens.card }]}>
+        <View style={askRowStyles.row}>
+          <VaultTile
+            origin={itemType === "login" ? ask.credential.origin : undefined}
+            style={[askRowStyles.tile, { backgroundColor: tokens.muted }]}
+          >
+            <NativeSymbol ios={symbol.ios} android={symbol.android as never} size={17} />
+          </VaultTile>
+          <View style={askRowStyles.text}>
+            <Text
+              {...actionProps}
+              numberOfLines={2}
+              style={{ color: tokens.foreground, ...typeScale.cardTitle }}
+            >
+              {title}
+            </Text>
+            {destination ? (
+              <Text
+                numberOfLines={1}
+                style={{ color: tokens.mutedForeground, ...typeScale.secondary }}
+              >
+                {destination}
+              </Text>
+            ) : null}
+          </View>
+          {answered ? (
+            <View style={askRowStyles.done}>
+              {dismissed || ask.dismissed ? null : (
+                <NativeSymbol
+                  ios="checkmark"
+                  android="checkmark"
+                  size={14}
+                  color={tokens.mutedForeground}
+                />
+              )}
+              <Text
+                style={{
+                  color: tokens.mutedForeground,
+                  ...typeScale.secondary,
+                  fontWeight: fontWeight.medium,
+                }}
+              >
+                {answeredLabel}
+              </Text>
+            </View>
+          ) : canAnswer && !ownerOnly ? (
+            <NativeActionButton
+              label={t`Add`}
+              disabled={submitting}
+              fill={false}
+              prominence="secondary"
+              size="compact"
+              onPress={openSheet}
+            />
+          ) : null}
+        </View>
+        {!answered && canAnswer && !ownerOnly && canDismiss ? (
+          <View style={askInputStyles.buttons}>
+            <NativeActionButton
+              label={t`Dismiss`}
+              disabled={submitting}
+              fill={false}
+              prominence="plain"
+              size="compact"
+              onPress={() => void dismiss()}
+            />
+          </View>
+        ) : null}
+        {!answered && !canAnswer ? (
+          <Text style={{ color: tokens.mutedForeground, ...typeScale.caption }}>
+            {t`Waiting for this bot’s response.`}
+          </Text>
+        ) : null}
+        {error ? (
+          <Text style={{ color: tokens.destructive, ...typeScale.caption }}>{error}</Text>
+        ) : null}
+        {sheetOpen && loginInput ? (
+          <SecretAskSheet
+            title={title}
+            destination={secretDestinationLabel(ask.credential)}
+            replacedSite={ask.replaces?.origin}
+            // Once any save is accepted, or the viewer is no longer the run's user, the open sheet
+            // clears its own fields, then closes itself.
+            pending={canAnswer && !answered && !ownerOnly}
+            onClose={closeSheet}
+            loginFields={ask.loginFields}
+            onSave={async (fields, remember) => {
+              if (remember) await onAnswer("", fields);
+              else await onAnswer("", fields, false);
+              setSentOnce(!remember);
+              setSaved(true);
+              closeSheet();
+            }}
+          />
+        ) : null}
+        {sheetOpen && (itemType === "card" || itemType === "contact") && !answered ? (
+          <VaultItemEditor
+            kind={itemType}
+            ask
+            title={title}
+            onClose={closeSheet}
+            onSave={async ({ value }) => {
+              if (value === undefined) throw new Error("No value");
+              await onAnswer(value);
+              setSaved(true);
+            }}
+          />
+        ) : null}
+      </View>
+    );
   }
 
   return (
@@ -103,62 +257,51 @@ export function AskBlock({
       <Text
         {...actionProps}
         numberOfLines={secretInput ? 2 : undefined}
-        style={{ color: tokens.foreground, ...typeScale.cardTitle }}
+        style={{
+          color: answeredQuestion ? tokens.mutedForeground : tokens.foreground,
+          ...typeScale.cardTitle,
+        }}
       >
         {plainAskTitle(ask.text)}
       </Text>
-      {secretInput && ask.credential ? (
+      {secretInput && destination ? (
+        <Text style={{ color: tokens.mutedForeground, ...typeScale.secondary }}>{destination}</Text>
+      ) : null}
+      {secretInput && ask.sharedBrowser && !ownerOnly && !answered ? (
         <Text style={{ color: tokens.mutedForeground, ...typeScale.secondary }}>
-          {secretDestinationLabel(ask.credential)}
+          {t`The bot's browser stays signed in for everyone in this space`}
         </Text>
       ) : null}
-      {ask.detail && !secretInput ? (
+      {secretInput && ask.replaces && !ownerOnly && !answered ? (
+        <Text style={{ color: tokens.mutedForeground, ...typeScale.secondary }}>
+          {t`Replaces the login saved for ${ph({ site: ask.replaces.origin })}`}
+        </Text>
+      ) : null}
+      {ask.detail && (!secretInput || ask.oneTimeCode) ? (
         <Text style={{ color: tokens.mutedForeground, ...typeScale.secondary }}>{ask.detail}</Text>
       ) : null}
-      {answered ? (
+      {answerIsSeparate ? null : answered ? (
         <Text
           style={{
             // Dismissed reads like a declined approval, not a success.
-            color: dismissed || ask.dismissed ? tokens.mutedForeground : tokens.success,
+            color:
+              answeredQuestion || dismissed || ask.dismissed
+                ? tokens.mutedForeground
+                : tokens.success,
             ...typeScale.secondary,
             fontWeight: fontWeight.medium,
             ...(secretInput ? { marginTop: 12 } : null),
           }}
         >
-          {secretInput
-            ? t(dismissed || ask.dismissed ? "Dismissed" : "Saved")
-            : t("Answered: {answer}", { answer: ask.answer ?? t("Done") })}
+          {secretInput ? answeredLabel : t`Answered: ${ph({ answer: ask.answer ?? t`Done` })}`}
         </Text>
-      ) : canAnswer && ownerOnly ? null : canAnswer && loginInput ? (
-        <View style={askInputStyles.buttons}>
-          <NativeActionButton
-            label={t("Continue")}
-            disabled={submitting}
-            fill={secretInput}
-            style={secretInput ? askInputStyles.button : undefined}
-            onPress={() => {
-              sheetSession.current += 1;
-              setSheetOpen(true);
-            }}
-          />
-          {canDismiss ? (
-            <NativeActionButton
-              label={t("Dismiss")}
-              disabled={submitting}
-              fill={secretInput}
-              style={secretInput ? askInputStyles.button : undefined}
-              prominence="secondary"
-              onPress={() => void dismiss()}
-            />
-          ) : null}
-        </View>
-      ) : canAnswer ? (
+      ) : !secretInput ? null : canAnswer && ownerOnly ? null : canAnswer ? (
         <>
           <TextInput
-            accessibilityLabel={secretInput ? secretLabel : t("Answer")}
+            accessibilityLabel={secretInput ? secretLabel : t`Type your answer`}
             value={answer}
             onChangeText={setAnswer}
-            placeholder={secretInput ? secretLabel : t("Type your answer")}
+            placeholder={secretInput ? secretLabel : t`Type your answer`}
             placeholderTextColor={tokens.faintForeground}
             secureTextEntry={secretInput}
             autoComplete="off"
@@ -184,7 +327,7 @@ export function AskBlock({
             />
             {secretInput && canDismiss ? (
               <NativeActionButton
-                label={t("Dismiss")}
+                label={t`Dismiss`}
                 disabled={submitting}
                 fill={secretInput}
                 style={secretInput ? askInputStyles.button : undefined}
@@ -196,33 +339,23 @@ export function AskBlock({
         </>
       ) : (
         <Text style={{ color: tokens.mutedForeground, ...typeScale.caption }}>
-          {t("Waiting for this bot’s response.")}
+          {t`Waiting for this bot’s response.`}
         </Text>
       )}
       {error ? (
         <Text style={{ color: tokens.destructive, ...typeScale.caption }}>{error}</Text>
       ) : null}
-      {sheetOpen && loginInput && ask.credential ? (
-        <SecretAskSheet
-          title={plainAskTitle(ask.text)}
-          destination={secretDestinationLabel(ask.credential)}
-          // Once any save is accepted, or the viewer is no longer the run's user, the open sheet
-          // clears its own fields, then closes itself.
-          pending={canAnswer && !answered && !ownerOnly}
-          onClose={() => {
-            if (session === sheetSession.current) setSheetOpen(false);
-          }}
-          loginFields={ask.loginFields}
-          onSave={async (fields) => {
-            await onAnswer("", fields);
-            setSaved(true);
-            if (session === sheetSession.current) setSheetOpen(false);
-          }}
-        />
-      ) : null}
     </View>
   );
 }
+
+const askRowStyles = StyleSheet.create({
+  card: { width: "100%", borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  tile: { width: 34, height: 34, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  text: { flex: 1, gap: 2 },
+  done: { flexDirection: "row", alignItems: "center", gap: 4 },
+});
 
 const askInputStyles = StyleSheet.create({
   field: {

@@ -1,5 +1,9 @@
+import { generateKeyPairSync } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadEnv } from "./env.js";
+import { loadEnv, parseExtraAuthOrigins, withEnvOverrides } from "./env.js";
 
 const base = {
   DATABASE_URL: "postgres://anviq:anviq@127.0.0.1:5433/anviq",
@@ -7,6 +11,21 @@ const base = {
 };
 
 describe("loadEnv", () => {
+  it("defaults the attachment count to four and accepts configured bounds", () => {
+    expect(loadEnv(base).maxAttachmentsPerMessage).toBe(4);
+    expect(loadEnv({ ...base, MAX_ATTACHMENTS_PER_MESSAGE: " " }).maxAttachmentsPerMessage).toBe(4);
+    for (const count of [1, 8, 100]) {
+      expect(
+        loadEnv({ ...base, MAX_ATTACHMENTS_PER_MESSAGE: ` ${count} ` }).maxAttachmentsPerMessage,
+      ).toBe(count);
+    }
+  });
+  it.each(["0", "1e2", "101"])("rejects invalid attachment count %s", (value) => {
+    expect(() => loadEnv({ ...base, MAX_ATTACHMENTS_PER_MESSAGE: value })).toThrow(
+      "MAX_ATTACHMENTS_PER_MESSAGE",
+    );
+  });
+
   it("keeps calls off unless explicitly enabled", () => {
     expect(loadEnv(base).phoneCallsEnabled).toBe(false);
     for (const value of ["false", "1", ""]) {
@@ -30,17 +49,30 @@ describe("loadEnv", () => {
     );
   });
 
-  it.each(["0", "-1", "1.5", "NaN", "Infinity", "1e3", "0x10", "9007199254740991"])(
-    "rejects invalid upload limit %s",
-    (value) => {
-      expect(() => loadEnv({ ...base, MAX_UPLOAD_SIZE_MB: value })).toThrow("MAX_UPLOAD_SIZE_MB");
-    },
-  );
+  it.each(["0", "1e3", "9007199254740991"])("rejects invalid upload limit %s", (value) => {
+    expect(() => loadEnv({ ...base, MAX_UPLOAD_SIZE_MB: value })).toThrow("MAX_UPLOAD_SIZE_MB");
+  });
+  it("keeps the 5 GiB computer save limit unless configured", () => {
+    expect(loadEnv(base).workspaceSaveLimits).toEqual({
+      maxBytes: 5 * 1024 ** 3,
+      maxFiles: 1_000_000,
+    });
+    expect(loadEnv({ ...base, WORKSPACE_SAVE_MAX_GB: "20" }).workspaceSaveLimits.maxBytes).toBe(
+      20 * 1024 ** 3,
+    );
+  });
+
+  it.each(["0", "-1", "abc", "1e3"])("rejects invalid computer save limit %s", (value) => {
+    expect(() => loadEnv({ ...base, WORKSPACE_SAVE_MAX_GB: value })).toThrow(
+      "WORKSPACE_SAVE_MAX_GB",
+    );
+  });
+
   it("keeps the ticket board off unless explicitly enabled", () => {
-    expect(loadEnv(base).ticketBoardEnabled).toBe(false);
+    expect(loadEnv(base).deploymentLabs).toEqual([]);
     for (const value of ["false", "1", ""])
-      expect(loadEnv({ ...base, TICKET_BOARD_ENABLED: value }).ticketBoardEnabled).toBe(false);
-    expect(loadEnv({ ...base, TICKET_BOARD_ENABLED: "true" }).ticketBoardEnabled).toBe(true);
+      expect(loadEnv({ ...base, TICKET_BOARD_ENABLED: value }).deploymentLabs).toEqual([]);
+    expect(loadEnv({ ...base, TICKET_BOARD_ENABLED: "true" }).deploymentLabs).toEqual(["board"]);
   });
   it("shows a licensee only when the deployment sets one", () => {
     expect(loadEnv(base).licensee).toBeUndefined();
@@ -106,33 +138,6 @@ describe("loadEnv", () => {
     ).toBe("https://catalog.example.test/feed");
   });
 
-  it("falls back to none when a remote provider key is missing", () => {
-    expect(
-      loadEnv({
-        ...base,
-        SANDBOX_PROVIDER: "e2b",
-      }).sandboxProvider,
-    ).toBe("none");
-    expect(
-      loadEnv({
-        ...base,
-        SANDBOX_PROVIDER: "createos",
-      }).sandboxProvider,
-    ).toBe("none");
-    expect(
-      loadEnv({
-        ...base,
-        SANDBOX_PROVIDER: "none",
-      }).sandboxProvider,
-    ).toBe("none");
-    expect(
-      loadEnv({
-        ...base,
-        SANDBOX_PROVIDER: "",
-      }).sandboxProvider,
-    ).toBe("none");
-  });
-
   it("loads provider-specific Daytona configuration", () => {
     const env = loadEnv({
       ...base,
@@ -143,9 +148,11 @@ describe("loadEnv", () => {
     });
     expect(env).toMatchObject({
       sandboxProvider: "daytona",
-      daytonaApiKey: "test-daytona-key",
-      daytonaApiUrl: "https://daytona.test/api",
-      daytonaTarget: "test-target",
+      sandboxOptions: {
+        daytonaApiKey: "test-daytona-key",
+        daytonaApiUrl: "https://daytona.test/api",
+        daytonaTarget: "test-target",
+      },
     });
   });
 
@@ -158,9 +165,27 @@ describe("loadEnv", () => {
     });
     expect(env).toMatchObject({
       sandboxProvider: "boat",
-      boatApiKey: "test-boat-key",
-      boatApiUrl: "https://boat.test/api/v1",
+      sandboxOptions: { boatApiKey: "test-boat-key", boatApiUrl: "https://boat.test/api/v1" },
     });
+  });
+
+  it("starts without reading a malformed computer setting until a computer is built", () => {
+    const env = loadEnv({ ...base, KUBERNETES_SANDBOX_POD_ANNOTATIONS: "{" });
+    expect(env.databaseUrl).toBe(base.DATABASE_URL);
+    expect(() => env.sandboxOptions).toThrow(/KUBERNETES_SANDBOX_POD_ANNOTATIONS/);
+  });
+
+  it("keeps environment computer options a partial override leaves out", () => {
+    const env = loadEnv({
+      ...base,
+      SANDBOX_PROVIDER: "daytona",
+      DAYTONA_API_KEY: "test-daytona-key",
+      DAYTONA_TARGET: "env-target",
+    });
+    expect(
+      withEnvOverrides(env, { sandboxOptions: { daytonaTarget: "override-target" } })
+        .sandboxOptions,
+    ).toMatchObject({ daytonaApiKey: "test-daytona-key", daytonaTarget: "override-target" });
   });
 
   it("throws when production omits secrets", () => {
@@ -363,5 +388,187 @@ describe("OIDC environment", () => {
     expect(
       loadEnv({ ...base, ...oidc, OIDC_ALLOW_SIGNUP_BYPASS: "true" }).oidc?.allowSignupBypass,
     ).toBe(true);
+  });
+});
+
+describe("social sign-in environment", () => {
+  const privateKey = generateKeyPairSync("ec", { namedCurve: "prime256v1" })
+    .privateKey.export({
+      type: "pkcs8",
+      format: "pem",
+    })
+    .toString();
+  const apple = {
+    APPLE_CLIENT_ID: "com.example.service",
+    APPLE_TEAM_ID: "TEAMID1234",
+    APPLE_KEY_ID: "KEYID12345",
+    APPLE_PRIVATE_KEY: privateKey,
+  };
+
+  it("leaves sign-in unchanged when no provider is configured", () => {
+    expect(loadEnv(base).social).toBeUndefined();
+  });
+
+  it("enables a provider only when its credentials are complete", () => {
+    expect(() => loadEnv({ ...base, GOOGLE_CLIENT_ID: "client" })).toThrow(/configured together/);
+    expect(() => loadEnv({ ...base, ...apple, APPLE_KEY_ID: undefined })).toThrow(
+      /configured together/,
+    );
+    expect(
+      loadEnv({ ...base, GOOGLE_CLIENT_ID: "client", GOOGLE_CLIENT_SECRET: "secret" }).social,
+    ).toEqual({
+      providers: [{ id: "google", name: "Google", clientId: "client", clientSecret: "secret" }],
+    });
+    expect(loadEnv({ ...base, ...apple }).social).toMatchObject({
+      providers: [
+        expect.objectContaining({
+          id: "apple",
+          clientId: "com.example.service",
+        }),
+      ],
+    });
+  });
+
+  it("reads the Apple private key from a file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "anviq-apple-"));
+    const file = join(dir, "key.p8");
+    try {
+      writeFileSync(file, privateKey);
+      expect(
+        loadEnv({ ...base, ...apple, APPLE_PRIVATE_KEY: undefined, APPLE_PRIVATE_KEY_FILE: file })
+          .social?.providers[0],
+      ).toMatchObject({ id: "apple" });
+      expect(() => loadEnv({ ...base, ...apple, APPLE_PRIVATE_KEY_FILE: file })).toThrow(
+        /not both/,
+      );
+      try {
+        loadEnv({
+          ...base,
+          ...apple,
+          APPLE_PRIVATE_KEY: undefined,
+          APPLE_PRIVATE_KEY_FILE: join(dir, "missing.p8"),
+        });
+        expect.unreachable("Missing private key must fail startup");
+      } catch (error) {
+        expect(error).toMatchObject({
+          message: "APPLE_PRIVATE_KEY_FILE could not be read",
+          cause: { code: "ENOENT", path: join(dir, "missing.p8") },
+        });
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("web origin", () => {
+  it("drops trailing slashes so links never double up", () => {
+    expect(loadEnv({ ...base, WEB_ORIGIN: "https://app.example.com/" }).webOrigin).toBe(
+      "https://app.example.com",
+    );
+    expect(loadEnv({ ...base, WEB_ORIGIN: "https://app.example.com///" }).webOrigin).toBe(
+      "https://app.example.com",
+    );
+    expect(loadEnv({ ...base, WEB_ORIGIN: " https://app.example.com " }).webOrigin).toBe(
+      "https://app.example.com",
+    );
+  });
+
+  it("keeps the local default when none is set", () => {
+    expect(loadEnv(base).webOrigin).toBe("http://127.0.0.1:5173");
+    expect(loadEnv(base).authUrl).toBe("http://127.0.0.1:5173");
+  });
+
+  it.each(["", " \t "])("uses the local default for blank WEB_ORIGIN %j", (value) => {
+    const env = loadEnv({ ...base, WEB_ORIGIN: value });
+    expect(env.webOrigin).toBe("http://127.0.0.1:5173");
+    expect(env.authUrl).toBe("http://127.0.0.1:5173");
+  });
+
+  it.each(["", " \t "])("uses webOrigin for blank BETTER_AUTH_URL %j", (value) => {
+    const env = loadEnv({
+      ...base,
+      WEB_ORIGIN: "https://app.example.com/",
+      BETTER_AUTH_URL: value,
+    });
+    expect(env.authUrl).toBe("https://app.example.com");
+  });
+
+  it("normalises BETTER_AUTH_URL the same way and keeps a path", () => {
+    const env = loadEnv({
+      ...base,
+      WEB_ORIGIN: "https://app.example.com/",
+      BETTER_AUTH_URL: "https://auth.example.com/base/",
+    });
+    expect(env.authUrl).toBe("https://auth.example.com/base");
+    expect(env.webOrigin).toBe("https://app.example.com");
+  });
+
+  it("refuses something that is not an absolute URL", () => {
+    expect(() => loadEnv({ ...base, WEB_ORIGIN: "app.example.com" })).toThrow(
+      "WEB_ORIGIN must be an absolute http(s) URL",
+    );
+  });
+
+  it("names BETTER_AUTH_URL when it is invalid", () => {
+    expect(() => loadEnv({ ...base, BETTER_AUTH_URL: "app.example.com" })).toThrow(
+      "BETTER_AUTH_URL must be an absolute http(s) URL",
+    );
+  });
+
+  it.each(["WEB_ORIGIN", "BETTER_AUTH_URL"])("refuses non-HTTP URLs for %s", (name) => {
+    expect(() => loadEnv({ ...base, [name]: "app.example.com:5173" })).toThrow(
+      `${name} must be an absolute http(s) URL`,
+    );
+  });
+
+  it.each(["WEB_ORIGIN", "BETTER_AUTH_URL"])("does not expose invalid %s values", (name) => {
+    const value = "postgres://user:password@db.example.test/database";
+    const load = () => loadEnv({ ...base, [name]: value });
+    expect(load).toThrow(`${name} must be an absolute http(s) URL`);
+    expect(load).not.toThrow(value);
+  });
+});
+
+describe("directory provisioning environment", () => {
+  it("stays off without a token and keeps a long one", () => {
+    expect(loadEnv(base).scimBearerToken).toBeUndefined();
+    expect(loadEnv({ ...base, SCIM_BEARER_TOKEN: " " }).scimBearerToken).toBeUndefined();
+    const token = "a".repeat(32);
+    expect(loadEnv({ ...base, SCIM_BEARER_TOKEN: ` ${token} ` }).scimBearerToken).toBe(token);
+  });
+  it.each(["a".repeat(31), `${"a".repeat(16)} ${"a".repeat(16)}`])(
+    "refuses a short or spaced token",
+    (token) => {
+      expect(() => loadEnv({ ...base, SCIM_BEARER_TOKEN: token })).toThrow("SCIM_BEARER_TOKEN");
+    },
+  );
+});
+
+describe("ANVIQ_EXTRA_AUTH_ORIGINS", () => {
+  it("is empty when unset or blank", () => {
+    expect(loadEnv(base).extraAuthOrigins).toEqual([]);
+    expect(parseExtraAuthOrigins(" , ")).toEqual([]);
+  });
+
+  it("keeps https origins and http on loopback or a private network, normalized", () => {
+    expect(
+      parseExtraAuthOrigins(
+        "https://host.tailnet.ts.net/, http://192.168.1.20:5173 ,http://100.64.1.2,http://localhost:5173,https://host.tailnet.ts.net",
+      ),
+    ).toEqual([
+      "https://host.tailnet.ts.net",
+      "http://192.168.1.20:5173",
+      "http://100.64.1.2",
+      "http://localhost:5173",
+    ]);
+  });
+
+  it("drops invalid entries", () => {
+    expect(
+      parseExtraAuthOrigins(
+        "http://example.com,ftp://host,sekundo://,not a url,https://host/path,https://u:p@host,*",
+      ),
+    ).toEqual([]);
   });
 });

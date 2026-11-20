@@ -3,26 +3,33 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadRootEnv } from "@anviq/core/node/load-root-env";
-import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
+import type { DisposablePostgres } from "./postgres.js";
+import { disposableDatabaseEnv, startPostgres } from "./postgres.js";
 
 async function main() {
   loadRootEnv();
   const runOpenRouter = Boolean(process.env.OPENROUTER_API_KEY);
-  if (!process.env.E2B_API_KEY && !process.env.BOAT_API_KEY && !runOpenRouter) {
+  if (
+    !process.env.E2B_API_KEY &&
+    !process.env.BOAT_API_KEY &&
+    !process.env.BOXD_API_KEY &&
+    !process.env.INSTABOX_API_KEY &&
+    !process.env.NOVITA_API_KEY &&
+    !process.env.CREATEOS_SANDBOX_API_KEY &&
+    !runOpenRouter
+  ) {
     throw new Error(
-      "E2B_API_KEY, BOAT_API_KEY, or OPENROUTER_API_KEY is required for live provider canaries",
+      "E2B_API_KEY, BOAT_API_KEY, BOXD_API_KEY, INSTABOX_API_KEY, NOVITA_API_KEY, CREATEOS_SANDBOX_API_KEY, or OPENROUTER_API_KEY is required for live provider canaries",
     );
   }
 
   const dataDir = await mkdtemp(path.join(tmpdir(), "anviq-canary-"));
-  let postgres: StartedPostgreSqlContainer | undefined;
+  let postgres: DisposablePostgres | undefined;
   try {
-    if (runOpenRouter) postgres = await new PostgreSqlContainer("postgres:18-alpine").start();
+    if (runOpenRouter) postgres = await startPostgres();
     const env = {
       ...process.env,
-      DATABASE_URL: postgres?.getConnectionUri() ?? "",
-      REALTIME_DATABASE_URL: postgres?.getConnectionUri() ?? "",
+      ...disposableDatabaseEnv(postgres?.getConnectionUri() ?? ""),
       VERIFY_PROVIDERS: "1",
       WAKEUP_DRIVER: "memory",
       AGENT_RUNTIME: "pi",
@@ -50,7 +57,7 @@ async function main() {
       });
     }
     execSync(
-      "pnpm exec vitest run --no-file-parallelism packages/testkit/src/providers.canary.test.ts packages/testkit/src/release-watch.canary.test.ts",
+      "pnpm exec vitest run --no-file-parallelism packages/testkit/src/infra/providers.canary.test.ts packages/testkit/src/infra/release-watch.canary.test.ts",
       { stdio: "inherit", env },
     );
   } finally {

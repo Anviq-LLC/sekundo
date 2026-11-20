@@ -1,0 +1,75 @@
+appId: com.sekundo.app
+name: Workspace
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      ANVIQ_ACTIVE_EMAIL: ${ANVIQ_SCREENSHOT_EMAIL}
+- openLink: "sekundo:///board"
+- extendedWaitUntil:
+    visible: ".*Draft the launch announcement.*"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 01-board
+- openLink: "sekundo:///approvals"
+- extendedWaitUntil:
+    visible: ".*example.com.*"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 02-approval-rules
+- openLink: "sekundo:///approval-rule-add"
+- extendedWaitUntil:
+    visible: "Browser act"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 02b-add-approval-rule
+- openLink: "sekundo:///vault"
+- extendedWaitUntil:
+    visible: ".*deploy_token.*"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 03-vault
+- tapOn: "Help desk"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 04-vault-item
+- tapOn: "Remove"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 05-vault-remove
+- tapOn: "Cancel"
+- tapOn: "Done"
+- tapOn: "New item"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 06-vault-new
+- tapOn: "Card"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 07-vault-new-card
+- tapOn: "Cancel"
+- openLink: "sekundo:///archived-bots"
+- extendedWaitUntil:
+    visible: ".*Archived fixture.*"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 08-archived-bots
+- openLink: "sekundo:///space?spaceId=${ANVIQ_SCREENSHOT_TEAM_SPACE_ID}"
+- extendedWaitUntil:
+    visible: ".*Customize.*"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 09-space-settings
+- openLink: "sekundo:///space-members?spaceId=${ANVIQ_SCREENSHOT_TEAM_SPACE_ID}"
+- extendedWaitUntil:
+    visible: "Owner"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 10-space-members

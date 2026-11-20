@@ -1,6 +1,10 @@
+import { useTimeout } from "@anviq/chat-ui/hooks";
 import { botColors, typeScale } from "@anviq/ui-tokens";
+import { useLingui } from "@lingui/react/macro";
+import type { NativeStackNavigationProp } from "expo-router";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useContext, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { TextInputInstance } from "react-native";
 import {
   Alert,
   FlatList,
@@ -14,20 +18,24 @@ import {
 } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BotAvatar } from "../components/bot-avatar";
-import { GlassIconButton } from "../components/glass-icon-button";
-import { GroupAvatar } from "../components/group-avatar";
-import { NativeSymbol } from "../components/native-symbol";
-import { readableGutters } from "../lib/adaptive-layout";
-import { currentApiBase, selectedSpaceId, selectSpace, spaceSelectionSeq } from "../lib/api";
-import { mobileTokens, resolveMobileAppearance } from "../lib/appearance";
-import { useI18n } from "../lib/i18n";
-import { native, useThemedStyles } from "../lib/native";
-import { getSearchInbox, subscribeSearchInbox } from "../lib/search-inbox";
-import type { SearchSheetRow } from "../lib/search-sheet";
-import { searchSheetRows } from "../lib/search-sheet";
-import { currentSessionGeneration } from "../lib/session";
-import { useSearch } from "../lib/use-search";
+import { BotAvatar } from "../components/bots/bot-avatar";
+import { GroupAvatar } from "../components/bots/group-avatar";
+import { GlassIconButton } from "../components/native/glass-icon-button";
+import { NativeActionButton } from "../components/native/native-action-button";
+import { NativeSymbol } from "../components/native/native-symbol";
+import { currentApiBase, selectedSpaceId, spaceSelectionSeq } from "../lib/api/api";
+import { selectSpace } from "../lib/api/api-server";
+import { currentSessionGeneration } from "../lib/api/session";
+import { mobileTokens, resolveMobileAppearance } from "../lib/appearance/appearance";
+import { CallKeyboardContext } from "../lib/calls/call-keyboard-context";
+import { useUiLocale } from "../lib/i18n/i18n";
+import { readableGutters } from "../lib/layout/adaptive-layout";
+import { useContentBottomInset } from "../lib/layout/content-bottom-inset";
+import { native, useThemedStyles } from "../lib/native/native";
+import { getSearchInbox, subscribeSearchInbox } from "../lib/search/search-inbox";
+import type { SearchSheetRow } from "../lib/search/search-sheet";
+import { searchSheetRows } from "../lib/search/search-sheet";
+import { useSearch } from "../lib/search/use-search";
 
 const kindIcons = {
   conversation: { ios: "bubble.left.and.bubble.right", android: "chatbubbles-outline" },
@@ -38,21 +46,24 @@ const kindIcons = {
 } as const;
 
 export default function SearchSheet() {
-  const { t, locale } = useI18n();
+  const { t } = useLingui();
+  const locale = useUiLocale();
   const router = useRouter();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const styles = useThemedStyles(createStyles);
   const tokens = mobileTokens();
   const appearance = resolveMobileAppearance();
   const insets = useSafeAreaInsets();
+  const contentBottomInset = useContentBottomInset();
+  const rootAvoidsKeyboard = useContext(CallKeyboardContext);
   const gutters = readableGutters(useWindowDimensions().width, insets);
-  const field = useRef<TextInput>(null);
+  const field = useRef<TextInputInstance>(null);
   const opening = useRef(false);
   const attempt = useRef(0);
   const focused = useRef(false);
   const [query, setQuery] = useState("");
   const spaces = useSyncExternalStore(subscribeSearchInbox, getSearchInbox);
-  const { hits, loading } = useSearch(query);
+  const { hits, loading, error, retry } = useSearch(query);
   const rows = useMemo(() => searchSheetRows(spaces, query, hits), [spaces, query, hits, locale]);
 
   const cancelOpen = useCallback(() => {
@@ -63,9 +74,17 @@ export default function SearchSheet() {
 
   useFocusEffect(
     useCallback(() => {
-      focused.current = true;
-      opening.current = false;
-      const unsubscribe = navigation.addListener("beforeRemove", cancelOpen);
+      const arm = () => {
+        focused.current = true;
+        opening.current = false;
+      };
+      arm();
+      // A native dismissal blurs the sheet only once its animation ends, so a pending open is
+      // cancelled as soon as the sheet starts closing, and re-armed if the gesture is abandoned.
+      const unsubscribe = navigation.addListener("transitionStart", (event) => {
+        if (event.data.closing) cancelOpen();
+        else arm();
+      });
       return () => {
         cancelOpen();
         unsubscribe();
@@ -73,15 +92,10 @@ export default function SearchSheet() {
     }, [navigation, cancelOpen]),
   );
 
-  useEffect(() => {
-    // Native formSheet may finish attaching after TextInput's autoFocus runs.
-    const timer = setTimeout(() => {
-      if (focused.current && !opening.current) field.current?.focus();
-    }, 350);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+  // Native formSheet may finish attaching after TextInput's autoFocus runs.
+  useTimeout(() => {
+    if (focused.current && !opening.current) field.current?.focus();
+  }, 350);
 
   const open = async (row: SearchSheetRow) => {
     if (!focused.current || opening.current) return;
@@ -106,7 +120,7 @@ export default function SearchSheet() {
         )
           return;
         if (!selected) {
-          Alert.alert(t("Could not switch spaces"), t("Try again."));
+          Alert.alert(t`Could not switch spaces`, t`Try again.`);
           return;
         }
       }
@@ -149,7 +163,7 @@ export default function SearchSheet() {
       >
         <GlassIconButton
           testID="search-sheet-close"
-          accessibilityLabel={t("Close")}
+          accessibilityLabel={t`Close`}
           ios="xmark"
           android="close"
           size={44}
@@ -170,11 +184,11 @@ export default function SearchSheet() {
           <TextInput
             ref={field}
             testID="search-sheet-field"
-            accessibilityLabel={t("Search")}
+            accessibilityLabel={t`Search`}
             autoFocus
             value={query}
             onChangeText={setQuery}
-            placeholder={t("Search")}
+            placeholder={t`Search`}
             placeholderTextColor={tokens.mutedForeground}
             autoCorrect={false}
             autoCapitalize="none"
@@ -186,7 +200,7 @@ export default function SearchSheet() {
           {Platform.OS === "android" && query ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t("Clear")}
+              accessibilityLabel={t`Clear`}
               hitSlop={8}
               onPress={() => {
                 setQuery("");
@@ -207,21 +221,38 @@ export default function SearchSheet() {
       <FlatList
         data={rows}
         keyExtractor={(row) => row.key}
-        automaticallyAdjustKeyboardInsets
+        automaticallyAdjustKeyboardInsets={!rootAvoidsKeyboard}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingLeft: gutters.left,
           paddingRight: gutters.right,
-          paddingBottom: insets.bottom + 16,
+          paddingBottom: contentBottomInset + 16,
         }}
         ListEmptyComponent={
-          <Text style={styles.empty}>{loading ? t("Searching…") : t("No results")}</Text>
+          error ? undefined : (
+            <Text style={styles.empty}>{loading ? t`Searching…` : t`No results`}</Text>
+          )
+        }
+        ListFooterComponent={
+          error ? (
+            <View style={styles.failure}>
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
+              </Text>
+              <NativeActionButton
+                label={t`Try again`}
+                prominence="secondary"
+                size="compact"
+                onPress={retry}
+              />
+            </View>
+          ) : undefined
         }
         renderItem={({ item }) => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${item.title}, ${item.label}`}
+            accessibilityLabel={[item.title, item.label, item.preview].filter(Boolean).join(", ")}
             onPress={() => void open(item)}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
           >
@@ -231,6 +262,7 @@ export default function SearchSheet() {
               <BotAvatar
                 identity={item.bot.id}
                 color={item.bot.color || botColors[3]}
+                avatarSet={item.bot.avatarSet}
                 status={item.bot.status}
               />
             ) : (
@@ -245,7 +277,8 @@ export default function SearchSheet() {
                 </Text>
                 <Text style={styles.time}>{item.label}</Text>
               </View>
-              <Text numberOfLines={1} style={styles.preview}>
+              {/* Two lines, so the matched words fit after the text before them. */}
+              <Text numberOfLines={2} style={styles.preview}>
                 {item.preview}
               </Text>
             </View>
@@ -311,5 +344,7 @@ function createStyles() {
       writingDirection: "auto",
     },
     empty: { color: native.secondaryLabel, fontSize: 16, paddingHorizontal: 20, paddingTop: 28 },
+    failure: { alignItems: "flex-start", gap: 12, paddingHorizontal: 20, paddingTop: 28 },
+    error: { color: tokens.destructive, fontSize: 14 },
   });
 }

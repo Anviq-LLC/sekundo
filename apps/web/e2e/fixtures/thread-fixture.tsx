@@ -1,11 +1,11 @@
 import type { ProductEvent, ThreadMessage, ThreadSnapshot } from "@anviq/contracts";
-import { foldPeerReplies } from "@anviq/core";
+import { foldPeerReplies, reduceThreadSnapshot } from "@anviq/core";
 import type { GroupAvatarMember } from "@anviq/ui-web";
 import { DEFAULT_BOT_AVATAR_COLOR } from "@anviq/ui-web";
 import type { ReactNode } from "react";
 import { useMemo, useRef } from "react";
-import { reduceThreadSnapshot } from "../../src/lib/thread-events";
-import { Transcript } from "../../src/pages/shell/transcript";
+import { rpc } from "../../src/lib/query/rpc";
+import { Transcript } from "../../src/pages/shell/chat/transcript";
 
 export const BOT = { botId: "bot-1", name: "Chief", color: DEFAULT_BOT_AVATAR_COLOR };
 const NO_IDS = new Set<string>();
@@ -72,9 +72,12 @@ export function FixtureTranscript({
     <main className="flex h-dvh flex-col bg-background text-foreground">
       {header}
       <Transcript
+        rpc={rpc}
         scrollRef={scrollRef}
         scrollRequest={null}
         onScrollRequestHandled={noop}
+        followRequest={0}
+        callHoldsSpeaker={false}
         artifactTarget={{ botId: BOT.botId }}
         transcript={transcript}
         showToolActivity={showToolActivity}
@@ -103,6 +106,7 @@ export function FixtureTranscript({
         speakingMessageId={null}
         onSpeak={noop}
         onOpenComputer={noop}
+        onReleaseComputer={async () => {}}
       />
     </main>
   );

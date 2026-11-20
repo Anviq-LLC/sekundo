@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { loadRootEnv } from "@anviq/core/node/load-root-env";
-import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import { computerTestSandbox } from "../computer-test-config.js";
+import { computerTestSandbox } from "../computers/computer-test-config.js";
+import { disposableDatabaseEnv, startPostgres } from "./postgres.js";
 import { runProcess } from "./process.js";
 
 async function main() {
@@ -16,11 +16,10 @@ async function main() {
     if (!process.env[key]) throw new Error(`${key} is required`);
   }
   const dataDir = await mkdtemp(path.join(tmpdir(), "anviq-computer-e2e-run-"));
-  const database = await new PostgreSqlContainer("postgres:18-alpine").start();
+  const database = await startPostgres();
   const env = {
     ...process.env,
-    DATABASE_URL: database.getConnectionUri(),
-    REALTIME_DATABASE_URL: database.getConnectionUri(),
+    ...disposableDatabaseEnv(database.getConnectionUri()),
     RUN_COMPUTER_E2E: "1",
     VERIFY_PROVIDERS: "1",
     VERIFY_LOGGING: "1",
@@ -52,7 +51,7 @@ async function main() {
     });
     await runProcess(
       "pnpm",
-      ["exec", "vitest", "run", "packages/testkit/src/computer-use.e2e.test.ts"],
+      ["exec", "vitest", "run", "packages/testkit/src/computers/computer-use.e2e.test.ts"],
       env,
     );
   } finally {

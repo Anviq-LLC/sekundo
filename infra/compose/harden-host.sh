@@ -28,6 +28,7 @@ apt-get install -y --no-install-recommends \
   audispd-plugins \
   fail2ban \
   needrestart \
+  nftables \
   ufw \
   unattended-upgrades
 
@@ -117,7 +118,16 @@ net.ipv6.conf.all.accept_source_route = 0
 net.ipv6.conf.default.accept_redirects = 0
 net.ipv6.conf.default.accept_source_route = 0
 EOF
+if [[ -e /proc/sys/net/mptcp/enabled ]]; then
+  echo 'net.mptcp.enabled = 0' >>/etc/sysctl.d/99-anviq-hardening.conf
+fi
 sysctl --system >/dev/null
+
+# Internet TCP never needs IPv4 options, and the kernel's handling of them is a recurring source of remote bugs.
+install -m 0644 "$(dirname "$0")/../systemd/anviq-drop-ip-options.service" /etc/systemd/system/anviq-drop-ip-options.service
+systemctl daemon-reload
+systemctl enable anviq-drop-ip-options.service
+systemctl restart anviq-drop-ip-options.service
 
 if [[ -z "${ANVIQ_DEPLOY_DIR:-}" && -r /etc/anviq/deploy.env ]]; then
   ANVIQ_DEPLOY_DIR="$(sed -n 's/^ANVIQ_DEPLOY_DIR=//p' /etc/anviq/deploy.env | tail -1 | tr -d '"')"
@@ -173,7 +183,7 @@ systemctl enable --now apparmor auditd fail2ban unattended-upgrades
 systemctl restart fail2ban
 systemctl reload ssh
 
-# Ship the audit trail off the host only when an operator configured a sink; see docs/self-host.md.
+# Ship the audit trail off the host only when an operator configured a sink; see docs/self-host-observability.md#host-audit-trail.
 AUDIT_ENV=/etc/anviq/audit-ship.env
 if grep -q '^ANVIQ_AUDIT_SINK_URL=.' "${AUDIT_ENV}" 2>/dev/null; then
   audit_token="$(sed -n 's/^ANVIQ_AUDIT_TOKEN_FILE=//p' "${AUDIT_ENV}" | tail -1 | tr -d '"')"

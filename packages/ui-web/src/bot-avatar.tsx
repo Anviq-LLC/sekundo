@@ -1,31 +1,37 @@
-import type { BotColorDef } from "@anviq/core";
+import type { BotAvatarSet, BotColorDef } from "@anviq/contracts";
+import { BOT_COLOR_LIST, BOT_COLORS } from "@anviq/contracts";
+import type { AvatarEyes, LogoAvatarActivity } from "@anviq/core";
 import {
-  ACTIVE_RUN_STATUSES,
+  avatarEyeRects,
   avatarIdentitySeed,
-  BOT_AVATAR_COLORS,
-  BOT_COLOR_LIST,
+  botEyeTone,
   DEFAULT_BOT_AVATAR_COLOR,
+  isRunWorking,
+  ORGANIC_AVATAR_EYES,
+  ORGANIC_AVATAR_VIEWBOX,
+  organicAvatarEyeTilt,
   organicAvatarPath,
   resolvePersonaColorDef,
-  SHIPPED_BOT_AVATAR_CENTER,
+  SHIPPED_BOT_AVATAR_EYES,
   SHIPPED_BOT_AVATAR_SHAPE_KEYS,
   SHIPPED_BOT_AVATAR_SHAPES,
   SHIPPED_BOT_AVATAR_VIEWBOX,
   shippedBotAvatarShapePath,
 } from "@anviq/core";
-import { tokens } from "@anviq/ui-tokens";
-import type { CSSProperties } from "react";
-import { memo, useId, useMemo, useSyncExternalStore } from "react";
+import type { ComponentProps, CSSProperties } from "react";
+import { memo, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useBotAvatarActivity } from "./bot-avatar-activity.js";
+import { useAvatarMotionVisibility } from "./hooks/use-avatar-motion-visibility.js";
 import { cn } from "./lib/utils.js";
+import { LogoAvatar } from "./logo-avatar.js";
 import "./styles.css";
 
 export type { BotColorDef };
-export { BOT_AVATAR_COLORS, BOT_COLOR_LIST, DEFAULT_BOT_AVATAR_COLOR, resolvePersonaColorDef };
+export { BOT_COLOR_LIST, BOT_COLORS, DEFAULT_BOT_AVATAR_COLOR, resolvePersonaColorDef };
 
 export const BOT_SHAPES = SHIPPED_BOT_AVATAR_SHAPES;
 export const SHIPPED_SHAPE_KEYS = SHIPPED_BOT_AVATAR_SHAPE_KEYS;
 const VIEWBOX = SHIPPED_BOT_AVATAR_VIEWBOX;
-const CENTER = SHIPPED_BOT_AVATAR_CENTER;
 
 export const BOT_MASCOT_SHAPES = SHIPPED_SHAPE_KEYS.map(
   (k) => BOT_SHAPES[k] ?? FALLBACK_SHAPE_PATH,
@@ -72,6 +78,8 @@ export function defaultBotAvatarValue(rawColor: string): string {
 
 export interface BotAvatarProps {
   color: string;
+  avatarSet?: BotAvatarSet;
+  activity?: LogoAvatarActivity;
   size?: number;
   status?: string;
   identity?: string;
@@ -80,13 +88,14 @@ export interface BotAvatarProps {
 
 export const BotAvatar = memo(function BotAvatar({
   color,
+  avatarSet,
+  activity,
   size = 36,
   status,
   identity = "",
   className,
 }: BotAvatarProps) {
-  const id = useId().replace(/[^a-zA-Z0-9-_]/g, "");
-  const isWorking = ACTIVE_RUN_STATUSES.some((s) => s === status);
+  const isWorking = isRunWorking(status);
 
   const parsed = useMemo(() => parseBotAvatar(color, identity), [color, identity]);
   const effectiveId = identity || parsed.color || "agent";
@@ -108,7 +117,7 @@ export const BotAvatar = memo(function BotAvatar({
         </div>
         {isWorking ? (
           <svg
-            className="anviq-bot-avatar-ring anviq-bot-avatar-ring-working absolute z-10 pointer-events-none"
+            className="anviq-bot-avatar-ring anviq-bot-avatar-ring-working absolute pointer-events-none"
             style={{
               inset: -4,
               width: size + 8,
@@ -133,6 +142,19 @@ export const BotAvatar = memo(function BotAvatar({
     );
   }
 
+  if (parsed.shapeIndex === undefined && avatarSet === "anviq") {
+    const Avatar = activity === undefined ? LiveLogoAvatar : LogoAvatar;
+    return (
+      <Avatar
+        avatarValue={color ? colorDef.hex : undefined}
+        identity={effectiveId}
+        size={size}
+        activity={activity}
+        status={status}
+        className={className}
+      />
+    );
+  }
   if (parsed.shapeIndex === undefined) {
     return (
       <OrganicAvatar
@@ -146,92 +168,76 @@ export const BotAvatar = memo(function BotAvatar({
   }
 
   return (
-    <div
-      className={cn(
-        "anviq-bot-avatar bot-avatar-container relative inline-flex items-center justify-center shrink-0 select-none",
-        className,
-      )}
-      style={{
-        width: size,
-        height: size,
-      }}
-      data-working={isWorking}
-    >
-      <svg
-        className="anviq-bot-avatar-ring absolute pointer-events-none"
-        style={{
-          inset: -4,
-          width: size + 8,
-          height: size + 8,
-          filter: `drop-shadow(0 0 6px ${colorDef.light}) drop-shadow(0 0 10px #ffffff)`,
-        }}
-        viewBox="0 0 48 48"
-        fill="none"
-        aria-hidden="true"
-      >
-        <circle
-          cx="24"
-          cy="24"
-          r="22"
-          stroke={`url(#${id}-ring)`}
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          strokeDasharray="45 80"
-        />
-        <circle cx="43" cy="24" r="2.8" fill="#ffffff" />
-        <defs>
-          <linearGradient id={`${id}-ring`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
-            <stop offset="60%" stopColor={colorDef.light} stopOpacity="0.9" />
-            <stop offset="100%" stopColor={colorDef.light} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <svg
-        viewBox={VIEWBOX}
-        aria-hidden="true"
-        className={cn(
-          "overflow-visible transition-transform duration-300",
-          isWorking
-            ? "animate-pulse scale-[1.04] motion-reduce:animate-none"
-            : "hover:scale-[1.03] motion-reduce:hover:scale-100",
-        )}
-        // Inline size so a parent's icon sizing (Button sizes bare SVGs) cannot shrink it.
-        style={{
-          width: size,
-          height: size,
-          filter: isWorking
-            ? `drop-shadow(0 0 8px ${colorDef.light}) drop-shadow(0 0 2px #ffffff)`
-            : "drop-shadow(0 2px 4px rgba(0,0,0,0.45))",
-        }}
-      >
-        <defs>
-          <linearGradient id={`bot-ink-${id}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={colorDef.light} />
-            <stop offset="100%" stopColor={colorDef.dark} />
-          </linearGradient>
-        </defs>
-        <g>
-          <path d={shippedBotAvatarShapePath(parsed.shapeIndex)} fill={`url(#bot-ink-${id})`} />
-          <g fill={colorDef.eyeColor} className="bot-character-eyes">
-            <ellipse cx={CENTER - 29} cy={CENTER - 8} rx={10} ry={7} />
-            <ellipse cx={CENTER + 29} cy={CENTER - 8} rx={10} ry={7} />
-          </g>
-        </g>
-      </svg>
-    </div>
+    <MascotAvatar
+      color={colorDef.hex}
+      seed={avatarIdentitySeed(effectiveId)}
+      body={shippedBotAvatarShapePath(parsed.shapeIndex)}
+      viewBox={VIEWBOX}
+      eyes={SHIPPED_BOT_AVATAR_EYES}
+      size={size}
+      isWorking={isWorking}
+      className={cn("anviq-shape-avatar", className)}
+    />
   );
 });
+
+/** Only live Sekundo consumers subscribe to public activity updates. */
+function LiveLogoAvatar({
+  status,
+  ...props
+}: ComponentProps<typeof LogoAvatar> & { status?: string }) {
+  const activity = useBotAvatarActivity(props.identity ?? "", status);
+  return <LogoAvatar {...props} activity={activity} />;
+}
 
 function OrganicAvatar({
   color,
   identity,
+  className,
+  ...props
+}: {
+  color: string;
+  identity?: string;
+  size: number;
+  isWorking: boolean;
+  className?: string;
+}) {
+  const seed = avatarIdentitySeed(identity || color || DEFAULT_BOT_AVATAR_COLOR);
+  return (
+    <MascotAvatar
+      {...props}
+      color={color}
+      seed={seed}
+      body={organicAvatarPath(seed)}
+      morph={organicAvatarPath(seed, 0.42)}
+      viewBox={ORGANIC_AVATAR_VIEWBOX}
+      eyes={ORGANIC_AVATAR_EYES}
+      eyeTilt={organicAvatarEyeTilt(seed)}
+      className={cn("anviq-organic-avatar", className)}
+    />
+  );
+}
+
+/** A body with bar eyes that moves while its bot works; the seed picks the motion. */
+function MascotAvatar({
+  color,
+  seed,
+  body,
+  morph,
+  viewBox,
+  eyes,
+  eyeTilt = 0,
   size,
   isWorking,
   className,
 }: {
   color: string;
-  identity?: string;
+  seed: number;
+  body: string;
+  morph?: string;
+  viewBox: string;
+  eyes: AvatarEyes;
+  eyeTilt?: number;
   size: number;
   isWorking: boolean;
   className?: string;
@@ -241,65 +247,92 @@ function OrganicAvatar({
     reducedMotionSnapshot,
     () => false,
   );
-  const seed = avatarIdentitySeed(identity || color || DEFAULT_BOT_AVATAR_COLOR);
+  const { ref, visible } = useAvatarMotionVisibility(!reducedMotion);
+  useEffect(() => {
+    // jsdom has no SMIL clock, so these are optional.
+    if (visible) ref.current?.unpauseAnimations?.();
+    else ref.current?.pauseAnimations?.();
+  }, [ref, visible]);
   const duration = `${4.8 + (seed % 24) / 10}s`;
-  const shapeA = organicAvatarPath(seed);
-  const shapeB = organicAvatarPath(seed, 0.42);
+  const eyeOrigin = `${(eyes.leftCx + eyes.rightCx) / 2}px ${eyes.cy}px`;
+  const unit = viewBoxWidth(viewBox) / viewBoxWidth(ORGANIC_AVATAR_VIEWBOX);
 
   return (
     <svg
-      viewBox="-60 -60 120 120"
+      ref={ref}
+      viewBox={viewBox}
       aria-hidden="true"
-      className={cn("anviq-organic-avatar overflow-visible select-none", className)}
+      className={cn("anviq-mascot-avatar overflow-visible select-none", className)}
       data-working={isWorking}
+      data-paused={!visible}
       data-shape-family={seed % 10}
       data-eye-pattern={seed % 4}
-      style={{
-        width: size,
-        height: size,
-        flex: "none",
-      }}
+      // Inline size so a parent's icon sizing (Button sizes bare SVGs) cannot shrink it.
+      style={
+        {
+          width: size,
+          height: size,
+          flex: "none",
+          "--anviq-mascot-unit": `${unit}px`,
+        } as CSSProperties
+      }
     >
       {(["idle", "working"] as const).map((mode) => (
         <path
           key={mode}
-          className={`anviq-organic-avatar-body anviq-organic-avatar-body-${mode}`}
-          d={shapeA}
+          className={`anviq-mascot-avatar-body anviq-mascot-avatar-body-${mode}`}
+          d={body}
           fill={color}
           style={
             {
-              "--anviq-organic-path": `path("${shapeA}")`,
+              "--anviq-mascot-path": `path("${body}")`,
               filter:
                 mode === "working"
-                  ? `drop-shadow(0 0 ${Math.round(size * 0.16)}px ${color})`
-                  : "drop-shadow(0 2px 3px rgba(0,0,0,.34))",
+                  ? `drop-shadow(0 0 ${Math.round(size * 0.16 * unit)}px ${color})`
+                  : "drop-shadow(0 calc(2 * var(--anviq-mascot-unit)) calc(3 * var(--anviq-mascot-unit)) rgba(0,0,0,.34))",
             } as CSSProperties
           }
         >
-          {!reducedMotion ? (
+          {/* Only a working body morphs. A late <animate> joins the svg clock mid-loop. */}
+          {morph && !reducedMotion && mode === "working" && isWorking ? (
             <animate
               attributeName="d"
-              values={`${shapeA};${shapeB};${shapeA}`}
+              values={`${body};${morph};${body}`}
               dur={duration}
               repeatCount="indefinite"
             />
           ) : null}
         </path>
       ))}
-      <g transform={`rotate(${(seed % 9) - 4})`}>
+      <g transform={`rotate(${eyeTilt})`}>
         {(["idle", "working"] as const).map((mode) => (
           <g
             key={mode}
-            className={`anviq-organic-avatar-eyes anviq-organic-avatar-eyes-${mode}`}
-            fill={tokens.background}
+            className={`anviq-mascot-avatar-eyes anviq-mascot-avatar-eyes-${mode} ${eyeFill(color)}`}
+            style={{ transformOrigin: eyeOrigin }}
           >
-            <rect x="-14" y="-12" width="7" height="24" rx="3.5" />
-            <rect x="7" y="-12" width="7" height="24" rx="3.5" />
+            <BarEyes eyes={eyes} />
           </g>
         ))}
       </g>
     </svg>
   );
+}
+
+function viewBoxWidth(viewBox: string): number {
+  return Number(viewBox.split(" ")[2]);
+}
+
+function BarEyes({ eyes }: { eyes: AvatarEyes }) {
+  return avatarEyeRects(eyes).map((rect) => <rect key={rect.x} {...rect} />);
+}
+
+/** Eyes are cut-outs in the page color unless the body is nearly white or black. */
+function eyeFill(bodyHex: string): string {
+  const tone = botEyeTone(bodyHex);
+  if (tone === "dark") return "fill-foreground dark:fill-background";
+  if (tone === "light") return "fill-background dark:fill-foreground";
+  return "fill-background";
 }
 
 const reducedMotionMedia = "(prefers-reduced-motion: reduce)";
@@ -353,10 +386,9 @@ export function BotShapePreview({
         <BotAvatar color={color} identity={identity} size={32} />
       ) : (
         <svg viewBox={VIEWBOX} className="size-8 overflow-visible" aria-hidden="true">
-          <path d={shippedBotAvatarShapePath(shapeIndex)} fill={colorDef.light} />
-          <g fill={colorDef.eyeColor}>
-            <ellipse cx={CENTER - 29} cy={CENTER - 8} rx={10} ry={7} />
-            <ellipse cx={CENTER + 29} cy={CENTER - 8} rx={10} ry={7} />
+          <path d={shippedBotAvatarShapePath(shapeIndex)} fill={colorDef.hex} />
+          <g className={eyeFill(colorDef.hex)}>
+            <BarEyes eyes={SHIPPED_BOT_AVATAR_EYES} />
           </g>
         </svg>
       )}
@@ -390,6 +422,7 @@ export function Wordmark({ className }: { className?: string }) {
       <div className="flex h-11 w-11 items-center justify-center rounded-full bg-card">
         <AnviqMark className="h-[18px] w-[32px]" />
       </div>
+      {/* off-scale: wordmark sized to the 44px logo mark */}
       <span className="font-[Aeonik,ui-sans-serif] text-[28px] tracking-tight text-foreground">
         Sekundo
       </span>

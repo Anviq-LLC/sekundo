@@ -1,0 +1,14 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.anviq.pdfview'
+version = '0.1.0'
+
+android {
+  namespace 'com.anviq.pdfview'
+  defaultConfig {
+    versionName '0.1.0'
+  }
+}

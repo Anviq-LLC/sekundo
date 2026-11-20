@@ -1,30 +1,39 @@
-import type { Bot, Me, Space, SpaceMemoryConfig, UsageSummary } from "@anviq/contracts";
+import type { Bot, BotAvatarSet, LabFeature, Me, Space, SpaceMemoryConfig } from "@anviq/contracts";
+import { parseLabs } from "@anviq/contracts";
 import { writeSaved } from "@anviq/core/query";
-import { useQuery } from "@tanstack/react-query";
 import type { RefObject } from "react";
-import { useCallback } from "react";
 import { lazyOverlay } from "../../components/ErrorBoundary";
-import type { connectedAppMarks } from "../../lib/connected-apps";
-import type { SpaceQueries } from "../../lib/query";
-import { queryClient } from "../../lib/query";
-import type { createSpaceRpc } from "../../lib/rpc";
-import type { ShellOverlay } from "../shell-overlay";
-import { FALLBACK_BOT_COLOR } from "./chat-shared";
+import { setLabs } from "../../lib/bootstrap";
+import { invalidateVoiceConsent } from "../../lib/calls/voice-consent";
+import type { connectedAppMarks } from "../../lib/integrations/connected-apps";
+import type { SpaceQueries } from "../../lib/query/query";
+import { queryClient } from "../../lib/query/query";
+import type { createSpaceRpc, RpcClient } from "../../lib/query/rpc";
+import { FALLBACK_BOT_COLOR } from "./chat/chat-shared";
+import type { ShellOverlay } from "./shell-overlay-url";
 
 const SettingsOverlay = lazyOverlay(() =>
-  import("../SettingsOverlay").then((module) => module.SettingsOverlay),
+  import("../settings/SettingsOverlay").then((module) => module.SettingsOverlay),
 );
 const PeerMessagesOverlay = lazyOverlay(() =>
-  import("../PeerMessagesOverlay").then((module) => module.PeerMessagesOverlay),
+  import("../settings/PeerMessagesOverlay").then((module) => module.PeerMessagesOverlay),
 );
 const PluginsOverlay = lazyOverlay(() =>
-  import("../PluginsOverlay").then((module) => module.PluginsOverlay),
+  import("../plugins/PluginsOverlay").then((module) => module.PluginsOverlay),
 );
 const SkillsDialog = lazyOverlay(() =>
   import("../../components/integrations/skills-dialog").then((module) => module.SkillsDialog),
 );
+const BotTemplatesDialog = lazyOverlay(() =>
+  import("../../components/bot-templates/bot-templates-dialog").then(
+    (module) => module.BotTemplatesDialog,
+  ),
+);
+const AgentImportDialog = lazyOverlay(() =>
+  import("./bots/agent-import-dialog").then((module) => module.AgentImportDialog),
+);
 const McpServersOverlay = lazyOverlay(() =>
-  import("../McpServersOverlay").then((module) => module.McpServersOverlay),
+  import("../integrations/McpServersOverlay").then((module) => module.McpServersOverlay),
 );
 
 /** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
@@ -38,20 +47,26 @@ function voiceStatusRefreshTimeout(): Promise<never> {
   });
 }
 
-/** The integrations, skills and MCP overlays the URL opens. */
+/** The integrations, skills, bot templates, import and MCP overlays the URL opens. */
 export function AppOverlays({
   overlay,
   setOverlay,
   activeBotId,
   stdioEnabled,
+  messagingEnabled,
   onConnectedAppsChange,
+  onOpenBot,
 }: {
   overlay: ShellOverlay;
   setOverlay: (next: ShellOverlay) => void;
   activeBotId: string | undefined;
   stdioEnabled: boolean;
+  /** Messaging settings can be opened; a link there is shown only then. */
+  messagingEnabled: boolean;
   onConnectedAppsChange: (apps: ReturnType<typeof connectedAppMarks>) => void;
+  onOpenBot: (bot: Bot) => void;
 }) {
+  const openTemplates = () => setOverlay({ kind: "templates" });
   return (
     <>
       {overlay?.kind === "integrations" ? (
@@ -60,9 +75,35 @@ export function AppOverlays({
           activeBotId={activeBotId}
           onClose={() => setOverlay(null)}
           onOpenMcp={() => setOverlay({ kind: "mcp" })}
+          onOpenTemplates={openTemplates}
+          onOpenMessaging={
+            messagingEnabled
+              ? () => setOverlay({ kind: "settings", section: "messaging", spaceId: null })
+              : undefined
+          }
         />
       ) : null}
-      {overlay?.kind === "skills" ? <SkillsDialog onClose={() => setOverlay(null)} /> : null}
+      {overlay?.kind === "skills" ? (
+        <SkillsDialog onClose={() => setOverlay(null)} onOpenTemplates={openTemplates} />
+      ) : null}
+      {overlay?.kind === "templates" ? (
+        <BotTemplatesDialog
+          onClose={() => setOverlay(null)}
+          onOpenBot={(bot) => {
+            setOverlay(null);
+            onOpenBot(bot);
+          }}
+        />
+      ) : null}
+      {overlay?.kind === "import" ? (
+        <AgentImportDialog
+          onClose={() => setOverlay(null)}
+          onCreated={(bot) => {
+            setOverlay(null);
+            onOpenBot(bot);
+          }}
+        />
+      ) : null}
       {overlay?.kind === "mcp" ? (
         <McpServersOverlay
           editServerId={overlay.serverId}
@@ -85,6 +126,8 @@ export function SettingsOverlays({
   spaces,
   renameSpace,
   removeSpace,
+  leftSpace,
+  refreshSpaces,
   alive,
   user,
   refetchSession,
@@ -104,8 +147,10 @@ export function SettingsOverlays({
   settingsSpace: Space | null;
   showSettings: boolean;
   spaces: Space[];
-  renameSpace: (spaceId: string, name: string) => Promise<void>;
+  renameSpace: (spaceId: string, name: string, client: RpcClient) => Promise<void>;
   removeSpace: (spaceId: string) => Promise<void>;
+  leftSpace: (spaceId: string, activeSpaceId: string) => Promise<void>;
+  refreshSpaces: () => Promise<void>;
   alive: RefObject<boolean>;
   user: { name?: string | null; email?: string } | undefined;
   refetchSession: () => Promise<unknown>;
@@ -116,18 +161,14 @@ export function SettingsOverlays({
   peerConversation: { peerBotId: string; peerBotName: string } | null;
   setPeerConversation: (peer: null) => void;
   active: Bot | undefined;
-  peerBot: (botId: string) => { color: string } | undefined;
+  peerBot: (botId: string) => { color: string; avatarSet?: BotAvatarSet } | undefined;
 }) {
-  // Read when Usage opens; a reopened Usage shows the last summary while it refreshes.
-  const usageQuery = useQuery({ ...queries.usage.summary.queryOptions(), enabled: false });
-  const usage: UsageSummary | null = usageQuery.data ?? null;
-  const refetchUsage = usageQuery.refetch;
-  const refreshUsage = useCallback(() => void refetchUsage(), [refetchUsage]);
   const voiceStatusKey = queries.voice.status.queryKey();
   return (
     <>
       {overlay?.kind === "settings" && showSettings ? (
         <SettingsOverlay
+          shellRpc={rpc}
           space={settingsSpace}
           spaces={spaces}
           onRenameSpace={renameSpace}
@@ -135,18 +176,22 @@ export function SettingsOverlays({
             await removeSpace(spaceId);
             if (alive.current) setOverlay(null);
           }}
+          onLeftSpace={(spaceId, activeSpaceId) => {
+            setOverlay(null);
+            void leftSpace(spaceId, activeSpaceId);
+          }}
           onOpenSpace={(spaceId) => setOverlay({ ...overlay, section: "space", spaceId })}
           name={user?.name ?? ""}
           onNameSaved={async () => {
             await refetchSession();
           }}
           email={user?.email}
-          usage={usage}
-          onUsageOpen={refreshUsage}
           section={overlay.section}
           onSectionChange={(section) => setOverlay({ ...overlay, section })}
           billingEnabled={bootstrapMe?.billingEnabled === true}
           sandboxProvider={bootstrapMe?.sandboxProvider}
+          computerSettingsEnabled={bootstrapMe?.computerSettingsEnabled === true}
+          canConfigureComputers={bootstrapMe?.isAdmin === true}
           onSandboxProviderChange={(sandboxProvider) =>
             setBootstrapMe((prev) => (prev ? { ...prev, sandboxProvider } : prev))
           }
@@ -154,15 +199,44 @@ export function SettingsOverlays({
           paymentWalletProvider={bootstrapMe?.paymentWalletProvider ?? null}
           timezone={bootstrapMe?.timezone ?? null}
           licensee={bootstrapMe?.licensee}
-          onTimezoneChange={async (timezone) => {
-            const nextMe = await rpc.preferences.update({ timezone });
+          onTimezoneChange={async (timezone, client) => {
+            const nextMe = await client.preferences.update({ timezone });
             setBootstrapMe((prev) => (prev ? { ...prev, timezone: nextMe.timezone } : nextMe));
           }}
+          botAvatarSet={bootstrapMe?.botAvatarSet}
+          onBotAvatarSetChange={async (botAvatarSet) => {
+            const nextMe = await rpc.preferences.update({ botAvatarSet });
+            setBootstrapMe((prev) =>
+              prev ? { ...prev, botAvatarSet: nextMe.botAvatarSet } : nextMe,
+            );
+            // Unpinned bots were restyled with it. The save already succeeded, so a failed
+            // refresh only waits for the roster's next re-read.
+            void refreshSpaces().catch(() => undefined);
+          }}
+          labs={parseLabs(bootstrapMe?.labs)}
+          labsAvailable={parseLabs(bootstrapMe?.labsAvailable)}
+          onLabsChange={async (labs, client) => {
+            const previous = parseLabs(bootstrapMe?.labs);
+            const apply = (next: LabFeature[]) => {
+              setLabs(next);
+              setBootstrapMe((prev) => (prev ? { ...prev, labs: next } : prev));
+            };
+            apply(labs);
+            try {
+              apply((await client.preferences.update({ labs })).labs);
+            } catch (error) {
+              apply(previous);
+              throw error;
+            }
+          }}
+          onAccountImported={refreshSpaces}
+          onImportAgent={() => setOverlay({ kind: "import" })}
           memoryConfig={memoryConfig}
           onMemoryConfigChange={(config) => {
             void writeSaved(queryClient, queries.memory.providerConfig.queryKey(), () => config);
           }}
           onVoiceStatusMaybeChanged={async () => {
+            invalidateVoiceConsent();
             try {
               queryClient.setQueryData(
                 voiceStatusKey,
@@ -181,9 +255,11 @@ export function SettingsOverlays({
           botId={active.id}
           botName={active.name}
           botColor={active.color}
+          botAvatarSet={active.avatarSet}
           peerBotId={peerConversation.peerBotId}
           peerBotName={peerConversation.peerBotName}
           peerBotColor={peerBot(peerConversation.peerBotId)?.color ?? FALLBACK_BOT_COLOR}
+          peerBotAvatarSet={peerBot(peerConversation.peerBotId)?.avatarSet}
           onClose={() => setPeerConversation(null)}
         />
       ) : null}

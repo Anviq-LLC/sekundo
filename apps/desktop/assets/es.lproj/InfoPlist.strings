@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Anviq Agents usa el micrófono para el dictado y las llamadas de voz con tus bots.";
+"NSSpeechRecognitionUsageDescription" = "Anviq Agents convierte lo que dices en texto para el dictado y las llamadas de voz con tus bots.";

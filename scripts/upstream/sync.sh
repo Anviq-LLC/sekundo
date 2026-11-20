@@ -8,7 +8,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 ref=${1:-upstream/main}
 mirror=anviq-upstream
 
-git fetch --quiet upstream --tags
+git fetch --quiet --force upstream --tags
 commit=$(git rev-parse --verify "$ref^{commit}")
 
 tmp="$(cd "$(git rev-parse --git-dir)" && pwd)/sync-tmp"

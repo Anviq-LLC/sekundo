@@ -2,7 +2,8 @@ import type * as NodeFsPromises from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { resolveSupervisorToken } from "@anviq/core";
+import { resolveSupervisorToken } from "@anviq/core/node/secrets-guard";
+import { deferred } from "@anviq/core/test-async";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   COMPUTER_IMAGE,
@@ -126,14 +127,8 @@ describe("computer loopback provision lifecycle", () => {
   it("rechecks stopped state after a concurrent stop owns the screen lock", async () => {
     const { supervisorApp } = await import("./index.js");
     let running = true;
-    let releaseStop!: () => void;
-    let stopStarted!: () => void;
-    const started = new Promise<void>((resolve) => {
-      stopStarted = resolve;
-    });
-    const stopped = new Promise<void>((resolve) => {
-      releaseStop = resolve;
-    });
+    const started = deferred();
+    const stopped = deferred();
     const container = {
       inspect: vi.fn(async () => ({
         Config: {
@@ -146,8 +141,8 @@ describe("computer loopback provision lifecycle", () => {
         return { start: async () => Readable.from([]), inspect: async () => ({ ExitCode: 0 }) };
       }),
       stop: vi.fn(async () => {
-        stopStarted();
-        await stopped;
+        started.resolve();
+        await stopped.promise;
         running = false;
       }),
     };
@@ -162,10 +157,10 @@ describe("computer loopback provision lifecycle", () => {
         },
       });
     const first = stop();
-    await started;
+    await started.promise;
     const second = stop();
     await vi.waitFor(() => expect(container.inspect).toHaveBeenCalledTimes(3));
-    releaseStop();
+    stopped.resolve();
     expect((await first).status).toBe(200);
     expect((await second).status).toBe(200);
     expect(container.stop).toHaveBeenCalledOnce();
@@ -198,6 +193,99 @@ describe("computer loopback provision lifecycle", () => {
     });
     expect(response.status).toBe(500);
     expect(container.stop).toHaveBeenCalledOnce();
+  });
+
+  it("stops a computer whose work is discarded without running a checkpoint in it", async () => {
+    const { supervisorApp } = await import("./index.js");
+    const container = {
+      inspect: vi.fn(async () => ({
+        Config: {
+          Labels: { "anviq.managed": "true", "anviq.botId": "bot", "anviq.spaceId": "space" },
+        },
+        State: { Running: true },
+      })),
+      exec: vi.fn(),
+      stop: vi.fn(async () => {}),
+    };
+    mocks.docker.getContainer.mockReturnValue(container);
+    const response = await supervisorApp.request("/computers/wedged/stop", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${resolveSupervisorToken(process.env)}`,
+        "x-anviq-bot-id": "bot",
+        "x-anviq-space-id": "space",
+        "x-anviq-discard-unsaved": "1",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(container.exec).not.toHaveBeenCalled();
+    expect(container.stop).toHaveBeenCalledOnce();
+  });
+
+  it("stops a discarded computer while a stuck screen command holds its screen lock", async () => {
+    const { supervisorApp } = await import("./index.js");
+    const { withComputerScreenLock } = await import("./locks.js");
+    const container = {
+      inspect: vi.fn(async () => ({
+        Config: {
+          Labels: { "anviq.managed": "true", "anviq.botId": "bot", "anviq.spaceId": "space" },
+        },
+        State: { Running: true },
+      })),
+      exec: vi.fn(),
+      stop: vi.fn(async () => {}),
+    };
+    mocks.docker.getContainer.mockReturnValue(container);
+    const lockHeld = deferred();
+    const held = withComputerScreenLock("wedged", () => lockHeld.promise);
+    try {
+      const response = await supervisorApp.request("/computers/wedged/stop", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${resolveSupervisorToken(process.env)}`,
+          "x-anviq-bot-id": "bot",
+          "x-anviq-space-id": "space",
+          "x-anviq-discard-unsaved": "1",
+        },
+      });
+      expect(response.status).toBe(200);
+      expect(container.stop).toHaveBeenCalledOnce();
+    } finally {
+      lockHeld.resolve();
+      await held;
+    }
+  });
+
+  it("kills a computer that does not stop when asked", async () => {
+    const { supervisorApp } = await import("./index.js");
+    let running = true;
+    const container = {
+      inspect: vi.fn(async () => ({
+        Config: {
+          Labels: { "anviq.managed": "true", "anviq.botId": "bot", "anviq.spaceId": "space" },
+        },
+        State: { Running: running },
+      })),
+      exec: vi.fn(),
+      stop: vi.fn(async () => {
+        throw new Error("did not receive an exit event");
+      }),
+      kill: vi.fn(async () => {
+        running = false;
+      }),
+    };
+    mocks.docker.getContainer.mockReturnValue(container);
+    const response = await supervisorApp.request("/computers/wedged/stop", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${resolveSupervisorToken(process.env)}`,
+        "x-anviq-bot-id": "bot",
+        "x-anviq-space-id": "space",
+        "x-anviq-discard-unsaved": "1",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(container.kill).toHaveBeenCalledOnce();
   });
 
   it("quiesces browser profiles with Browser.close before stopping the container", async () => {
@@ -459,6 +547,39 @@ describe("provisioning network rollback", () => {
     expect(mocks.docker.createContainer).not.toHaveBeenCalled();
   });
 
+  it("starts the computer on an IPv4-only network when the daemon cannot do IPv6", async () => {
+    fixture();
+    mocks.docker.createNetwork
+      .mockRejectedValueOnce(
+        new Error(
+          "could not find an available, non-overlapping IPv6 address pool among the defaults to assign to the network",
+        ),
+      )
+      .mockResolvedValueOnce({});
+    const response = await provision();
+    expect(response.status).toBe(200);
+    expect(mocks.docker.createNetwork).toHaveBeenCalledTimes(2);
+    const [dualStack, ipv4Only] = mocks.docker.createNetwork.mock.calls;
+    expect(dualStack?.[0].EnableIPv6).toBe(true);
+    expect(ipv4Only?.[0]).not.toHaveProperty("EnableIPv6");
+  });
+
+  it("removes the IPv4-fallback network when the container fails to start", async () => {
+    const { container } = fixture();
+    const fallbackNetwork = { remove: vi.fn().mockResolvedValue(undefined) };
+    mocks.docker.createNetwork
+      .mockRejectedValueOnce(
+        new Error(
+          "could not find an available, non-overlapping IPv6 address pool among the defaults to assign to the network",
+        ),
+      )
+      .mockResolvedValueOnce(fallbackNetwork);
+    container.start.mockRejectedValue(new Error("start failed"));
+    const response = await provision();
+    expect(response.status).toBe(500);
+    expect(fallbackNetwork.remove).toHaveBeenCalledOnce();
+  });
+
   it("does not remove an existing network after failed creation", async () => {
     const { network } = fixture();
     mocks.docker.createNetwork.mockRejectedValue(new Error("network already exists"));
@@ -568,6 +689,18 @@ describe("restricted egress rekeying", () => {
     expect(await response.json()).toMatchObject({ resumed: false, id: "replacement" });
     expect(existing.remove).toHaveBeenCalledWith({ force: true });
     expect(existing.start).not.toHaveBeenCalled();
+  });
+
+  it.each(["auto", "restricted"])("probes %s egress with configured computer DNS", async (mode) => {
+    vi.stubEnv("SANDBOX_COMPUTER_EGRESS", mode);
+    vi.stubEnv("SANDBOX_COMPUTER_DNS", "1.1.1.1, 9.9.9.9");
+    setupExisting(computerNetworkNameFor("bot"));
+    await provision();
+    expect(mocks.verifyRestrictedEgress).toHaveBeenCalledExactlyOnceWith(
+      expect.anything(),
+      COMPUTER_IMAGE,
+      ["1.1.1.1", "9.9.9.9"],
+    );
   });
 
   it("refuses restricted computers until the host ruleset is verified", async () => {
@@ -1178,7 +1311,7 @@ describe("screen release status", () => {
         .map(([options]) => options.Cmd.join(" "))
         .join("\n");
       expect(setupCommand).toContain("browser-profile-1");
-      expect(setupCommand).toContain("if ! browser_running; then");
+      expect(setupCommand).toContain("browser_running || launch_browser");
       expect(setupCommand).not.toContain("Browser.close");
       expect(setupCommand).not.toContain("for marker in /tmp/anviq/browser-profile-*");
     },
@@ -1350,6 +1483,102 @@ describe("screen release status", () => {
   });
 });
 
+describe("computer deletion", () => {
+  const headers = {
+    authorization: `Bearer ${resolveSupervisorToken(process.env)}`,
+    "content-type": "application/json",
+    "x-anviq-bot-id": "bot",
+    "x-anviq-space-id": "space",
+    "x-anviq-screen-id": "writer",
+  };
+  const dockerError = (statusCode: number) =>
+    Object.assign(new Error(`docker ${statusCode}`), { statusCode });
+
+  function computer(botId = "bot") {
+    const commands: string[] = [];
+    const container = {
+      inspect: vi.fn(async () => ({
+        Config: {
+          Labels: { "anviq.managed": "true", "anviq.botId": botId, "anviq.spaceId": "space" },
+        },
+        HostConfig: { NetworkMode: computerNetworkNameFor("bot") },
+        State: { Running: true },
+        NetworkSettings: {
+          Ports: { "6080/tcp": [{ HostIp: "127.0.0.1", HostPort: screenPort }] },
+        },
+      })),
+      exec: vi.fn(async ({ Cmd }: { Cmd: string[] }) => {
+        commands.push(Cmd.join(" "));
+        return { start: async () => Readable.from([]), inspect: async () => ({ ExitCode: 0 }) };
+      }),
+      remove: vi.fn(),
+    };
+    mocks.docker.getContainer.mockReturnValue(container);
+    mocks.docker.getNetwork.mockReturnValue({
+      inspect: vi.fn().mockRejectedValue(dockerError(404)),
+    });
+    const resets = () =>
+      commands.filter((command) => command.includes("for marker in /tmp/anviq/browser-profile-*"))
+        .length;
+    return { container, resets };
+  }
+
+  it.each([
+    { fail: "inspect", error: dockerError(500), status: 500 },
+    { fail: "inspect", error: dockerError(404), status: 404 },
+    { fail: "remove", error: dockerError(500), status: 500 },
+    { fail: "remove", error: dockerError(404), status: 200 },
+  ])("answers $status when $fail fails with $error.message", async ({ fail, error, status }) => {
+    const { supervisorApp } = await import("./index.js");
+    const { container } = computer();
+    (fail === "inspect" ? container.inspect : container.remove).mockRejectedValue(error);
+    const response = await supervisorApp.request("/computers/computer", {
+      method: "DELETE",
+      headers,
+    });
+    expect(response.status).toBe(status);
+    if (status === 404)
+      await expect(response.json()).resolves.toEqual({ error: "computer not found" });
+    expect(container.remove).toHaveBeenCalledTimes(fail === "inspect" ? 0 : 1);
+  });
+
+  it("rejects another computer identity without removing its container", async () => {
+    const { supervisorApp } = await import("./index.js");
+    const { container } = computer("other");
+    const response = await supervisorApp.request("/computers/computer", {
+      method: "DELETE",
+      headers,
+    });
+    expect(response.status).toBe(403);
+    expect(container.remove).not.toHaveBeenCalled();
+  });
+
+  it("forgets the computer's screens only once it is removed", async () => {
+    const { supervisorApp } = await import("./index.js");
+    const { container, resets } = computer();
+    const view = () =>
+      supervisorApp.request("/computers/computer/screen-mode", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ interactive: false, revokeControl: false }),
+      });
+    const remove = () =>
+      supervisorApp.request("/computers/computer", { method: "DELETE", headers });
+    expect((await view()).status).toBe(200);
+    expect(resets()).toBe(1);
+
+    container.remove.mockRejectedValueOnce(dockerError(500));
+    expect((await remove()).status).toBe(500);
+    expect((await view()).status).toBe(200);
+    expect(resets()).toBe(1);
+
+    container.remove.mockResolvedValueOnce(undefined);
+    expect((await remove()).status).toBe(200);
+    expect((await view()).status).toBe(200);
+    expect(resets()).toBe(2);
+  });
+});
+
 describe("screen registry across run boundaries", () => {
   it("discards a first failed setup left releasing when the container restarts", async () => {
     const logic = await import("./supervisor-logic.js");
@@ -1509,14 +1738,8 @@ describe("screen registry across run boundaries", () => {
     const { supervisorApp } = await import("./index.js");
     const commands: string[] = [];
     let block = false;
-    let signalBlocked!: () => void;
-    const blocked = new Promise<void>((resolve) => {
-      signalBlocked = resolve;
-    });
-    let unblock!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      unblock = resolve;
-    });
+    const blocked = deferred();
+    const gate = deferred();
     const info = {
       Image: "old-image",
       Config: {
@@ -1535,8 +1758,8 @@ describe("screen registry across run boundaries", () => {
         commands.push(Cmd.join(" "));
         if (block) {
           block = false;
-          signalBlocked();
-          await gate;
+          blocked.resolve();
+          await gate.promise;
         }
         return { start: async () => Readable.from([]), inspect: async () => ({ ExitCode: 0 }) };
       }),
@@ -1563,7 +1786,7 @@ describe("screen registry across run boundaries", () => {
     expect((await view()).status).toBe(200);
     block = true;
     const claim = view();
-    await blocked;
+    await blocked.promise;
     const replacement = supervisorApp.request("/computers", {
       method: "POST",
       headers,
@@ -1575,7 +1798,7 @@ describe("screen registry across run boundaries", () => {
     });
     await vi.waitFor(() => expect(mocks.docker.createNetwork).toHaveBeenCalled());
     expect(existing.remove).not.toHaveBeenCalled();
-    unblock();
+    gate.resolve();
     expect((await claim).status).toBe(200);
     expect((await replacement).status).toBe(200);
     expect(existing.remove).toHaveBeenCalledWith({ force: true });
@@ -1602,22 +1825,13 @@ describe("screen registry across run boundaries", () => {
       const commands: string[] = [];
       let startedAt = "boot-1";
       let blockCommand = false;
-      let signalBlocked!: () => void;
-      const blocked = new Promise<void>((resolve) => {
-        signalBlocked = resolve;
-      });
-      let unblock!: () => void;
-      const gate = new Promise<void>((resolve) => {
-        unblock = resolve;
-      });
-      let signalQueued!: () => void;
-      const queuedInspection = new Promise<void>((resolve) => {
-        signalQueued = resolve;
-      });
+      const blocked = deferred();
+      const gate = deferred();
+      const queuedInspection = deferred();
       let waitingForInspection = false;
       const container = {
         inspect: vi.fn(async () => {
-          if (waitingForInspection) signalQueued();
+          if (waitingForInspection) queuedInspection.resolve();
           return {
             Config: {
               Labels: {
@@ -1637,8 +1851,8 @@ describe("screen registry across run boundaries", () => {
           commands.push(Cmd.join(" "));
           if (blockCommand) {
             blockCommand = false;
-            signalBlocked();
-            await gate;
+            blocked.resolve();
+            await gate.promise;
           }
           return { start: async () => Readable.from([]), inspect: async () => ({ ExitCode: 0 }) };
         }),
@@ -1663,7 +1877,7 @@ describe("screen registry across run boundaries", () => {
       expect((await view()).status).toBe(200);
       blockCommand = true;
       const holder = view();
-      await blocked;
+      await blocked.promise;
       waitingForInspection = true;
       const queued =
         method === "POST"
@@ -1672,9 +1886,9 @@ describe("screen registry across run boundaries", () => {
               method: "DELETE",
               headers: { ...headers, "x-anviq-screen-lease-id": "run-1:1" },
             });
-      await queuedInspection;
+      await queuedInspection.promise;
       startedAt = "boot-2";
-      unblock();
+      gate.resolve();
       const held = await holder;
       expect(held.status).toBe(200);
       const response = await queued;
@@ -2136,12 +2350,9 @@ describe("computer network reclaim", () => {
       });
       mocks.docker.listContainers.mockResolvedValue([]);
       mocks.docker.createNetwork.mockResolvedValue(network);
-      let attach!: () => void;
-      const attached = new Promise<void>((resolve) => {
-        attach = resolve;
-      });
+      const attached = deferred();
       mocks.docker.createContainer.mockImplementation(async () => {
-        await attached;
+        await attached.promise;
         return { id: "replacement", start: vi.fn().mockResolvedValue(undefined) };
       });
       const provision = supervisorApp.request("/computers", {
@@ -2154,7 +2365,7 @@ describe("computer network reclaim", () => {
       const stopped = stop();
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(network.inspect).not.toHaveBeenCalled();
-      attach();
+      attached.resolve();
       expect((await provision).status).toBe(200);
       expect((await stopped).status).toBe(200);
       expect(network.inspect).toHaveBeenCalled();
@@ -2199,7 +2410,7 @@ describe("computer network reclaim", () => {
 
   describe("on startup", () => {
     async function reclaim() {
-      const { reclaimIdleComputerNetworks } = await import("./index.js");
+      const { reclaimIdleComputerNetworks } = await import("./networks.js");
       return reclaimIdleComputerNetworks();
     }
 
@@ -2356,6 +2567,166 @@ describe("computer network reclaim", () => {
         expectReconnected(existing, network);
       },
     );
+
+    it("tries IPv6 again when it recreates the reclaimed network after an IPv4 fallback", async () => {
+      const { existing } = stoppedComputer({});
+      const network = botNetwork();
+      network.inspect.mockRejectedValue(
+        Object.assign(new Error("no such network"), { statusCode: 404 }),
+      );
+      mocks.docker.getNetwork.mockReturnValue(network);
+      mocks.docker.createNetwork
+        .mockRejectedValueOnce(
+          new Error(
+            "could not find an available, non-overlapping IPv6 address pool among the defaults to assign to the network",
+          ),
+        )
+        .mockResolvedValueOnce({ remove: vi.fn() });
+
+      const response = await provision();
+      expect(await response.json()).toMatchObject({ id: "existing", resumed: true });
+      // A stop gave this network back, so its recreation starts from the
+      // dual-stack attempt again; only the create error falls back to IPv4.
+      expect(mocks.docker.createNetwork).toHaveBeenCalledTimes(2);
+      const [dualStack, ipv4Only] = mocks.docker.createNetwork.mock.calls;
+      expect(dualStack?.[0].EnableIPv6).toBe(true);
+      expect(ipv4Only?.[0]).not.toHaveProperty("EnableIPv6");
+      expectReconnected(existing, network);
+    });
+
+    it("gives back an IPv4-only network a crash left behind, then retries IPv6 on resume", async () => {
+      // Phase 1: a fresh provision falls back to IPv4 (the daemon has no IPv6 pool).
+      const fresh = {
+        id: "new-computer",
+        start: vi.fn().mockResolvedValue(undefined),
+        remove: vi.fn().mockResolvedValue(undefined),
+      };
+      mocks.docker.getImage.mockReturnValue({
+        inspect: vi.fn().mockResolvedValue({ Id: "image" }),
+      });
+      mocks.docker.listContainers.mockResolvedValue([]);
+      mocks.docker.createNetwork
+        .mockRejectedValueOnce(
+          new Error(
+            "could not find an available, non-overlapping IPv6 address pool among the defaults to assign to the network",
+          ),
+        )
+        .mockResolvedValueOnce({ remove: vi.fn() });
+      mocks.docker.createContainer.mockResolvedValue(fresh);
+      expect((await provision()).status).toBe(200);
+
+      // Phase 2: a crash without /stop leaves the stopped container on the
+      // IPv4-only network; startup cleanup keeps it (a stopped computer still
+      // references the network).
+      const existing = {
+        id: "existing",
+        inspect: vi.fn().mockResolvedValue({
+          Image: "image",
+          Config: {
+            User: hostComputerUser(),
+            Labels: { "anviq.managed": "true", "anviq.botId": "bot", "anviq.spaceId": "space" },
+          },
+          HostConfig: { NetworkMode: botNet, PortBindings: {} },
+          State: { Running: false },
+          NetworkSettings: { Networks: { [botNet]: { NetworkID: "net-v4" } } },
+        }),
+        start: vi.fn().mockResolvedValue(undefined),
+        remove: vi.fn().mockResolvedValue(undefined),
+      };
+      let v4Gone = false;
+      const network = {
+        inspect: vi.fn(() =>
+          v4Gone
+            ? Promise.reject(Object.assign(new Error("no such network"), { statusCode: 404 }))
+            : Promise.resolve({ Id: "net-v4", EnableIPv6: false }),
+        ),
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        remove: vi.fn(() => {
+          v4Gone = true;
+          return Promise.resolve(undefined);
+        }),
+      };
+      mocks.docker.getContainer.mockReturnValue(existing);
+      mocks.docker.getNetwork.mockReturnValue(network);
+      mocks.docker.listContainers.mockReset().mockResolvedValue([{ Id: existing.id }]);
+      const { reclaimIdleComputerNetworks } = await import("./networks.js");
+      mocks.docker.listNetworks.mockResolvedValue([
+        {
+          Name: botNet,
+          Labels: {
+            "anviq.netputerOwner": computerNetworkOwnerFor(process.env.DATA_DIR!, undefined),
+            "anviq.botId": "bot",
+          },
+        },
+      ]);
+      await reclaimIdleComputerNetworks();
+      expect(network.remove).not.toHaveBeenCalled();
+
+      // Phase 3: the resume must hand the IPv4-only network back and retry
+      // IPv6-first, rejoining the same container.
+      const createsBefore = mocks.docker.createContainer.mock.calls.length;
+      mocks.docker.createNetwork.mockReset().mockResolvedValue({ remove: vi.fn() });
+      const response = await provision();
+      expect(await response.json()).toMatchObject({ id: "existing", resumed: true, started: true });
+      expect(network.remove).toHaveBeenCalledOnce();
+      expect(mocks.docker.createNetwork).toHaveBeenCalledTimes(1);
+      expect(mocks.docker.createNetwork.mock.calls[0]?.[0].EnableIPv6).toBe(true);
+      expect(network.connect).toHaveBeenCalledWith({ Container: existing.id });
+      expect(existing.start).toHaveBeenCalledOnce();
+      expect(mocks.docker.createContainer.mock.calls.length).toBe(createsBefore);
+    });
+
+    it("reconnects the computer when a failed cleanup left it off its IPv4-only network", async () => {
+      // The crash leaves the stopped computer on the IPv4-only fallback network.
+      // The resume's cleanup disconnects the computer but cannot remove the
+      // network, so the resume must rejoin it before starting.
+      let detached = false;
+      const existing = {
+        id: "existing",
+        inspect: vi.fn(() =>
+          Promise.resolve({
+            Image: "image",
+            Config: {
+              User: hostComputerUser(),
+              Labels: {
+                "anviq.managed": "true",
+                "anviq.botId": "bot",
+                "anviq.spaceId": "space",
+              },
+            },
+            HostConfig: { NetworkMode: botNet, PortBindings: {} },
+            State: { Running: false },
+            NetworkSettings: {
+              Networks: detached ? {} : { [botNet]: { NetworkID: "net-v4" } },
+            },
+          }),
+        ),
+        start: vi.fn().mockResolvedValue(undefined),
+        remove: vi.fn().mockResolvedValue(undefined),
+      };
+      const network = {
+        inspect: vi.fn().mockResolvedValue({ Id: "net-v4", EnableIPv6: false }),
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn(async ({ Container }: { Container: string }) => {
+          if (Container === existing.id) detached = true;
+        }),
+        remove: vi.fn().mockRejectedValue(new Error("network has active endpoints elsewhere")),
+      };
+      mocks.docker.getImage.mockReturnValue({
+        inspect: vi.fn().mockResolvedValue({ Id: "image" }),
+      });
+      mocks.docker.getContainer.mockReturnValue(existing);
+      mocks.docker.getNetwork.mockReturnValue(network);
+      mocks.docker.listContainers.mockResolvedValue([{ Id: existing.id }]);
+      mocks.docker.createNetwork.mockResolvedValue({ remove: vi.fn() });
+
+      const response = await provision();
+      expect(await response.json()).toMatchObject({ id: "existing", resumed: true, started: true });
+      expect(network.remove).toHaveBeenCalledOnce();
+      expect(network.connect).toHaveBeenCalledExactlyOnceWith({ Container: existing.id });
+      expect(existing.start).toHaveBeenCalledOnce();
+    });
 
     it.each([
       ["removed", Object.assign(new Error("no such network"), { statusCode: 404 })],

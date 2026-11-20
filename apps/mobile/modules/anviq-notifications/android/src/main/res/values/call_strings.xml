@@ -3,4 +3,6 @@
   <string name="anviq_call_channel">Ongoing call</string>
   <string name="anviq_call_title">Sekundo call</string>
   <string name="anviq_call_text">Microphone is active</string>
+  <string name="anviq_call_answer">Answer</string>
+  <string name="anviq_call_decline">Decline</string>
 </resources>

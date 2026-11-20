@@ -212,8 +212,8 @@
   "Create a section and move {0} into it.": "Bir bölüm oluştur ve {0} botunu içine taşı.",
   "Create account": "Hesap oluştur",
   "Create group": "Grup oluştur",
+  "Create your account": "Hesabını oluştur",
   "Create your first bot": "İlk botunu oluştur",
-  "Create your Sekundo": "Sekundo hesabını oluştur",
   "Creating…": "Oluşturuluyor…",
   "Credential": "Kimlik bilgisi",
   "Credential saved": "Kimlik bilgisi kaydedildi",
@@ -575,5 +575,6 @@
   "Nothing is still running": "Hâlâ çalışan bir şey yok",
   "Credentials are encrypted and never sent to the model.": "Kimlik bilgileri şifrelenir ve modele asla gönderilmez.",
   "Rename section": "Bölümü yeniden adlandır",
-  "Could not rename section": "Bölüm yeniden adlandırılamadı"
+  "Could not rename section": "Bölüm yeniden adlandırılamadı",
+  "{count, plural, one {# message with {peer}} other {# messages with {peer}}}": "{count, plural, one {{peer} ile # mesaj} other {{peer} ile # mesaj}}"
 }

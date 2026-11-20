@@ -28,6 +28,7 @@ export type UsageMeasurement = {
   totalTokens: number | null;
   costUsd: number | null;
 };
+type MeasuredUsage = Partial<UsageMeasurement> & { costSource?: string | null };
 export type Operation = UsageOperationKind;
 export const OPERATION_KINDS = [
   "answer",
@@ -40,6 +41,10 @@ export type MeasuredCall = Partial<UsageMeasurement> & {
   operation?: string;
   id: string;
   costSource?: string | null;
+  /** The model that served the call, when known. A call to another model never uses the
+   * explicit pricing of the model an evaluation runs on. */
+  provider?: string;
+  modelId?: string;
 };
 export function validatePricing(value: unknown): EvalPricing {
   const p = value as EvalPricing;
@@ -93,6 +98,9 @@ export function measureCalls(
   calls: readonly MeasuredCall[],
   pricing?: EvalPricing,
   minimumCacheTokens?: number,
+  /** The only model `pricing` applies to; calls served by any other model fall back to
+   * their own provider-reported or catalog-estimated charge, and stay unknown without one. */
+  pricedModel?: { provider: string; modelId: string },
 ) {
   const unique = [...new Map(calls.map((c) => [c.id, c])).values()];
   const sum = (key: keyof UsageMeasurement): number | null =>
@@ -103,12 +111,14 @@ export function measureCalls(
     UsageMeasurement,
     "costUsd"
   >;
+  const ownCharge = (c: MeasuredCall) =>
+    c.costSource === "pi-catalog-estimate" && typeof c.costUsd === "number" ? c.costUsd : null; // Unknown catalog placeholders remain unavailable.
+  const otherModel = (c: MeasuredCall) =>
+    pricedModel !== undefined &&
+    (c.provider !== pricedModel.provider || c.modelId !== pricedModel.modelId);
   const priced = unique.map((c) => {
     if (c.costSource === "provider-reported" && typeof c.costUsd === "number") return c.costUsd;
-    if (!pricing)
-      return c.costSource === "pi-catalog-estimate" && typeof c.costUsd === "number"
-        ? c.costUsd
-        : null; // Unknown catalog placeholders remain unavailable.
+    if (!pricing || otherModel(c)) return ownCharge(c);
     if (
       [c.inputTokens, c.outputTokens, c.cacheReadTokens, c.cacheWriteTokens].some(
         (v) => typeof v !== "number",
@@ -182,7 +192,7 @@ export function measureCalls(
             : [
                 call.costSource === "provider-reported"
                   ? "provider-reported"
-                  : pricing
+                  : pricing && !otherModel(call)
                     ? "explicit-pricing-estimate"
                     : "pi-catalog-estimate",
               ],
@@ -197,8 +207,9 @@ export function measureCalls(
 /** Concurrency-safe reservations. This guard estimates spend; it is not a billing guarantee. */
 export class SpendBudget {
   private spent = 0;
-  private reservations = new Map<string, { estimate: number; pricing: EvalPricing }>();
+  private reservations = new Map<string, { estimate: number; pricing?: EvalPricing }>();
   private serial = 0;
+  private refusedUnsettled = 0;
   private unavailablePricing = false;
   constructor(
     readonly capUsd = 5,
@@ -208,13 +219,18 @@ export class SpendBudget {
   }
   reserve(
     inputTokens: number,
-    maxOutputTokens: number,
+    maxOutputTokens: number | null,
     cacheWriteRetention?: "1h",
     pricing = this.pricing,
   ): string {
     if (this.unavailablePricing)
       throw new Error("Eval model has no configured pricing for observed cache writes");
     if (!pricing) throw new Error("Live inference requires explicit pricing");
+    if (maxOutputTokens === null) {
+      if (pricing.output > 0 || (pricing.longContext?.output ?? 0) > 0)
+        throw new Error("An unbounded protocol requires a zero output price");
+      maxOutputTokens = 0;
+    }
     if (![inputTokens, maxOutputTokens].every((v) => Number.isSafeInteger(v) && v >= 0))
       throw new Error("A conservative token estimate is required before inference");
     // The input estimate is an upper bound: actual usage may fall into either tier.
@@ -247,19 +263,56 @@ export class SpendBudget {
     this.reservations.set(id, { estimate, pricing });
     return id;
   }
+  /** Reserves a call to a model the eval has no per-token pricing for, at that model's own
+   * conservative cost bound; its provider-reported or catalog-estimated charge settles it. */
+  reserveCostBound(estimateUsd: number): string {
+    if (!Number.isFinite(estimateUsd) || estimateUsd < 0)
+      throw new Error("A conservative cost bound is required before inference");
+    if (
+      this.spent +
+        [...this.reservations.values()].reduce((n, v) => n + v.estimate, 0) +
+        estimateUsd >
+      this.capUsd
+    )
+      throw new Error("Eval spend cap would be exceeded");
+    const id = String(++this.serial);
+    this.reservations.set(id, { estimate: estimateUsd });
+    return id;
+  }
   settle(id: string, actualUsd: number | null) {
     const reservation = this.reservations.get(id);
     if (reservation === undefined) throw new Error("Unknown spend reservation");
     this.reservations.delete(id);
     this.spent += actualUsd ?? reservation.estimate; // Missing usage must not restore potentially incurred spend.
   }
-  settleUsage(
-    id: string,
-    usage: (Partial<UsageMeasurement> & { costSource?: string | null }) | null,
-  ) {
+  /** Counts a request the eval refuses before it is sent, as a stand-in for stored trials does.
+   * Returns false, the answer a request gate gives to refuse it. */
+  refuse(): false {
+    this.refusedUnsettled++;
+    return false;
+  }
+  settleUsage(id: string, usage: (MeasuredUsage & { providerRequestId?: string | null }) | null) {
+    // Frees no more calls than were refused. Some runtimes count tokens for every call they
+    // attempt, so only a measurement from the provider proves a call went out.
+    if (
+      this.refusedUnsettled > 0 &&
+      (usage === null ||
+        (usage.costUsd == null &&
+          !usage.providerRequestId &&
+          ![usage.inputTokens, usage.outputTokens, usage.totalTokens].some(Boolean)))
+    ) {
+      this.refusedUnsettled--;
+      return this.settle(id, 0);
+    }
     const pricing = this.reservations.get(id)?.pricing;
     const priced = usage ? measureCalls([{ id, ...usage }], pricing).costUsd : null;
-    if (usage && typeof usage.cacheWrite1hTokens === "number" && usage.cacheWrite1hTokens > 0) {
+    // A bounded reservation has no per-token rates; its own bound already covers the write.
+    if (
+      pricing &&
+      usage &&
+      typeof usage.cacheWrite1hTokens === "number" &&
+      usage.cacheWrite1hTokens > 0
+    ) {
       const inputBuckets = [usage.inputTokens, usage.cacheReadTokens, usage.cacheWriteTokens];
       const promptTokens = inputBuckets.every((value) => typeof value === "number")
         ? inputBuckets.reduce<number>((sum, value) => sum + Number(value), 0)

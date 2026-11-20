@@ -1,0 +1,345 @@
+# Models
+
+Choose the deployment's default model, connect local or OpenAI-compatible servers, and configure
+approvals, media generation and voice.
+
+English | [简体中文](./zh-CN/self-host-models.md)
+
+## Deployment model
+
+The deployment model is used by anyone who has not connected a model of their own. `PI_DEFAULT_PROVIDER`
+picks the provider and `PI_DEFAULT_MODEL` the model:
+
+| `PI_DEFAULT_PROVIDER`  | Key                  | Default model                |
+| ---------------------- | -------------------- | ---------------------------- |
+| `openrouter` (default) | `OPENROUTER_API_KEY` | `anthropic/claude-haiku-5.5` |
+| `anthropic`            | `ANTHROPIC_API_KEY`  | `claude-sonnet-5`            |
+| `deepseek`             | `DEEPSEEK_API_KEY`   | `deepseek-flash`             |
+
+Pick a vision-capable model so screenshot computer tools stay available.
+
+A provider that authenticates from the host needs no key: for Amazon Bedrock with an ECS task,
+IRSA or EC2 instance role, opt in with `PI_DEFAULT_CREDENTIALS=host` and set
+`PI_DEFAULT_PROVIDER=amazon-bedrock`, `PI_DEFAULT_MODEL` and `AWS_REGION`. With an instance
+role, keep [restricted computer egress](./self-host-docker-computers.md#restricted-computer-egress) on so bot computers
+cannot read the role's credentials from the metadata endpoint.
+
+Google Vertex works the same way with `PI_DEFAULT_PROVIDER=google-vertex`, using the host's
+application default credentials (`GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`,
+`GOOGLE_CLOUD_LOCATION`). Runs on host credentials are billed to that cloud account.
+
+On a server only you use, the deployment model can also run through the
+[Claude Code CLI](#claude-code-cli) signed in on the host.
+
+The Compose files also pass the standard provider key variables the agent runtime reads itself
+(`OPENAI_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY`, `XAI_API_KEY` and others) to
+the API and worker, for models that have no stored credential.
+
+`ANVIQ_LIVE_MODEL_CATALOG=off` disables provider and Codex live catalog probing; the default is on.
+
+## Approvals
+
+Approvals have three modes in **Settings → Approvals**: Never ask skips ordinary approval prompts, Auto lets an
+approval model pass actions that fit the request, and Ask asks before any change. A space starts
+in Auto, which asks like Ask until an approval model is available. Each
+person can allow or block single tools and sites in every mode, and a space can customize its
+approvals apart from the account.
+All modes still enforce block rules and safety checks. Purchases always require a person's approval;
+unattended runs that cannot request approval refuse them.
+
+In **Settings → Models → Approval model**, each user can select a model
+from an existing connection and add ordered backups, independently of their main model. Personal
+connections use their own credentials; hosted calls follow the same Sekundo credit rules as chat.
+Backups are tried only when a checker fails. An explicit ask, including an uncertain decision,
+still requires a person.
+
+The deployment checker remains the default when no approval model is selected. For OpenRouter
+Jev, set `ANVIQ_AUTO_REVIEW_PROVIDER=openrouter` and
+`ANVIQ_AUTO_REVIEW_MODEL=typesafe/jev-1.14`; it uses `OPENROUTER_API_KEY` and the Decisions API.
+TypeSafe direct remains available through `ANVIQ_AUTO_REVIEW_PROVIDER=jev` and
+`TYPESAFE_API_KEY`. Core runs without either hosted service.
+
+With TypeSafe, `ANVIQ_AUTO_REVIEW_MODEL` defaults to `jev-latest`, and
+`ANVIQ_AUTO_REVIEW_MIN_CONFIDENCE` (0 to 1, default `0.5`) is the confidence below which Auto asks
+the person instead. `ANVIQ_AUTO_REVIEW_TIMEOUT_MS` (200 to 30000, default `10000`) bounds each
+check.
+
+## Local models
+
+To use an operator-controlled OpenAI-compatible server such as Ollama, LM Studio, llama.cpp, or
+MLX, list its model IDs and an endpoint that both the API and worker processes can reach:
+
+```env
+ANVIQ_LOCAL_MODELS=qwen3:4b,llama3.1:8b,qwen3-vl
+ANVIQ_LOCAL_MODELS_URL=http://127.0.0.1:11434/v1
+# Optional: key for a server that requires one, sent as the bearer token.
+ANVIQ_LOCAL_MODELS_API_KEY=
+ANVIQ_LOCAL_CONTEXT_WINDOW=32768
+ANVIQ_LOCAL_MAX_TOKENS=4096
+# Optional: model ids on this endpoint that accept images (screenshot computer tools).
+ANVIQ_LOCAL_VISION_MODELS=qwen3-vl
+# Optional: model ids on this endpoint that accept OpenAI-style reasoning_effort.
+ANVIQ_LOCAL_REASONING_MODELS=qwen3:4b
+# Optional: prompt tokens per minute the server accepts (a rate-limited key or quota).
+ANVIQ_LOCAL_TOKENS_PER_MINUTE=200000
+# Optional: off when the server does not cache prompts.
+ANVIQ_LOCAL_PROMPT_CACHE=off
+```
+
+Set `ANVIQ_LOCAL_MODELS_API_KEY` when the server requires a key, such as LiteLLM, vLLM started
+with `--api-key`, or a company gateway. Every request to `ANVIQ_LOCAL_MODELS_URL` then sends it as
+`Authorization: Bearer`; unset, requests carry the placeholder `local`. Like the other deployment
+keys, it stays on the API and worker and is redacted from run output. Use HTTPS unless the network
+is trusted. To make a local model the deployment model, set `PI_DEFAULT_PROVIDER=local`,
+`PI_DEFAULT_MODEL` to one of `ANVIQ_LOCAL_MODELS` and `PI_DEFAULT_CREDENTIALS=host`.
+
+A model in `ANVIQ_LOCAL_REASONING_MODELS` offers thinking levels and sends the chosen level as
+`reasoning_effort` (`medium` by default, `none` when thinking is off). Other local models never
+receive the field.
+
+`ANVIQ_LOCAL_MAX_TOKENS` is the output limit sent with every request to a local model, unless the
+connection sets its own max-tokens value. It never exceeds a quarter of
+`ANVIQ_LOCAL_CONTEXT_WINDOW`, so the prompt keeps the rest; a higher limit leaves less room for the
+prompt, so long chats are compacted sooner.
+
+A server behind a rate-limited key (a free tier, an organisation token quota) often answers `429`
+with a fixed `Retry-After` of a minute, so each rejected call costs a minute. Set
+`ANVIQ_LOCAL_TOKENS_PER_MINUTE` to the server's prompt-token limit and Sekundo paces calls to the
+local provider under it with a sliding one-minute window, waiting only as long as the window needs.
+The estimate is calibrated against the prompt tokens the server reports. Leave some headroom if
+other clients share the key; a `429` that still happens keeps the usual `Retry-After` handling.
+Unset, calls are sent as soon as they are ready. Like the other token limits, a value that is not
+a positive integer is rejected when the local provider is configured.
+
+Sekundo keeps a run's earlier messages unchanged between calls so a server's prompt cache keeps
+hitting, and trims old page state only when that saves more than the cache would. A server without
+prompt caching (several hosted gateways and confidential-compute endpoints report no cached
+tokens) gets nothing from that, and old page snapshots are only sent again on every call. Set
+`ANVIQ_LOCAL_PROMPT_CACHE=off` to declare this: stale page state is then trimmed once about 3,000
+tokens of it have built up. Unset, behaviour is unchanged.
+
+The loopback default is suitable when running Sekundo from a source checkout. From containers,
+prefer a stable LAN RFC1918 address (not Compose service DNS alone). On Docker Desktop,
+`host.docker.internal` also works.
+On Docker Desktop, a bot computer shell can often reach services bound to host `127.0.0.1`
+through that same hostname. Do not run sensitive unauthenticated services on loopback while
+bots run, or firewall / block that path. Linux does not get `host.docker.internal` the same
+way by default.
+Only configure an endpoint you control: prompts, attachments, and tool results sent to that model
+leave Sekundo through this URL. Leave `ANVIQ_LOCAL_MODELS` blank to disable the provider.
+
+## Claude Code CLI
+
+With a Claude subscription, a server that only you use can run its deployment model through the
+official Claude Code CLI, signed in with your own account. For each model turn Sekundo starts the
+`claude` command installed on the server and reads its reply. Sekundo never reads, stores, forwards
+or refreshes your Claude sign-in, and every request to Anthropic is the CLI's own. Sekundo keeps the
+conversation, tools, memory and approvals: the CLI only answers as the model, with its own tools,
+settings, project files and saved sessions turned off.
+
+What it needs:
+
+- The API and worker running from a source checkout on the same machine as the CLI, as the same
+  OS user. The official Docker images and the desktop app's local stack do not include Claude
+  Code, and adding it to them is not supported.
+- Claude Code 2.1.280 or newer on that user's `PATH`, signed in once in a terminal as that user
+  with `claude auth login`. This route uses no Claude sign-in inside Sekundo and no Claude token,
+  so `claude setup-token` is not needed.
+- One account on the server. A Claude sign-in belongs to one person, so Sekundo refuses Claude Code
+  runs while the server has more than one account (people who only message bots from chat apps do
+  not count) or bills for model usage.
+
+```env
+PI_DEFAULT_PROVIDER=claude-code
+PI_DEFAULT_CREDENTIALS=host
+PI_DEFAULT_MODEL=claude-sonnet-5
+```
+
+Use a full model id the CLI accepts with `claude --model`, so Sekundo knows the model's context
+and output limits. Usage counts against your own Claude plan and its limits, which assume
+ordinary individual use; Sekundo shows no cost for these runs, and once the plan's limit is reached
+runs fail with a rate-limit error until it resets. Your use of Claude Code is covered by
+Anthropic's terms; see [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance).
+
+The CLI runs in an empty private temporary directory with an allowlisted environment. API keys and
+other server secrets, including `ANTHROPIC_API_KEY`, are never passed to it, so it always uses its
+own sign-in. Only the deployment model runs on Claude Code; it is not offered as a connection in
+**Settings → Models**.
+
+## Ollama Cloud
+
+In **Settings → Models**, choose **Ollama Cloud**, paste an API key from ollama.com, then **Find models**. This uses an OpenAI-compatible connection with no environment configuration, and stays available when `ANVIQ_OPENAI_COMPAT_ALLOW_PUBLIC=0`. `ANVIQ_MODEL_PROVIDER_ALLOWLIST` without `ollama-cloud` removes the preset, and with `ANVIQ_OPENAI_COMPAT_ALLOW_PUBLIC=0` its host exemption too; see [Limiting model providers](#limiting-model-providers).
+
+## OpenAI-compatible connections
+
+Each user can also connect their own OpenAI-compatible endpoint from **Connect a model** /
+**Settings → Models** on web and mobile. Choose **OpenAI-compatible**, enter the server base URL
+(for example `http://127.0.0.1:8000/v1`), the exact model id, and an optional API key.
+Add optional request headers under **Advanced**; values are stored encrypted, and only their names
+are shown afterwards.
+Public hosts and ordinary hostnames need HTTPS when they receive an API key or custom headers,
+and must resolve only to public addresses. Set `ANVIQ_OPENAI_COMPAT_ALLOW_PUBLIC=0` on the API
+and worker to block them.
+Literal private IP, loopback, mDNS `.local` names, and `host.docker.internal` targets do not,
+but they are refused unless `MCP_ALLOW_PRIVATE_ENDPOINT=true` is set on the API and worker, which
+allows them for every user. This is checked on save, on model discovery, and on every run.
+With the Docker images install and the desktop app, a `localhost` or `127.0.0.1` connection
+reaches the computer running Docker (through `host.docker.internal`). On Linux, the model server
+must listen on an address the Docker bridge can reach, not only `127.0.0.1`.
+For a self-hosted endpoint whose hostname resolves to private IPs, set
+`ANVIQ_OPENAI_COMPAT_PRIVATE_HOSTS=models.example.test,other.example.test` in the deployment
+environment for both API and worker, then recreate those containers. Entries are exact hostnames
+(case-insensitive, optional trailing dot), not URLs, suffixes, or wildcards. mDNS `.local` names
+name a LAN host by convention, so they need no entry. mDNS resolves where the API and worker run:
+it works on native installs and mDNS-aware hosts, but usually not on container bridge DNS. These
+hosts ignore `ANVIQ_OPENAI_COMPAT_ALLOW_PUBLIC`; every DNS answer must be private, and metadata and
+link-local destinations remain blocked. This applies to discovery and model requests.
+HTTPS still validates the hostname's certificate. Like private IP endpoints, trusted hostnames
+also permit HTTP with API keys; use HTTPS unless the network is trusted. Only allow hosts you
+control. Private endpoints require `MCP_ALLOW_PRIVATE_ENDPOINT=true` for the deployment; no app account bypasses that policy.
+If that endpoint's model
+accepts images, enable **Supports images** under **Advanced** when connecting so attachments and
+screenshot computer tools stay available. Existing connections default to disabled. For centrally
+managed endpoints, the deployment-wide fallback remains
+`ANVIQ_OPENAI_COMPATIBLE_VISION_MODELS=gpt4o-vision,llava`.
+
+## Limiting model providers
+
+Set `ANVIQ_MODEL_PROVIDER_ALLOWLIST=provider1,provider2` in the deployment environment for both
+API and worker, then recreate those containers, to limit which model providers users can connect.
+Entries are the model registry's provider ids (for example `openrouter`, `anthropic`, and
+`openai-compatible` for OpenAI-compatible endpoints). The list applies to the model catalog: a
+provider not on it is not offered, a key for it is refused on save and on import, a bot cannot be
+switched to it, and its runs fail with a clear error. An unset or empty list means every provider,
+exactly the behavior without it.
+
+`ANVIQ_OPENAI_COMPAT_ALLOW_PUBLIC=0` still allows `ollama.com`, the one built-in public host,
+because the Ollama Cloud preset needs it. To keep OpenAI-compatible endpoints while dropping that
+exemption, list `openai-compatible` and leave the preset's id `ollama-cloud` out: the preset
+disappears and its host is refused like any other public host. List `ollama-cloud` as well to keep
+both.
+
+## Thinking
+
+For servers that accept standard `reasoning_effort`, enable **Supports thinking** under
+**Advanced** when connecting. The setting is saved on the connection (no env var or restart).
+Existing connections default to disabled. Deployment-local models opt in through
+`ANVIQ_LOCAL_REASONING_MODELS`; reconnect through **Settings → Models** only to move to a personal
+connection.
+
+Enabled connections default to medium thinking. Web and desktop expose **Thinking** in a bot's
+advanced settings; mobile inherits the same backend policy. Sekundo sends standard
+`reasoning_effort` (`minimal`, `low`, `medium`, `high`, or `none` when off); the server owns
+model-specific translation. Leave **Supports thinking** off when the server lacks standard effort
+support. Existing token limits still apply; effort is not a separate reasoning-token budget.
+
+## Prompt cache capabilities
+
+The model connection API accepts `cacheCapabilities`, including `scope`,
+`retentionMs`, `minimumTokens`, and `retentionMode`. Declare a positive
+`retentionMs` only when the endpoint supports prefix reuse for that window.
+For these connections with usable history-retrieval tools, the runtime
+automatically uses cache-aware context:
+recent history remains bounded on a cold request, and subsequent requests keep
+that selected prefix while it is likely warm and fits the context budget.
+Connections with unknown retention or `retentionMode: "none"` retain the default
+retrieval policy. An explicit executor context strategy still takes precedence.
+Callers without usable history-retrieval tools keep fitting original history
+under the model's context budget instead of replacing it with snapshots.
+
+Cache warmth is advisory. Changing instructions or tools, context pressure,
+worker eviction, or a process restart can require fresh prompt processing.
+These settings do not create backend KV snapshots or keep a model loaded;
+the inference server is responsible for retention and conversation switching.
+
+## Paid data services
+
+Bots can look up paid data (map places, search results, work emails, people and company profiles,
+social posts, SEO data) through one deployment account. It is off by default. Configure the worker
+(and API for inline execution):
+
+```dotenv
+PAID_SERVICES_PROVIDER=treg
+PAID_SERVICES_API_KEY=replace-with-org-scoped-token
+```
+
+`PAID_SERVICES_PROVIDER` accepts `disabled` (the default), `treg`, or `fake` (for offline testing
+only). `PAID_SERVICES_BASE_URL` points at a self-hosted Treg instead of `https://treg.to`. Use an
+org-scoped token, and keep the account topped up or on automatic top-up: an empty balance makes
+every call fail.
+
+Bots get `service_search` and `service_call` in every run; `service_call` follows the bot's
+approval mode like other actions. Only read-only lookups are offered: actions on accounts, generation tasks, and services that need the account's own connections are left out.
+Each call has a cost ceiling the bot sets and the approval card shows (at most $2) that the
+provider enforces before it charges. When model credits are on, a call first holds that ceiling
+from the organization's credits and then settles to what the provider charged plus 20%, never
+above the ceiling; calls the provider does not bill are
+free. A call that may have run without an answer keeps its hold for the credit
+reconciler to flag. Every call appears in Usage under the `services` provider.
+
+## Image and video generation
+
+Bot media tools are disabled by default. Configure the worker (and API for inline
+execution) with a provider and its generic HTTP connection:
+
+```dotenv
+MEDIA_GENERATION_PROVIDER=fal
+MEDIA_GENERATION_BASE_URL=https://queue.fal.run
+MEDIA_GENERATION_API_KEY=replace-with-media-api-key
+MEDIA_GENERATION_IMAGE_MODEL=fal-ai/flux/schnell
+MEDIA_GENERATION_VIDEO_MODEL=fal-ai/wan/v2.2-a14b/text-to-video
+```
+
+`MEDIA_GENERATION_PROVIDER` accepts `disabled` (the default), `fal`, or `fake`
+(for offline testing only). The base URL is optional and defaults to the URL above.
+Only set the image/video model fields for capabilities you want enabled. Compatible
+servers can use the same connection fields; models must support the corresponding
+fal queue API and Flux/Wan input and output shapes. Credentials stay on the server. Set these in
+your deployment secret configuration; never commit actual credentials.
+
+Bots use `generate_image` to attach one PNG or `generate_video` to submit a
+four-second MP4. The video tool returns a job ID and queued/running status. The
+worker keeps checking the job in the background, including after a restart, and
+posts the finished video to the chat that asked for it, once; the bot then gets a
+turn to follow up. A video that fails, or is still unfinished after an hour, is
+marked failed and the bot gets a turn to say so. The bot can also call the tool
+again with `jobId` to check progress. Use the existing per-bot tool switches and action approval rules to
+control access. Both tools require approval by default. Ticket board runs keep
+these chat-only media tools unavailable so ticket work stays on the board.
+
+Each run allows at most two submissions (including failures). Submissions are
+never retried automatically: a lost response can mean the provider accepted and
+charged for the request. Provider errors omit remote response bodies. Configure
+account budgets and rate limits with your provider; the run cap is not a currency
+budget. Provider 429 responses are returned without automatic retries. Outputs
+must fit both the 10 MiB media ceiling and the configured attachment limit;
+larger outputs are rejected.
+
+Images use existing inline chat rendering. MP4 files can be previewed with native
+video controls on web and Electron and opened/downloaded through the existing
+native file flow on mobile. No new mobile player or settings screen is required.
+
+## Voice
+
+### macOS voices
+
+When the API runs on macOS, Voice settings also offers **macOS**, which needs no key. The API renders each reply with the built-in `/usr/bin/say` into an audio clip, so it plays on the listener's device and stops like any other voice. Docker and Linux hosts do not list it.
+
+### Spoken summaries
+
+Off by default. Set `VOICE_SUMMARY_MIN_CHARS` (for example `600`) to have a voice read a bot reply longer than that many characters as a short summary written by that bot's own model. Each summary is an extra model call billed to the bot. The chat keeps the full reply, and if the summary call fails the full reply is read.
+
+### Fish Audio
+
+`FISH_TTS_MODEL` sets the Fish Audio speech model for connections that do not choose one (default
+`s2.1-pro`), and `FISH_ASR_MODEL` the transcription model (default `transcribe-1-pro`). Set them on
+the API and worker.
+
+### Calls
+
+Bots can call a user in the app, and users can hold to talk, when `PHONE_CALLS_ENABLED=true` is set on
+the API and worker. `PHONE_CALL_COOLDOWN_MINUTES` (default `2`) is the minimum time between a bot's
+calls to the same person, and `PHONE_CALL_RING_SECONDS` (default `45`) how long an unanswered call
+rings.
+
+For native mobile ringing and optional APNs VoIP configuration, see [Mobile incoming calls](./self-host-clients.md#mobile-incoming-calls).

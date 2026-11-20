@@ -1,0 +1,34 @@
+# See ../../self-host-kubernetes.md before applying.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: anviq-computers
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq-sandboxes
+spec:
+  hard:
+    pods: "2"
+    limits.cpu: "4"
+    limits.memory: 8Gi
+    requests.ephemeral-storage: 4Gi
+    limits.ephemeral-storage: 16Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: anviq-computers
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq-sandboxes
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "2"
+        memory: 4Gi
+        ephemeral-storage: 8Gi
+      defaultRequest:
+        cpu: "2"
+        memory: 4Gi
+        ephemeral-storage: 2Gi

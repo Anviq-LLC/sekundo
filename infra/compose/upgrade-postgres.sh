@@ -83,8 +83,10 @@ app_password="$(sed -n "s/^POSTGRES_APP_PASSWORD=//p" "${ENV_FILE}" | tail -n 1)
 app_password="${app_password#[\"\']}"
 app_password="${app_password%[\"\']}"
 
-old="anviq-postgres16-upgrade-$$"
-new="anviq-postgres18-upgrade-$$"
+# The Compose project keeps helpers of runs on a shared Docker daemon apart (their PIDs can match).
+helper_suffix="${COMPOSE_PROJECT_NAME:+${COMPOSE_PROJECT_NAME}-}$$"
+old="anviq-postgres16-upgrade-${helper_suffix}"
+new="anviq-postgres18-upgrade-${helper_suffix}"
 finish() {
   local status=$?
   docker rm --force "${old}" "${new}" >/dev/null 2>&1 || true

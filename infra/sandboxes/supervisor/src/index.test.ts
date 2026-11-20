@@ -4,17 +4,20 @@ import http from "node:http";
 import net from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { resolveSupervisorToken } from "@anviq/core";
-import { describe, expect, it } from "vitest";
+import { resolveSupervisorToken } from "@anviq/core/node/secrets-guard";
+import { deferred } from "@anviq/core/test-async";
+import type Docker from "dockerode";
+import { describe, expect, it, vi } from "vitest";
+import { resolveDockerSocketPath } from "./context.js";
+import { supervisorApp } from "./index.js";
+import { waitForScreenReady } from "./readiness.js";
 import {
   MAX_SUPERVISOR_FILE_REQUEST_BYTES,
   MAX_SUPERVISOR_REQUEST_BYTES,
-  resolveDockerSocketPath,
-  supervisorApp,
   supervisorFileWriteSchema,
   supervisorRequestBodyLimit,
-  waitForScreenReady,
-} from "./index.js";
+} from "./request-limits.js";
+import { SUPERVISOR_PUBLIC_PATHS } from "./routes.js";
 import type { ScreenAssignment } from "./supervisor-logic.js";
 import {
   AIMED_SCROLL_CONTROL_LABEL,
@@ -30,6 +33,7 @@ import {
   containerActionStep,
   containerActionSteps,
   controlHandlesActions,
+  createComputerWithNameRetry,
   createDockerStreamDemuxer,
   currentComputerScreens,
   DOCKER_BROWSER_ALIASES,
@@ -39,15 +43,20 @@ import {
   hasValidBearerToken,
   interactiveScreenCommand,
   isComputerControlUnavailable,
+  isManagedComputer,
   nextScreenIndex,
   normalizeWorkspaceRelative,
   oldestIdleScreen,
+  pageBrowserNotReady,
   parseObservation,
   preferComputerControl,
   releaseAssignedScreen,
+  removeOwnedComputer,
   resetManagedScreensCommand,
+  SCREEN_REUSE_MS,
   sandboxCommandTimedOut,
   sandboxTimeoutCommand,
+  screenRecentlyEnsured,
   screenReleaseStopCommand,
   shouldReplayComputerActions,
   stopExtraScreenCommand,
@@ -161,32 +170,29 @@ describe("sandbox supervisor Docker endpoint", () => {
 });
 
 describe("sandbox supervisor HTTP boundary", () => {
-  it("keeps health public while every computer route requires the service token", async () => {
+  it("keeps health public while every other registered route requires the service token", async () => {
     const health = await supervisorApp.request("/health");
     expect(health.status).toBe(200);
     await expect(health.json()).resolves.toMatchObject({ ok: true });
+    // A route joins this list only on purpose: anything else answers 401 without the token.
+    expect([...SUPERVISOR_PUBLIC_PATHS]).toEqual(["/health"]);
 
-    const protectedRequests: Array<[string, string]> = [
-      ["POST", "/computers"],
-      ["GET", "/computers/id"],
-      ["POST", "/computers/id/exec"],
-      ["POST", "/computers/id/observe"],
-      ["POST", "/computers/id/actions"],
-      ["POST", "/computers/id/browser"],
-      ["GET", "/computers/id/files"],
-      ["POST", "/computers/id/files"],
-      ["GET", "/computers/id/screen"],
-      ["POST", "/computers/id/screen-mode"],
-      ["POST", "/computers/id/terminal"],
-      ["DELETE", "/computers/id/screen"],
-      ["POST", "/computers/id/input"],
-      ["POST", "/computers/id/stop"],
-      ["DELETE", "/computers/id"],
-    ];
+    // Every pattern the app registers, middleware included, as one concrete request.
+    const protectedRequests = [
+      ...new Set(
+        supervisorApp.routes.map(({ method, path }) => {
+          const pathname = path.replace(/:[^/]+/g, "id").replace(/\*/g, "any");
+          return `${method === "ALL" ? "GET" : method} ${pathname}`;
+        }),
+      ),
+    ].filter((request) => !SUPERVISOR_PUBLIC_PATHS.has(request.split(" ")[1]!));
+    expect(protectedRequests).toContain("POST /computers/id/exec");
+    expect(protectedRequests).toContain("DELETE /computers/id");
 
-    for (const [method, pathname] of protectedRequests) {
+    for (const request of protectedRequests) {
+      const [method, pathname] = request.split(" ") as [string, string];
       const response = await supervisorApp.request(pathname, { method });
-      expect(response.status, `${method} ${pathname}`).toBe(401);
+      expect(response.status, request).toBe(401);
       await expect(response.json()).resolves.toEqual({ error: "unauthorized" });
     }
   });
@@ -726,13 +732,10 @@ describe("sandbox supervisor input containment", () => {
   it("serializes screen lifecycle operations by container", async () => {
     const locks = new Map<string, Promise<void>>();
     const events: string[] = [];
-    let releaseFirst!: () => void;
-    const firstBlocked = new Promise<void>((resolve) => {
-      releaseFirst = resolve;
-    });
+    const firstBlocked = deferred();
     const first = withKeyedLock(locks, "container-1", async () => {
       events.push("ensure:start");
-      await firstBlocked;
+      await firstBlocked.promise;
       events.push("ensure:end");
     });
     const release = withKeyedLock(locks, "container-1", async () => {
@@ -741,7 +744,7 @@ describe("sandbox supervisor input containment", () => {
 
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(events).toEqual(["ensure:start"]);
-    releaseFirst();
+    firstBlocked.resolve();
     await Promise.all([first, release]);
     expect(events).toEqual(["ensure:start", "ensure:end", "release"]);
     expect(locks.size).toBe(0);
@@ -777,6 +780,37 @@ describe("sandbox supervisor input containment", () => {
     const assigned = new Map<string, ScreenAssignment>();
     for (let index = 0; index < 1000; index++)
       expect(nextScreenIndex(assigned, `bot-${index}`)).toBe(index);
+  });
+
+  it("trusts a screen's setup for a short time unless it is released or human-held", () => {
+    const now = 1_000_000;
+    expect(screenRecentlyEnsured({ index: 0, ensuredAt: now }, now + SCREEN_REUSE_MS - 1)).toBe(
+      true,
+    );
+    expect(screenRecentlyEnsured({ index: 0, ensuredAt: now }, now + SCREEN_REUSE_MS)).toBe(false);
+    expect(screenRecentlyEnsured({ index: 0 }, now)).toBe(false);
+    expect(screenRecentlyEnsured({ index: 0, ensuredAt: now, controlled: true }, now)).toBe(false);
+    expect(screenRecentlyEnsured({ index: 0, ensuredAt: now, controlToken: "token" }, now)).toBe(
+      false,
+    );
+    const assigned = new Map<string, ScreenAssignment>([["bot", { index: 0, ensuredAt: now }]]);
+    releaseAssignedScreen(assigned, "bot");
+    completeWarmReleasedScreen(assigned, "bot", 0, now);
+    expect(screenRecentlyEnsured(assigned.get("bot"), now)).toBe(false);
+  });
+
+  it("recognizes only a page helper that reached no browser before acting", () => {
+    const output = (value: object) => ({ code: 0, stdout: JSON.stringify(value) });
+    expect(pageBrowserNotReady(output({ ok: false, error: "CDP not ready on port 9222: x" }))).toBe(
+      true,
+    );
+    expect(
+      pageBrowserNotReady(output({ ok: false, error: "CDP not ready", uncertain: true })),
+    ).toBe(false);
+    expect(pageBrowserNotReady(output({ ok: false, error: "Element not found" }))).toBe(false);
+    expect(pageBrowserNotReady(output({ ok: true }))).toBe(false);
+    expect(pageBrowserNotReady({ code: 1, stdout: "" })).toBe(false);
+    expect(pageBrowserNotReady({ code: 0, stdout: "not json" })).toBe(false);
   });
 
   it("frees a released screen slot so a ninth Team bot can reuse it", () => {
@@ -1106,8 +1140,8 @@ describe("sandbox supervisor input containment", () => {
 });
 
 describe("docker exec stream demux", () => {
-  const frame = (type: number, text: string) => {
-    const payload = Buffer.from(text, "utf8");
+  const frame = (type: number, text: string | Buffer) => {
+    const payload = typeof text === "string" ? Buffer.from(text, "utf8") : text;
     const header = Buffer.alloc(8);
     header[0] = type;
     header.writeUInt32BE(payload.length, 4);
@@ -1185,6 +1219,37 @@ describe("docker exec stream demux", () => {
     });
   });
 
+  it("keeps UTF-8 characters split across frames and chunks intact", () => {
+    const stderr = Buffer.from("😀é\n");
+    const multiplexed = Buffer.concat([
+      ...[...Buffer.from("é😀\n")].flatMap((byte, i) => [
+        frame(1, Buffer.from([byte])),
+        frame(2, stderr.subarray(i, i + 1)),
+      ]),
+      frame(2, Buffer.from([0xf0])),
+      frame(1, Buffer.from([0xe2])),
+      frame(2, Buffer.from([0x9f])),
+      frame(1, Buffer.from([0x82])),
+    ]);
+    const cases = [
+      [multiplexed, { stdout: "é😀\n\ufffd", stderr: "😀é\n\ufffd" }],
+      [
+        Buffer.concat([Buffer.from("raw é😀\n"), Buffer.from([0xe2, 0x82])]),
+        { stdout: "raw é😀\n\ufffd", stderr: "" },
+      ],
+      [Buffer.from([0x61, 0xc3]), { stdout: "a\ufffd", stderr: "" }],
+    ] as const;
+    for (const [bytes, expected] of cases) {
+      const demuxer = createDockerStreamDemuxer();
+      const live = [...bytes].flatMap((byte) => demuxer.push(Buffer.from([byte])));
+      live.push(...demuxer.finish());
+      const streamed = { stdout: "", stderr: "" };
+      for (const piece of live) streamed[piece.stream] += piece.data;
+      expect(streamed).toEqual(expected);
+      expect(demuxDockerStream(bytes)).toEqual(expected);
+    }
+  });
+
   it("rejects frames with nonzero reserved header padding as raw stdout", () => {
     // type 1, nonzero padding, size 0 — would look like an empty stdout frame without the check
     const padded = Buffer.from([0x01, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00]);
@@ -1204,5 +1269,100 @@ describe("computer command identity", () => {
       "NPM_CONFIG_PREFIX=/home/anviq/.local",
       "PIP_USER=1",
     ]);
+  });
+});
+
+describe("computer name recovery", () => {
+  const conflict = Object.assign(new Error("container name already in use"), { statusCode: 409 });
+  function holder(labels: Record<string, string>, image = "computer") {
+    return {
+      Id: "leftover",
+      Config: { Labels: labels, Image: image },
+    } as Docker.ContainerInspectInfo;
+  }
+  const owned = { "anviq.botId": "bot", "anviq.spaceId": "space", "anviq.managed": "true" };
+  function recovery(info: Docker.ContainerInspectInfo) {
+    const remove = vi.fn().mockResolvedValue(undefined);
+    const cleared = vi.fn();
+    const inspect = vi.fn().mockResolvedValue(info);
+    const reclaim = () =>
+      removeOwnedComputer(
+        { inspect } as Pick<Docker.Container, "inspect">,
+        remove,
+        (candidate) => isManagedComputer(candidate, "bot", "space", "computer"),
+        cleared,
+      );
+    return { remove, cleared, inspect, reclaim };
+  }
+
+  it("clears an owned leftover by inspected ID and retries create once", async () => {
+    const { reclaim, remove, cleared } = recovery(holder(owned));
+    const created = { id: "new" };
+    const create = vi.fn().mockRejectedValueOnce(conflict).mockResolvedValue(created);
+    await expect(createComputerWithNameRetry(create, reclaim)).resolves.toBe(created);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(remove).toHaveBeenCalledExactlyOnceWith("leftover");
+    expect(cleared).toHaveBeenCalledExactlyOnceWith("leftover");
+  });
+
+  it.each([
+    { ...owned, "anviq.botId": "other" },
+    { ...owned, "anviq.spaceId": "other" },
+    {} as Record<string, string>,
+    { "anviq.botId": "bot", "anviq.spaceId": "space" },
+  ])("preserves a non-owned name holder and the original error: %j", async (labels) => {
+    const { reclaim, remove, cleared } = recovery(holder(labels, "unmanaged"));
+    const create = vi.fn().mockRejectedValue(conflict);
+    await expect(createComputerWithNameRetry(create, reclaim)).rejects.toBe(conflict);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(remove).not.toHaveBeenCalled();
+    expect(cleared).not.toHaveBeenCalled();
+  });
+
+  it("accepts the existing legacy identity and image management rule", () => {
+    expect(
+      isManagedComputer(
+        holder({ "anviq.botId": "bot", "anviq.workspaceId": "space" }),
+        "bot",
+        "space",
+        "computer",
+      ),
+    ).toBe(true);
+  });
+
+  it("preserves the original error when inspection or removal fails", async () => {
+    for (const stage of ["inspect", "remove"] as const) {
+      const recoveryAttempt = recovery(holder(owned));
+      recoveryAttempt[stage].mockRejectedValue(new Error("unavailable"));
+      await expect(
+        createComputerWithNameRetry(async () => {
+          throw conflict;
+        }, recoveryAttempt.reclaim),
+      ).rejects.toBe(conflict);
+      expect(recoveryAttempt.cleared).not.toHaveBeenCalled();
+    }
+  });
+
+  it("does not retry a second create conflict", async () => {
+    const create = vi.fn().mockRejectedValue(conflict);
+    const reclaim = vi.fn().mockResolvedValue(true);
+    await expect(createComputerWithNameRetry(create, reclaim)).rejects.toBe(conflict);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(reclaim).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([409, 500])("does not retry a start failure (status %s)", async (statusCode) => {
+    const error = Object.assign(new Error("address already in use"), { statusCode });
+    const start = vi.fn().mockRejectedValue(error);
+    const create = vi.fn(async () => ({ start }));
+    const reclaim = vi.fn();
+    await expect(
+      (async () => {
+        const container = await createComputerWithNameRetry(create, reclaim);
+        await container.start();
+      })(),
+    ).rejects.toBe(error);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(reclaim).not.toHaveBeenCalled();
   });
 });

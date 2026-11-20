@@ -1,0 +1,102 @@
+export const KO_MESSAGES: Record<string, string> = {
+  "Hi {name},": "{name}님, 안녕하세요.",
+  "Hi there,": "안녕하세요.",
+  "Verify your Sekundo email": "Sekundo 이메일을 인증하세요",
+  "Verify email": "이메일 인증",
+  "Then return to Sekundo to sign in.": "그런 다음 Sekundo로 돌아가 로그인하세요.",
+  "This link expires in one hour. If you did not register, ignore this email.":
+    "이 링크는 1시간 후에 만료됩니다. 가입하지 않았다면 이 이메일을 무시하세요.",
+  "Your Sekundo sign-in code": "Sekundo 로그인 코드",
+  "Enter this code to sign in to Sekundo:":
+    "Sekundo에 로그인하려면 이 코드를 입력하세요:",
+  "This code expires in ten minutes. If you did not request it, ignore this email.":
+    "이 코드는 10분 후에 만료됩니다. 요청하지 않았다면 이 이메일을 무시하세요.",
+  "Reset your Sekundo password": "Sekundo 비밀번호 재설정",
+  "Reset your Sekundo password:": "Sekundo 비밀번호를 재설정하세요:",
+  "Reset password": "비밀번호 재설정",
+  "This link expires in one hour. If you did not request this, you can ignore this email.":
+    "이 링크는 1시간 후에 만료됩니다. 요청하지 않았다면 이 이메일을 무시해도 됩니다.",
+  "Confirm Sekundo account deletion": "Sekundo 계정 삭제 확인",
+  "Enter this code in Sekundo to delete your account:":
+    "계정을 삭제하려면 Sekundo에서 이 코드를 입력하세요:",
+  "This code expires in ten minutes. If you did not request deletion, ignore this email.":
+    "이 코드는 10분 후에 만료됩니다. 삭제를 요청하지 않았다면 이 이메일을 무시하세요.",
+  "Your Sekundo confirmation code": "Sekundo 확인 코드",
+  "Enter this code in Sekundo to confirm it's you:":
+    "본인임을 확인하려면 Sekundo에서 이 코드를 입력하세요:",
+  "Welcome to Sekundo": "Sekundo에 오신 것을 환영합니다",
+  "Welcome to Sekundo. The people who get the most out of it do three things:":
+    "Sekundo에 오신 것을 환영합니다. Sekundo를 가장 잘 활용하는 사람들은 세 가지를 합니다.",
+  "Get the apps": "앱 받기",
+  "Sekundo runs on {platforms}, so your bots can reach you wherever you are.":
+    "Sekundo는 {platforms}에서 실행되므로 봇이 어디서든 연락할 수 있습니다.",
+  "Join the community": "커뮤니티 참여하기",
+  "See what others are building, get help fast, and tell us what to build next on {discord}.":
+    "{discord}에서 다른 사람들이 만드는 것을 보고, 빠르게 도움을 받고, 다음에 만들 것을 알려 주세요.",
+  "Star us on GitHub": "GitHub에서 스타 누르기",
+  "Sekundo is open source. {star} helps more people find it.":
+    "Sekundo는 오픈 소스입니다. {star}는 더 많은 사람이 Sekundo를 찾는 데 도움이 됩니다.",
+  "A star on GitHub": "GitHub 스타",
+  "Questions? Just reply. I read every one.":
+    "질문이 있으신가요? 답장만 보내 주세요. 모두 읽습니다.",
+  Unsubscribe: "수신 거부",
+  "Invite a friend": "친구 초대",
+  "Invite a friend to Sekundo: they get {weeks} weeks free, and you earn a free month when they start a qualifying subscription with a new card.":
+    "친구를 Sekundo에 초대하세요. 친구는 {weeks}주 동안 무료로 사용하고, 친구가 새 카드로 대상 구독을 시작하면 나는 한 달 무료를 받아요.",
+  "Open Sekundo": "Sekundo를 열고",
+  "and choose Invite friends for your link.": "친구 초대를 선택해 링크를 받으세요.",
+  "We received your Sekundo plugin": "Sekundo 플러그인을 받았습니다",
+  "Thanks for submitting a plugin to the Sekundo marketplace.":
+    "Sekundo 마켓플레이스에 플러그인을 제출해 주셔서 감사합니다.",
+  "We review every submission and will email you when it's done.":
+    "모든 제출물을 검토하며, 검토가 끝나면 이메일로 알려 드립니다.",
+  "If you did not submit a plugin, ignore this email.":
+    "플러그인을 제출하지 않았다면 이 이메일을 무시하세요.",
+  "{name} is in the Sekundo marketplace":
+    "{name}이(가) Sekundo 마켓플레이스에 등록되었습니다",
+  "Your Sekundo plugin submission: {name}": "Sekundo 플러그인 제출: {name}",
+  "{name} is now listed in the Sekundo plugin marketplace.":
+    "{name}이(가) 이제 Sekundo 플러그인 마켓플레이스에 등록되었습니다.",
+  "We couldn't list {name} in the Sekundo plugin marketplace.":
+    "{name}을(를) Sekundo 플러그인 마켓플레이스에 등록하지 못했습니다.",
+  "Confirm your Sekundo page claim": "Sekundo 페이지 소유권 요청을 확인하세요",
+  "Confirm claim": "요청 확인",
+  "We review every claim once it's confirmed and will email you when it's done.":
+    "확인된 모든 요청을 검토한 후 완료되면 이메일로 알려 드립니다.",
+  "This link expires in one day. If you did not claim a page, ignore this email.":
+    "이 링크는 하루 후에 만료됩니다. 페이지 소유권을 요청하지 않았다면 이 이메일을 무시하세요.",
+  "Your Sekundo page claim: {name}": "Sekundo 페이지 소유권 요청: {name}",
+  "Your changes to the {name} page are approved.": "{name} 페이지 변경 사항이 승인되었습니다.",
+  "We couldn't approve your changes to the {name} page.":
+    "{name} 페이지 변경 사항을 승인하지 못했습니다.",
+  "Your saved computer files will be deleted": "저장된 컴퓨터 파일이 삭제됩니다",
+  "Your saved computer files will be deleted on {date} unless you resubscribe.":
+    "다시 구독하지 않으면 저장된 컴퓨터 파일이 {date}에 삭제됩니다.",
+  "Your saved computer files will be deleted on {date} unless you choose a plan.":
+    "플랜을 선택하지 않으면 저장된 컴퓨터 파일이 {date}에 삭제됩니다.",
+  "{inviter} invited you to {organization} on Sekundo":
+    "{inviter}님이 Sekundo의 {organization}에 초대했습니다",
+  "{inviter} invited you to join {organization} on Sekundo.":
+    "{inviter}님이 Sekundo의 {organization}에 참여하도록 초대했습니다.",
+  "Join {organization}": "{organization} 참여하기",
+  "This invitation expires in 7 days. Sign in with this email address to accept it.":
+    "이 초대는 7일 후에 만료됩니다. 수락하려면 이 이메일 주소로 로그인하세요.",
+  "{inviter} invited you to {space} on Sekundo":
+    "{inviter}님이 Sekundo의 {space}에 초대했습니다",
+  "{inviter} invited you to join {space} on Sekundo.":
+    "{inviter}님이 Sekundo의 {space}에 참여하도록 초대했습니다.",
+  "Join {space}": "{space} 참여하기",
+  "This invitation expires in 7 days.": "이 초대는 7일 후에 만료됩니다.",
+  "Connect a model to start using Sekundo": "Sekundo를 시작하려면 모델을 연결하세요",
+  "Your Sekundo plan has started, but your bots can't reply until a model is connected.":
+    "Sekundo 요금제가 시작되었지만, 모델을 연결해야 봇이 답변할 수 있습니다.",
+  "Sign in with your {subscriptions} subscription, or paste an API key.":
+    "{subscriptions} 구독으로 로그인하거나 API 키를 붙여넣으세요.",
+  "Connect a model": "모델 연결",
+  "Bring your old assistant to Sekundo": "기존 어시스턴트를 Sekundo로 가져오세요",
+  "Already set up an assistant in {assistants}? Sekundo can bring over its instructions, memory, skills and routines as a new bot, so you don't start again.":
+    "{assistants}에서 이미 어시스턴트를 설정하셨나요? Sekundo가 그 지침, 메모리, 스킬, 루틴을 새 봇으로 가져올 수 있어 처음부터 다시 시작하지 않아도 됩니다.",
+  "It works for any other assistant too: send it one prompt and paste its reply.":
+    "다른 어시스턴트에서도 됩니다. 프롬프트 하나를 보내고 답변을 붙여넣으세요.",
+  "Import an agent": "에이전트 가져오기",
+};

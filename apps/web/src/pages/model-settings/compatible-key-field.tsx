@@ -1,18 +1,18 @@
-import { isOllamaCloudBaseUrl } from "@anviq/contracts";
 import { Disclosure } from "@anviq/ui-web";
 import { Trans } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
+/** A hosted endpoint needs its key, so the field shows; elsewhere it stays tucked away. */
 export function CompatibleKeyField({
-  baseUrl,
+  keyRequired,
   className,
   children,
 }: {
-  baseUrl: string;
+  keyRequired: boolean;
   className?: string;
   children: ReactNode;
 }) {
-  return isOllamaCloudBaseUrl(baseUrl) ? (
+  return keyRequired ? (
     <div className={className}>
       <span>
         <Trans>API key</Trans>

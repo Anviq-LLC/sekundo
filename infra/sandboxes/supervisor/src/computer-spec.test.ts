@@ -25,8 +25,11 @@ import {
   COMPUTER_IMAGE,
   COMPUTER_IMAGE_CONTEXT_FILES,
   computerBridgeNameFor,
+  computerBrowserProxyPacMatches,
+  computerComputeGpusMatch,
   computerDnsMatches,
   computerHomeStorage,
+  computerMountsMatch,
   computerNetworkCreateOptions,
   computerNetworkNameFor,
   computerNetworkNamesForCleanup,
@@ -36,13 +39,18 @@ import {
   controlPortPublicationMatches,
   homeVolumeMatches,
   hostComputerUser,
+  isIpv6NetworkUnavailable,
+  isRegistryQualifiedImage,
   legacyNetworkOwnedSolelyBy,
   parseMemoryBytes,
   publishedLoopbackControlHostPort,
+  resolveComputerBrowserProxyPacUrl,
+  resolveComputerComputeGpus,
   resolveComputerControlEndpoint,
   resolveComputerDns,
   resolveComputerEgressMode,
   resolveComputerImage,
+  resolveComputerMounts,
   resolveScreenNetworkMode,
   resolveScreenPublishTarget,
   resolveSpaceComputerLimit,
@@ -204,6 +212,264 @@ describe("graphical computer spec", () => {
     });
   });
 
+  it("parses the browser PAC URL, with none when unset", () => {
+    expect(resolveComputerBrowserProxyPacUrl(undefined)).toBeUndefined();
+    expect(resolveComputerBrowserProxyPacUrl("  ")).toBeUndefined();
+    expect(resolveComputerBrowserProxyPacUrl(" https://proxy.example.com/proxy.pac ")).toBe(
+      "https://proxy.example.com/proxy.pac",
+    );
+    expect(resolveComputerBrowserProxyPacUrl("http://proxy.example.com:8080/p.pac")).toBe(
+      "http://proxy.example.com:8080/p.pac",
+    );
+    const pac = `data:application/x-ns-proxy-autoconfig;base64,${Buffer.from(
+      'function FindProxyForURL(url, host) { return shExpMatch(host, "*.example.com") ? "PROXY proxy.example.com:3128" : "DIRECT"; }',
+    ).toString("base64")}`;
+    expect(resolveComputerBrowserProxyPacUrl(pac)).toBe(pac);
+    for (const value of [
+      "proxy.example.com/proxy.pac",
+      "/etc/proxy.pac",
+      "file:///etc/proxy.pac",
+      "ftp://proxy.example.com/proxy.pac",
+      "javascript:alert(1)",
+      "https://proxy.example.com/a b.pac",
+      "https://proxy.example.com/\tproxy.pac",
+      "https://proxy.example.com/\u0000proxy.pac",
+      "https://proxy.example.com/\u007fproxy.pac",
+      "data:application/x-ns-proxy-autoconfig,function FindProxyForURL() {}",
+      `data:application/x-ns-proxy-autoconfig;base64,${"A".repeat(64 * 1024)}`,
+    ])
+      expect(() => resolveComputerBrowserProxyPacUrl(value)).toThrow(
+        /SANDBOX_COMPUTER_BROWSER_PROXY_PAC_URL/,
+      );
+  });
+
+  it("hands computers the browser PAC URL only when configured", () => {
+    const base = {
+      name: "anviq-bot-x",
+      image: "img",
+      botId: "x",
+      spaceId: "s",
+      homePath: "/data/x",
+    };
+    const pac = "https://proxy.example.com/proxy.pac";
+    const unset = containerCreateOptions(base).Env;
+    expect(unset.some((entry) => entry.startsWith("ANVIQ_BROWSER_PROXY_PAC_URL="))).toBe(false);
+    const env = containerCreateOptions({ ...base, browserProxyPacUrl: pac }).Env;
+    expect(env).toContain(`ANVIQ_BROWSER_PROXY_PAC_URL=${pac}`);
+
+    // The environment is fixed at creation, so adding, changing or removing it replaces a computer.
+    expect(computerBrowserProxyPacMatches(unset, undefined)).toBe(true);
+    expect(computerBrowserProxyPacMatches(null, undefined)).toBe(true);
+    expect(computerBrowserProxyPacMatches(env, pac)).toBe(true);
+    expect(computerBrowserProxyPacMatches(unset, pac)).toBe(false);
+    expect(computerBrowserProxyPacMatches(env, undefined)).toBe(false);
+    expect(computerBrowserProxyPacMatches(env, "https://proxy.example.com/other.pac")).toBe(false);
+  });
+
+  it("gives computers host GPUs only when configured", () => {
+    const base = {
+      name: "anviq-bot-x",
+      image: "img",
+      botId: "x",
+      spaceId: "s",
+      homePath: "/data/x",
+    };
+    expect(resolveComputerComputeGpus(undefined)).toBeUndefined();
+    expect(resolveComputerComputeGpus("  ")).toBeUndefined();
+    expect(resolveComputerComputeGpus(" all ")).toBe(-1);
+    expect(resolveComputerComputeGpus("2")).toBe(2);
+    // Counts too large to hold exactly, including ones that would become Infinity.
+    const huge = ["9007199254740993", "9".repeat(400)];
+    for (const value of ["0", "-1", "1.5", "ALL", "all,1", "device=0", "two", ...huge])
+      expect(() => resolveComputerComputeGpus(value)).toThrow(/SANDBOX_COMPUTER_COMPUTE_GPUS/);
+
+    expect(containerCreateOptions(base).HostConfig).not.toHaveProperty("DeviceRequests");
+    const all = containerCreateOptions({ ...base, computeGpus: -1 }).HostConfig;
+    // No driver: Docker selects the host's GPU driver, so no vendor is named here.
+    expect(all.DeviceRequests).toEqual([{ Count: -1, Capabilities: [["gpu"]] }]);
+    // The GPU does not loosen the rest of the sandbox.
+    expect(all).toMatchObject({ CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges:true"] });
+  });
+
+  it("matches a computer's GPUs to the configured ones", () => {
+    // As Docker reports a request after creation, with the fields it fills in.
+    const reported = (count: number) => ({
+      Driver: "",
+      Count: count,
+      DeviceIDs: null,
+      Capabilities: [["gpu"]],
+      Options: {},
+    });
+    expect(computerComputeGpusMatch(undefined, undefined)).toBe(true);
+    expect(computerComputeGpusMatch(null, undefined)).toBe(true);
+    expect(computerComputeGpusMatch([], undefined)).toBe(true);
+    expect(computerComputeGpusMatch([reported(-1)] as never, -1)).toBe(true);
+    expect(computerComputeGpusMatch([reported(2)] as never, 2)).toBe(true);
+    // A computer created before the setting was turned on, or after it was turned off, is replaced.
+    expect(computerComputeGpusMatch(undefined, -1)).toBe(false);
+    expect(computerComputeGpusMatch([reported(-1)] as never, undefined)).toBe(false);
+    // So is one created with a different count.
+    expect(computerComputeGpusMatch([reported(1)] as never, 2)).toBe(false);
+    expect(computerComputeGpusMatch([reported(-1)] as never, 1)).toBe(false);
+  });
+
+  it("parses computer host mounts, with none when unset", () => {
+    expect(resolveComputerMounts(undefined)).toEqual([]);
+    expect(resolveComputerMounts(" , ")).toEqual([]);
+    expect(
+      resolveComputerMounts("/srv/docs:/mnt/docs:ro, /srv/shares/:/media/shares:rw:rslave"),
+    ).toEqual([
+      { source: "/srv/docs", target: "/mnt/docs", readOnly: true },
+      { source: "/srv/shares", target: "/media/shares", readOnly: false, propagation: "rslave" },
+    ]);
+    for (const value of [
+      "/srv/docs",
+      "srv/docs:/mnt/docs",
+      "/srv/docs:mnt/docs",
+      "/:/mnt/host",
+      "/srv/docs:/home/anviq/docs",
+      "/srv/docs:/mnt",
+      "/srv/docs:/usr/local/bin",
+      "/srv/docs:/mnt/../etc/docs",
+      "/srv/docs:/mnt/docs:shared",
+      "/srv/docs:/mnt/docs:ro:rw",
+      "/srv/a:/mnt/docs,/srv/b:/mnt/docs/inner",
+      "/srv/a:/mnt/docs,/srv/b:/mnt/docs",
+    ])
+      expect(() => resolveComputerMounts(value)).toThrow(/SANDBOX_COMPUTER_MOUNTS/);
+  });
+
+  it("adds host mounts beside either kind of home", () => {
+    const base = {
+      name: "anviq-bot-x",
+      image: "img",
+      botId: "x",
+      spaceId: "s",
+      homePath: "/data/x",
+    };
+    const mounts = resolveComputerMounts(
+      "/srv/docs:/mnt/docs:ro,/srv/shares:/mnt/shares:rw:rslave",
+    );
+    const expected = [
+      { Type: "bind", Source: "/srv/docs", Target: "/mnt/docs", ReadOnly: true },
+      {
+        Type: "bind",
+        Source: "/srv/shares",
+        Target: "/mnt/shares",
+        ReadOnly: false,
+        BindOptions: { Propagation: "rslave" },
+      },
+    ];
+    expect(containerCreateOptions(base).HostConfig.Mounts).toBeUndefined();
+    const bound = containerCreateOptions({ ...base, mounts }).HostConfig;
+    expect(bound.Binds).toEqual(["/data/x:/home/anviq"]);
+    expect(bound.Mounts).toEqual(expected);
+    const volume = containerCreateOptions({
+      ...base,
+      homeVolume: { name: "appdata", subpath: "homes/x" },
+      mounts,
+    }).HostConfig;
+    expect(volume.Mounts?.[0]).toMatchObject({ Type: "volume", Target: "/home/anviq" });
+    expect(volume.Mounts?.slice(1)).toEqual(expected);
+  });
+
+  it("matches a computer's host mounts to the configured ones", () => {
+    const desired = resolveComputerMounts(
+      "/srv/docs:/mnt/docs:ro,/srv/shares:/mnt/shares:rw:rslave",
+    );
+    const home = { Type: "bind", Source: "/data/x", Target: "/home/anviq" };
+    const docs = { Type: "bind", Source: "/srv/docs", Target: "/mnt/docs", ReadOnly: true };
+    const shares = {
+      Type: "bind",
+      Source: "/srv/shares",
+      Target: "/mnt/shares",
+      ReadOnly: false,
+      BindOptions: { Propagation: "rslave" },
+    };
+    // Labels as the computer was created with `created` mounts.
+    const labels = (created: typeof desired) =>
+      containerCreateOptions({
+        name: "anviq-bot-x",
+        image: "img",
+        botId: "x",
+        spaceId: "s",
+        homePath: "/data/x",
+        mounts: created,
+      }).Labels;
+    const match = (mounts: unknown[] | undefined, want = desired, created = want) =>
+      computerMountsMatch(
+        {
+          Config: { Labels: labels(created) },
+          HostConfig: { Mounts: mounts },
+        } as unknown as Parameters<typeof computerMountsMatch>[0],
+        want,
+      );
+    expect(match(undefined, [])).toBe(true);
+    expect(match([home], [])).toBe(true);
+    expect(match([home, shares, docs])).toBe(true);
+    // Docker Desktop stores its own VM path as the source of a bind beside a volume home.
+    const rewritten = "/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/Ubuntu/abc";
+    expect(match([home, { ...docs, Source: rewritten }, shares])).toBe(true);
+    // A computer created before a mount was added, or after one was removed, is replaced.
+    expect(match([home, docs])).toBe(false);
+    expect(match([home, docs, shares], desired.slice(0, 1))).toBe(false);
+    // So is one whose mount changed source, access or propagation.
+    const moved = resolveComputerMounts(
+      "/srv/other:/mnt/docs:ro,/srv/shares:/mnt/shares:rw:rslave",
+    );
+    expect(match([home, docs, shares], desired, moved)).toBe(false);
+    expect(match([home, { ...docs, ReadOnly: false }, shares])).toBe(false);
+    expect(match([home, docs, { ...shares, BindOptions: undefined }])).toBe(false);
+    // And one created before its sources were labeled, since its source cannot be read back.
+    expect(match([home, docs, shares], desired, [])).toBe(false);
+  });
+
+  it("mounts read-only unless rw is explicit", () => {
+    expect(resolveComputerMounts("/srv/docs:/mnt/docs")[0]?.readOnly).toBe(true);
+    // Later mounts propagated by rslave keep their own write flags.
+    for (const value of ["/srv/docs:/mnt/docs:rslave", "/srv/docs:/mnt/docs:ro:rslave"])
+      expect(() => resolveComputerMounts(value)).toThrow(/rslave requires rw/);
+    expect(resolveComputerMounts("/srv/docs:/mnt/docs:rw")[0]?.readOnly).toBe(false);
+  });
+
+  it("refuses host sources that expose the host, Docker or bot homes", () => {
+    for (const source of [
+      "/",
+      "/var/run/docker.sock",
+      "/run/docker.sock",
+      "/var/run",
+      "/run",
+      "/run/user/1000",
+      "/proc",
+      "/sys/fs",
+      "/dev",
+      "/etc",
+      "/etc/ssh",
+      "/boot",
+      "/root",
+      "/var/lib/docker",
+      "/var/lib/docker/volumes/appdata/_data",
+      // Ancestors expose what they hold.
+      "/var",
+      "/var/lib",
+      "//etc/",
+    ])
+      expect(() => resolveComputerMounts(`${source}:/mnt/x`)).toThrow(
+        /SANDBOX_COMPUTER_MOUNTS source/,
+      );
+    for (const value of ["/srv/../etc:/mnt/x", "/srv/docs/..:/mnt/x", "/srv/docs:/mnt/a/../x"])
+      expect(() => resolveComputerMounts(value)).toThrow(/must not contain \.\./);
+
+    const protectedPaths = ["/opt/anviq/data", "/home/op/.docker/run/docker.sock", undefined];
+    for (const source of ["/opt/anviq/data", "/opt/anviq/data/homes/bot", "/opt/anviq", "/home/op"])
+      expect(() => resolveComputerMounts(`${source}:/mnt/x`, protectedPaths)).toThrow(
+        /protected host path/,
+      );
+    expect(
+      resolveComputerMounts("/opt/shared:/mnt/x,/varnish:/mnt/y,/srv/run:/mnt/z", protectedPaths),
+    ).toHaveLength(3);
+  });
+
   it("matches a computer's DNS servers to the configured ones", () => {
     expect(computerDnsMatches(null, undefined)).toBe(true);
     expect(computerDnsMatches([], undefined)).toBe(true);
@@ -229,6 +495,7 @@ describe("graphical computer spec", () => {
       Name: computerNetworkNameFor("bot_1"),
       Driver: "bridge",
       CheckDuplicate: true,
+      EnableIPv6: true,
       Labels: { "anviq.netputerOwner": "owner", "anviq.botId": "bot_1" },
     });
     expect(open).not.toHaveProperty("Options");
@@ -241,6 +508,65 @@ describe("graphical computer spec", () => {
     // The bridge name differs from the network name so `docker network` output
     // still shows the readable anviq-computer-* name while iptables matches the interface.
     expect(restricted.Options?.["com.docker.network.bridge.name"]).not.toBe(restricted.Name);
+  });
+
+  it("enables IPv6 with automatic subnets and can leave it out for daemons without it", () => {
+    // No IPAM config: the daemon allocates its own IPv6 ULA /64 (Docker 27+),
+    // unique per network, which keeps the payload daemon-agnostic.
+    expect(computerNetworkCreateOptions("bot_1", "owner", "open")).not.toHaveProperty("IPAM");
+
+    // The IPv4-only payload for daemons that refuse the dual-stack network
+    // (Docker 26, Docker-in-Docker without ip6_tables, IPv6 off in the kernel).
+    expect(computerNetworkCreateOptions("bot_1", "owner", "open", false)).not.toHaveProperty(
+      "EnableIPv6",
+    );
+  });
+
+  it("keeps restricted networks IPv4-only with their named bridge", () => {
+    // Restricted egress is enforced and startup-verified for IPv4 only
+    // (infra/compose/restrict-computer-egress.sh, egress-probe.ts); IPv6 would
+    // leave a restricted computer paths the ruleset does not cover.
+    const restricted = computerNetworkCreateOptions("bot_1", "owner", "restricted");
+    expect(restricted).not.toHaveProperty("EnableIPv6");
+    expect(restricted.Options).toEqual({
+      "com.docker.network.bridge.name": computerBridgeNameFor("bot_1"),
+    });
+  });
+
+  it("falls back for every IPv6 capability error the daemon wording uses", () => {
+    // Transient failures without IPv6 in them must surface, so the next start
+    // retries the dual-stack create.
+    expect(isIpv6NetworkUnavailable(new Error("daemon busy"))).toBe(false);
+    expect(isIpv6NetworkUnavailable(new Error("ETIMEDOUT"))).toBe(false);
+
+    // The daemon's IPv6 capability errors across releases, all matched broadly
+    // because the wording changes between releases.
+    const unavailable = [
+      // Engine 26, no IPv6 pool (libnetwork/ipam/allocator.go at v26.1.4).
+      "could not find an available, non-overlapping IPv6 address pool among the defaults to assign to the network",
+      // IPv6 off in the kernel (drivers/bridge/setup_ipv6_linux.go), wrapped by
+      // the daemon ("failed to create network ...").
+      "Error response from daemon: failed to create network anviq-computer-bot_1: Cannot read IPv6 setup for bridge br-x: open /proc/sys/net/ipv6/conf/br-x/disable_ipv6: no such file or directory",
+      "Unable to enable IPv6 addresses on bridge: ...",
+      // ip6tables disabled in the daemon config (setup_ip_tables_linux.go at v26.1.4).
+      "Cannot program chains, EnableIP6Tables is disabled",
+      // Newer engines name ip6tables and forwarding directly.
+      "ip6tables is missing",
+      "ip6tables not found",
+      "IPv6 global forwarding is disabled",
+    ];
+    for (const message of unavailable) {
+      expect(isIpv6NetworkUnavailable(new Error(message)), message).toBe(true);
+    }
+
+    // A transient error that names ip6tables (fork pressure running the binary)
+    // falls back too. That is bounded: a stop gives the network back and the
+    // next start creates it again, retrying IPv6 (see reclaimComputerNetwork).
+    expect(
+      isIpv6NetworkUnavailable(
+        new Error("fork/exec /usr/sbin/ip6tables: resource temporarily unavailable"),
+      ),
+    ).toBe(true);
   });
 
   it("lists prior network name variants for cleanup", () => {
@@ -263,6 +589,39 @@ describe("graphical computer spec", () => {
     for (const file of COMPUTER_IMAGE_CONTEXT_FILES) {
       expect(existsSync(path.join(root, file)), file).toBe(true);
     }
+  });
+
+  it("sends every file the computer Dockerfile copies or adds when it builds the image locally", () => {
+    const dockerfile = readFileSync(
+      path.resolve(import.meta.dirname, "../../computer/Dockerfile"),
+      "utf8",
+    );
+    const sources = dockerfile
+      .replace(/\\[ \t]*\r?\n/g, " ")
+      .split("\n")
+      .map((line) => line.trim().split(/\s+/))
+      .filter(
+        ([instruction, ...args]) =>
+          ["COPY", "ADD"].includes(instruction?.toUpperCase() ?? "") &&
+          !args.some((arg) => arg.startsWith("--from=")),
+      )
+      .flatMap(([, ...args]) => args.slice(0, -1).filter((arg) => !arg.startsWith("--")));
+    const listed = new Set<string>(COMPUTER_IMAGE_CONTEXT_FILES);
+    expect(sources.length).toBeGreaterThan(10);
+    expect(sources.filter((source) => !listed.has(source))).toEqual([]);
+  });
+
+  it("pulls a missing computer image only from a registry the name spells out", () => {
+    expect(isRegistryQualifiedImage("ghcr.io/anviq-llc/sekundo/computer:edge")).toBe(true);
+    expect(isRegistryQualifiedImage("registry.test/anviq/computer@sha256:0123")).toBe(true);
+    expect(isRegistryQualifiedImage("localhost:5000/anviq/computer")).toBe(true);
+    expect(isRegistryQualifiedImage("localhost/anviq/computer:local")).toBe(true);
+    expect(isRegistryQualifiedImage("docker.io/anviq/computer:edge")).toBe(true);
+    expect(isRegistryQualifiedImage("Registry/anviq/computer:edge")).toBe(true);
+    expect(isRegistryQualifiedImage("anviQ/computer:edge")).toBe(true);
+    expect(isRegistryQualifiedImage("anviq/computer:local")).toBe(false);
+    expect(isRegistryQualifiedImage("anviq/computer@sha256:0123")).toBe(false);
+    expect(isRegistryQualifiedImage("computer:local")).toBe(false);
   });
 
   it("ships a browser desktop, not a fullscreen terminal", () => {
@@ -301,6 +660,107 @@ describe("graphical computer spec", () => {
     expect(dockerfile).toMatch(/wmctrl/);
     expect(dockerfile).toMatch(/anviq-focus-or-launch/);
   });
+
+  it("creates every browser policy directory before copying the policy into it", () => {
+    const root = path.resolve(import.meta.dirname, "../../computer");
+    const dockerfile = readFileSync(path.join(root, "Dockerfile"), "utf8");
+    // COPY --chmod=644 gives the directories it creates that mode too, and the browser user
+    // then cannot enter them, so the browser silently runs without the policy.
+    const created = dockerfile.match(/mkdir -p (\/etc\/anviq\/fluxbox [^\\\n]+)/)?.[1]?.split(" ");
+    const targets = [...dockerfile.matchAll(/COPY --chmod=644 browser-policy\.json (\S+)\//g)].map(
+      (match) => match[1],
+    );
+    expect(targets).toEqual([
+      "/etc/chromium/policies/managed",
+      "/etc/brave/policies/managed",
+      "/etc/opt/chrome/policies/managed",
+    ]);
+    for (const target of targets) expect(created).toContain(target);
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "fetches Google's signing key only for a Google Chrome build on amd64",
+    () => {
+      const root = path.resolve(import.meta.dirname, "../../computer");
+      const dockerfile = readFileSync(path.join(root, "Dockerfile"), "utf8");
+      const stage = dockerfile.split(/^FROM /m).find((part) => / AS chrome-keyring\n/.test(part));
+      const run = stage
+        ?.replace(/\\\n/g, " ")
+        .split("\n")
+        .filter((line) => line.startsWith("RUN "))
+        .at(-1)
+        ?.slice(4);
+      expect(run).toBeTruthy();
+      const temp = mkdtempSync(path.join(tmpdir(), "anviq-chrome-keyring-"));
+      const bin = path.join(temp, "bin");
+      const keyring = path.join(temp, "google-chrome.gpg");
+      const calls = path.join(temp, "calls");
+      mkdirSync(bin);
+      // Every network step records itself; the download fails as if Google were unreachable.
+      for (const [name, body] of [
+        ["dpkg", 'printf "%s\\n" "$ANVIQ_TEST_ARCH"'],
+        ["apt-security.sh", 'printf "apt-security\\n" >> "$ANVIQ_TEST_CALLS"'],
+        ["apt-get", 'printf "apt-get %s\\n" "$*" >> "$ANVIQ_TEST_CALLS"'],
+        ["curl", 'printf "curl\\n" >> "$ANVIQ_TEST_CALLS"; exit 7'],
+        ["gpg", 'printf "gpg\\n" >> "$ANVIQ_TEST_CALLS"'],
+      ] as const) {
+        writeFileSync(path.join(bin, name), `#!/bin/sh\n${body}\n`);
+        chmodSync(path.join(bin, name), 0o755);
+      }
+      const build = (browser: string, arch: string) => {
+        rmSync(keyring, { force: true });
+        writeFileSync(calls, "");
+        const result = spawnSync(
+          "sh",
+          [
+            "-c",
+            run!
+              .replaceAll("/google-chrome.gpg", keyring)
+              .replaceAll("/tmp/apt-security.sh", path.join(bin, "apt-security.sh"))
+              .replaceAll("/tmp/google.pub", path.join(temp, "google.pub")),
+          ],
+          {
+            env: {
+              ...process.env,
+              BROWSER: browser,
+              PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
+              ANVIQ_TEST_ARCH: arch,
+              ANVIQ_TEST_CALLS: calls,
+            },
+            encoding: "utf8",
+          },
+        );
+        return {
+          status: result.status,
+          calls: readFileSync(calls, "utf8").trim().split("\n").filter(Boolean),
+          stderr: result.stderr,
+        };
+      };
+      try {
+        for (const browser of ["chromium", "brave"]) {
+          // No network at all, and an empty keyring for the image's COPY.
+          expect(build(browser, "amd64"), browser).toMatchObject({ status: 0, calls: [] });
+          expect(readFileSync(keyring, "utf8")).toBe("");
+        }
+        // Google publishes no Chrome for arm64: the build says so instead of falling back.
+        const arm = build("chrome", "arm64");
+        expect(arm).toMatchObject({ status: 1, calls: [] });
+        expect(arm.stderr).toMatch(/amd64 only/);
+        expect(build("chrome", "amd64")).toMatchObject({
+          status: 7,
+          calls: [
+            "apt-security",
+            "apt-get update",
+            "apt-get upgrade -y --no-install-recommends",
+            "apt-get install -y --no-install-recommends ca-certificates curl gnupg",
+            "curl",
+          ],
+        });
+      } finally {
+        rmSync(temp, { recursive: true, force: true });
+      }
+    },
+  );
 
   it.skipIf(process.platform === "win32")(
     "finds Google Chrome and passes over Ubuntu's snap chromium",
@@ -373,6 +833,37 @@ describe("graphical computer spec", () => {
     expect(dockerfile).toMatch(/gh --version/);
   });
 
+  it("ships file search, identification, and SQLite commands", () => {
+    const dockerfile = readFileSync(
+      path.resolve(import.meta.dirname, "../../computer/Dockerfile"),
+      "utf8",
+    );
+    const runtimeStage = dockerfile.slice(dockerfile.lastIndexOf("FROM debian:"));
+    const install = runtimeStage.match(
+      /apt-get install -y --no-install-recommends ([\s\S]*?)&& rm -rf \/var\/lib\/apt\/lists\/\*/,
+    )?.[1];
+    expect(install).toBeDefined();
+    const packages = install?.split(/\s+/);
+    // Every apt package behind a command the shell environment map names.
+    for (const name of [
+      "curl",
+      "git",
+      "jq",
+      "openssh-client",
+      "unzip",
+      "ripgrep",
+      "fd-find",
+      "file",
+      "sqlite3",
+    ]) {
+      expect(packages).toContain(name);
+    }
+    expect(runtimeStage).toContain("ln -s /usr/bin/fdfind /usr/local/bin/fd");
+    for (const command of ["rg", "fd", "file", "sqlite3"]) {
+      expect(runtimeStage).toContain(`&& ${command} --version`);
+    }
+  });
+
   it("ships document text extractors", () => {
     const root = path.resolve(import.meta.dirname, "../../computer");
     const dockerfile = readFileSync(path.join(root, "Dockerfile"), "utf8");
@@ -385,6 +876,22 @@ describe("graphical computer spec", () => {
     expect(dockerfile).toMatch(/pdfinfo -v/);
     expect(dockerfile).toMatch(/pandoc --version/);
     expect(dockerfile).toMatch(/import openpyxl/);
+  });
+
+  it("ships search and inspection tools agents reach for", () => {
+    const root = path.resolve(import.meta.dirname, "../../computer");
+    const dockerfile = readFileSync(path.join(root, "Dockerfile"), "utf8");
+    expect(dockerfile).toMatch(/\bripgrep\b/);
+    expect(dockerfile).toMatch(/\bfd-find\b/);
+    // "file" is a common word in the Dockerfile; anchor it to the package list.
+    expect(dockerfile).toMatch(/^ {4}file \\/m);
+    expect(dockerfile).toMatch(/\bsqlite3\b/);
+    // Debian names fd-find's binary fdfind; the image exposes it as fd.
+    expect(dockerfile).toMatch(/ln -s \/usr\/bin\/fdfind \/usr\/local\/bin\/fd/);
+    expect(dockerfile).toMatch(/rg --version/);
+    expect(dockerfile).toMatch(/fd --version/);
+    expect(dockerfile).toMatch(/file --version/);
+    expect(dockerfile).toMatch(/sqlite3 --version/);
   });
 
   it.skipIf(process.platform === "win32")(
@@ -462,7 +969,10 @@ describe("graphical computer spec", () => {
           "[begin] (Desktop)\n[exec] (Browser) {/tmp/anviq/browser-launch-1}\n[end]\n",
         );
         writeFileSync(initPath, init);
-        const lines = generated.replaceAll("/tmp/fluxbox-home-1", fluxHome).split("\n");
+        const lines = generated
+          .replaceAll("/tmp/fluxbox-home-1", fluxHome)
+          .replaceAll("/etc/anviq/fluxbox/menu", path.join(temp, "no-image-menu"))
+          .split("\n");
         const start = lines.indexOf(`mkdir -p ${fluxHome}/.fluxbox`);
         const end = lines.findIndex((line, index) => index > start && line === "fi");
         expect(start).toBeGreaterThanOrEqual(0);
@@ -593,6 +1103,106 @@ describe("graphical computer spec", () => {
         expect(explicit).not.toContain(
           `--user-data-dir=${home}/.browser-profiles/chromium-screen-3`,
         );
+      } finally {
+        rmSync(temp, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "offers pages the account's language on new and saved profiles",
+    () => {
+      const root = path.resolve(import.meta.dirname, "../../computer");
+      const temp = mkdtempSync(path.join(tmpdir(), "anviq-browser-language-"));
+      const bin = path.join(temp, "bin");
+      const capture = path.join(temp, "args");
+      mkdirSync(bin);
+      const chromium = path.join(bin, "chromium");
+      writeFileSync(
+        chromium,
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
+        '#!/bin/sh\nprintf "LANGUAGE=%s\\n" "${LANGUAGE-unset}" > "$ANVIQ_TEST_ARGS"\nprintf "%s\\n" "$@" >> "$ANVIQ_TEST_ARGS"\n',
+      );
+      chmodSync(chromium, 0o755);
+      const run = (language: string | undefined) => {
+        const { LANGUAGE: _host, ...env } = process.env;
+        const result = spawnSync("sh", [path.join(root, "anviq-browser")], {
+          env: {
+            ...env,
+            ...(language === undefined ? {} : { LANGUAGE: language }),
+            DISPLAY: ":1",
+            HOME: path.join(temp, "home"),
+            PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
+            ANVIQ_TEST_ARGS: capture,
+          },
+          encoding: "utf8",
+        });
+        expect(result.status, result.error?.message ?? result.stderr).toBe(0);
+        const [first, ...args] = readFileSync(capture, "utf8").trim().split(/\r?\n/);
+        return { language: first, accept: args.filter((arg) => arg.startsWith("--accept-lang")) };
+      };
+      try {
+        // Unknown: the browser's own default, as before.
+        expect(run(undefined)).toEqual({ language: "LANGUAGE=unset", accept: [] });
+        // Chrome reads LANGUAGE itself; --accept-lang also reaches a profile saved in English.
+        expect(run("pl")).toEqual({
+          language: "LANGUAGE=pl",
+          accept: ["--accept-lang=pl,en-US,en"],
+        });
+        expect(run("pt_BR:pt").accept).toEqual(["--accept-lang=pt-BR,pt,en-US,en"]);
+        expect(run("en-GB").accept).toEqual(["--accept-lang=en-GB,en"]);
+        for (const value of ["", "pl;id", "-x", "pl pl"]) expect(run(value).accept).toEqual([]);
+      } finally {
+        rmSync(temp, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(process.platform === "win32")(
+    "passes the operator's PAC URL to the browser as one flag, and nothing when unset",
+    () => {
+      const root = path.resolve(import.meta.dirname, "../../computer");
+      const temp = mkdtempSync(path.join(tmpdir(), "anviq-browser-proxy-pac-"));
+      const bin = path.join(temp, "bin");
+      const capture = path.join(temp, "args");
+      mkdirSync(bin);
+      // A path the unquoted flag list would glob a data: URL's * into.
+      mkdirSync(path.join(temp, "data:text"));
+      writeFileSync(path.join(temp, "data:text", "plain"), "");
+      const chromium = path.join(bin, "chromium");
+      writeFileSync(chromium, '#!/bin/sh\nprintf "%s\\n" "$@" > "$ANVIQ_TEST_ARGS"\n');
+      chmodSync(chromium, 0o755);
+      const run = (pac: string | undefined, args: string[] = []) => {
+        const { ANVIQ_BROWSER_PROXY_PAC_URL: _host, ...env } = process.env;
+        const result = spawnSync("sh", [path.join(root, "anviq-browser"), ...args], {
+          cwd: temp,
+          env: {
+            ...env,
+            ...(pac === undefined ? {} : { ANVIQ_BROWSER_PROXY_PAC_URL: pac }),
+            DISPLAY: ":1",
+            HOME: path.join(temp, "home"),
+            PATH: `${bin}${path.delimiter}${process.env.PATH ?? ""}`,
+            ANVIQ_TEST_ARGS: capture,
+          },
+          encoding: "utf8",
+        });
+        expect(result.status, result.error?.message ?? result.stderr).toBe(0);
+        return readFileSync(capture, "utf8")
+          .trim()
+          .split(/\r?\n/)
+          .filter((arg) => arg.startsWith("--proxy-pac-url"));
+      };
+      try {
+        expect(run(undefined)).toEqual([]);
+        expect(run("")).toEqual([]);
+        const url = "https://proxy.example.com/proxy.pac";
+        expect(run(url)).toEqual([`--proxy-pac-url=${url}`]);
+        expect(run(url, [`--user-data-dir=${path.join(temp, "custom")}`])).toEqual([
+          `--proxy-pac-url=${url}`,
+        ]);
+        expect(run("data:text/*")).toEqual(["--proxy-pac-url=data:text/*"]);
+        for (const value of [`${url} --no-sandbox`, `${url}\tx`, `${url}\nx`])
+          expect(run(value)).toEqual([]);
       } finally {
         rmSync(temp, { recursive: true, force: true });
       }
@@ -1355,6 +1965,8 @@ describe("graphical computer spec", () => {
               "spec = importlib.util.spec_from_file_location('control', sys.argv[1])",
               "module = importlib.util.module_from_spec(spec)",
               "spec.loader.exec_module(module)",
+              // The fixture launcher lives outside the image's trusted command folders.
+              "module.CHILD_PATH = sys.argv[3] + ':' + module.CHILD_PATH",
               "argv = ['env', 'DISPLAY=:1', 'anviq-browser', sys.argv[2]]",
               "try:",
               "    module.run_control_argv(argv, ':1')",
@@ -1366,6 +1978,7 @@ describe("graphical computer spec", () => {
             ].join("\n"),
             path.join(root, "control.py"),
             "https://example.com/unanswered",
+            bin,
           ],
           { env: launchEnv, encoding: "utf8" },
         );

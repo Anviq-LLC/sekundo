@@ -1,35 +1,45 @@
+import type { ComputerStatus } from "@anviq/contracts";
 import { displayName } from "@anviq/core";
+import { ph } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Alert, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import { BotAvatar } from "../components/bot-avatar";
-import { glassHeaderOptions } from "../components/glass-title";
+import { BotAvatar } from "../components/bots/bot-avatar";
+import { useBotEmail, useBotEmailRows } from "../components/bots/bot-email";
+import { botProfileMenuOptions, useBotProfileActions } from "../components/bots/bot-profile-menu";
+import { glassHeaderOptions } from "../components/native/glass-title";
+import { NativeActionButton } from "../components/native/native-action-button";
+import { NativeSymbol } from "../components/native/native-symbol";
 import {
   SettingsGroup,
   SettingsRow,
   SettingsSwitch,
   useStackedSettings,
-} from "../components/settings-group";
-import type { MobileBot } from "../lib/api";
-import { currentApiBase, loadSessionToken, rpc, selectedSpaceId } from "../lib/api";
-import { useI18n } from "../lib/i18n";
-import { afterChatNotifyChange } from "../lib/live-notifications";
-import { native, useThemedStyles } from "../lib/native";
-import { createQueuedSave } from "../lib/queued-save";
-import { useBotRoutines } from "../lib/routine-store";
-import { useSideInsets } from "../lib/side-insets";
-import { errorText } from "../lib/user-error";
+} from "../components/settings/settings-group";
+import { currentApiBase, rpc, selectedSpaceId } from "../lib/api/api";
+import type { MobileBot } from "../lib/api/mobile-types";
+import { loadSessionToken } from "../lib/api/session";
+import { errorText } from "../lib/api/user-error";
+import { useSideInsets } from "../lib/layout/side-insets";
+import { native, useMobileTokens, useThemedStyles } from "../lib/native/native";
+import { afterChatNotifyChange } from "../lib/notifications/live-notifications";
+import { createQueuedSave } from "../lib/query/queued-save";
+import { useBotRoutines } from "../lib/routines/routine-store";
 
 export default function BotProfile() {
   const sideInsets = useSideInsets();
-  const { t } = useI18n();
+  const { t } = useLingui();
   const router = useRouter();
   const styles = useThemedStyles(createStyles);
+  const tokens = useMobileTokens();
   const stacked = useStackedSettings();
   const { botId = "", name: nameParam } = useLocalSearchParams<{ botId?: string; name?: string }>();
   const [bot, setBot] = useState<MobileBot | null>(null);
-  const name = displayName(bot?.name ?? nameParam, t("Bot"));
+  const [computer, setComputer] = useState<ComputerStatus | null>(null);
+  const name = displayName(bot?.name ?? nameParam, t`Bot`);
   const { routines } = useBotRoutines(botId);
+  const actions = useBotProfileActions(botId, name);
   // Counts switch saves as they start and end, so a reload can tell it overlapped one.
   const notifySaves = useRef(0);
   const notifyQueue = useRef<ReturnType<typeof createQueuedSave<boolean>> | null>(null);
@@ -51,6 +61,14 @@ export default function BotProfile() {
           );
         })
         .catch(() => undefined);
+      void rpc("computer/status", { botId })
+        .then((next) => {
+          if (current) setComputer(next);
+        })
+        // A stale Running or Asleep is worse than no state.
+        .catch(() => {
+          if (current) setComputer(null);
+        });
       return () => {
         current = false;
       };
@@ -75,14 +93,14 @@ export default function BotProfile() {
             currentApiBase(),
             await loadSessionToken(),
             selectedSpaceId() ?? "",
-            { threadId: bot.threadId, notify },
+            { botId, threadId: bot.threadId, notify },
           );
         } catch {
           // The server save succeeded; device reconciliation can retry later.
         }
       },
       onError: (error) =>
-        Alert.alert(t("Could not update notifications"), errorText(error, t("Try again."))),
+        Alert.alert(t`Could not update notifications`, errorText(error, t`Try again.`)),
     });
     notifyQueue.current.update(notifyOnFinish);
   };
@@ -98,60 +116,112 @@ export default function BotProfile() {
           ...glassHeaderOptions(name),
           // The avatar and name below name the page; the bar title stays for the back menu.
           ...(Platform.OS === "ios" ? { headerTitle: "" } : null),
+          ...(botId ? botProfileMenuOptions(actions, t`Bot actions`, tokens.foreground) : null),
         }}
       />
       <View style={styles.identity}>
         {bot ? (
-          <BotAvatar color={bot.color} identity={bot.id} size={96} status={bot.status} />
+          <BotAvatar
+            color={bot.color}
+            avatarSet={bot.avatarSet}
+            identity={bot.id}
+            size={96}
+            status={bot.status}
+          />
         ) : (
           <View style={styles.avatarSpace} />
         )}
         <Text accessibilityRole="header" style={styles.name}>
           {name}
         </Text>
-        {bot?.title ? <Text style={styles.title}>{bot.title}</Text> : null}
-      </View>
-      <SettingsGroup>
-        <SettingsRow
-          key="settings"
-          accessibilityRole="button"
-          chevron="right"
-          title={t("Chat settings")}
+        <NativeActionButton
+          label={t`Edit`}
+          prominence="secondary"
+          style={styles.edit}
           onPress={() => router.push({ pathname: "/bot-settings", params: { botId } })}
         />
+      </View>
+      <SettingsGroup>
+        {bot?.meetingsEnabled ? (
+          <SettingsRow
+            key="meetings"
+            accessibilityRole="button"
+            chevron="right"
+            title={t`Meetings`}
+            leading={
+              <NativeSymbol ios="video" android="videocam-outline" color={tokens.mutedForeground} />
+            }
+            onPress={() => router.push({ pathname: "/meetings", params: { botId } })}
+          />
+        ) : null}
         <SettingsRow
           key="routines"
           accessibilityRole="button"
           chevron="right"
-          title={t("Routines")}
+          title={t`Routines`}
+          leading={
+            <NativeSymbol ios="clock" android="time-outline" color={tokens.mutedForeground} />
+          }
           // Counts the routines that are switched on; nothing until the first read lands.
           value={
             routines
-              ? t("{count} on", { count: routines.filter((routine) => routine.active).length })
+              ? t`${ph({ count: routines.filter((routine) => routine.active).length })} on`
               : undefined
           }
           onPress={() => router.push({ pathname: "/routines", params: { botId, name } })}
         />
         <SettingsRow
+          key="pages"
+          accessibilityRole="button"
+          chevron="right"
+          title={t`Pages`}
+          leading={
+            <NativeSymbol
+              ios="doc.richtext"
+              android="document-text-outline"
+              color={tokens.mutedForeground}
+            />
+          }
+          onPress={() => router.push({ pathname: "/pages", params: { botId } })}
+        />
+        <SettingsRow
           key="artifacts"
           accessibilityRole="button"
           chevron="right"
-          title={t("Artifacts")}
+          title={t`Artifacts`}
+          leading={
+            <NativeSymbol ios="folder" android="folder-outline" color={tokens.mutedForeground} />
+          }
           onPress={() => router.push({ pathname: "/artifacts", params: { botId } })}
         />
         <SettingsRow
           key="computer"
           accessibilityRole="button"
           chevron="right"
-          title={t("Computer")}
+          title={t`Computer`}
+          leading={
+            <NativeSymbol
+              ios="desktopcomputer"
+              android="desktop-outline"
+              color={tokens.mutedForeground}
+            />
+          }
+          value={
+            computer?.state === "running"
+              ? t`Running`
+              : computer?.state === "suspended"
+                ? t`Asleep`
+                : undefined
+          }
           onPress={() => router.push({ pathname: "/computer", params: { botId, name } })}
         />
       </SettingsGroup>
+      <BotEmailGroup botId={botId} botName={name} />
       {bot ? (
-        <SettingsGroup footer={t("Get notified when this Bot finishes or needs input")}>
+        <SettingsGroup footer={t`Get notified when this Bot finishes or needs input`}>
           <SettingsSwitch
             key="notifications"
-            label={t("Notifications")}
+            label={t`Notifications`}
             value={bot.notifyOnFinish}
             onChange={setNotifyOnFinish}
           />
@@ -167,8 +237,39 @@ function createStyles() {
     content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, gap: 28 },
     compactContent: { paddingHorizontal: 8 },
     identity: { alignItems: "center", gap: 8 },
+    edit: { alignSelf: "center", marginTop: 4 },
     avatarSpace: { width: 96, height: 96 },
     name: { color: native.label, fontSize: 22, fontWeight: "600", textAlign: "center" },
-    title: { color: native.secondaryLabel, fontSize: 15, textAlign: "center" },
   });
+}
+
+/** The bot's address; on a server that receives email, offered until claimed. */
+function BotEmailGroup({ botId, botName }: { botId: string; botName: string }) {
+  const { t } = useLingui();
+  const tokens = useMobileTokens();
+  const email = useBotEmail(botId);
+  const rows = useBotEmailRows({ botId, botName, email });
+  const [claiming, setClaiming] = useState(false);
+  if (!email.address) return null;
+  return (
+    <SettingsGroup label={t`Email`}>
+      {email.address.address || claiming
+        ? rows
+        : [
+            <SettingsRow
+              key="offer"
+              accessibilityRole="button"
+              title={t`Get an email address`}
+              leading={
+                <NativeSymbol
+                  ios="envelope"
+                  android="mail-outline"
+                  color={tokens.mutedForeground}
+                />
+              }
+              onPress={() => setClaiming(true)}
+            />,
+          ]}
+    </SettingsGroup>
+  );
 }

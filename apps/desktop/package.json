@@ -1,7 +1,7 @@
 {
   "name": "@anviq/desktop",
   "productName": "Sekundo",
-  "version": "0.3.5",
+  "version": "0.13.0",
   "author": {
     "name": "Sekundo"
   },
@@ -10,10 +10,10 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "pnpm build && electron .",
-    "build": "pnpm check && node scripts/build.mjs && node scripts/copy-static.mjs",
+    "build": "node scripts/build.mjs && node scripts/copy-static.mjs && node scripts/build-speech.mjs",
     "pack": "pnpm --filter @anviq/web build && pnpm build && electron-builder --mac --win --linux",
     "pack:dir": "pnpm --filter @anviq/web build && pnpm build && electron-builder --dir",
-    "check": "tsc --noEmit -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.jsdom.json && tsc --noEmit -p e2e/tsconfig.json && tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run --root ../.. apps/desktop/src",
     "test:e2e": "pnpm build && playwright test --config e2e/playwright.config.ts",
     "release": "pnpm --filter @anviq/web build && pnpm build && electron-builder --publish never"
@@ -22,18 +22,20 @@
     "@anviq/contracts": "workspace:*",
     "@anviq/logging": "workspace:*",
     "@sentry/electron": "8.3.0",
-    "electron-updater": "6.8.11",
-    "koffi": "3.3.4"
+    "electron-updater": "6.8.12",
+    "koffi": "3.3.7"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
     "@anviq/adapters": "workspace:*",
+    "@anviq/core": "workspace:*",
     "@anviq/ui-tokens": "workspace:*",
-    "electron": "45.0.0",
-    "electron-builder": "26.15.3",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.1",
     "esbuild": "0.28.2",
     "typescript": "7.0.2",
-    "vitest": "4.1.12"
+    "vitest": "5.1.0",
+    "yaml": "2.9.1"
   },
   "build": {
     "appId": "dev.sekundo.desktop",
@@ -70,8 +72,27 @@
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Sekundo uses the microphone for dictation and voice calls with your bots."
+        "NSMicrophoneUsageDescription": "Sekundo uses the microphone for dictation and voice calls with your bots.",
+        "NSSpeechRecognitionUsageDescription": "Sekundo turns what you say into text for dictation and voice calls with your bots."
       },
+      "extraResources": [
+        {
+          "from": "build/speech/anviq-speech",
+          "to": "speech/anviq-speech"
+        },
+        {
+          "from": "assets/es.lproj",
+          "to": "es.lproj"
+        },
+        {
+          "from": "assets/pl.lproj",
+          "to": "pl.lproj"
+        },
+        {
+          "from": "build/server-bundle.json",
+          "to": "server-bundle.json"
+        }
+      ],
       "target": [
         "dmg",
         "zip"
@@ -98,6 +119,9 @@
           "path": "/Applications"
         }
       ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "win": {
       "icon": "assets/icon.ico",

@@ -211,8 +211,8 @@
   "Create a section and move {0} into it.": "Crie uma seção e mova {0} para ela.",
   "Create account": "Criar Conta",
   "Create group": "Criar grupo",
+  "Create your account": "Crie sua conta",
   "Create your first bot": "Crie seu primeiro bot",
-  "Create your Sekundo": "Crie o seu Sekundo",
   "Creating…": "Criando...",
   "Credential": "Credencial",
   "Credential saved": "Credencial salva",
@@ -580,5 +580,6 @@
   "Nothing is still running": "Nada ainda está em execução",
   "Credentials are encrypted and never sent to the model.": "As credenciais são criptografadas e nunca são enviadas ao modelo.",
   "Rename section": "Renomear seção",
-  "Could not rename section": "Não foi possível renomear a seção"
+  "Could not rename section": "Não foi possível renomear a seção",
+  "{count, plural, one {# message with {peer}} other {# messages with {peer}}}": "{count, plural, one {# mensagem com {peer}} other {# mensagens com {peer}}}"
 }

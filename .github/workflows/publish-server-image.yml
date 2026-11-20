@@ -12,17 +12,23 @@ on:
   push:
     tags: ["v*"]
   workflow_call:
+    secrets:
+      LEGACY_GHCR_TOKEN:
+        description: Writes the personal account's packages that installs made before the move pull.
+        required: false
+  # Only what the image definitions consume directly. A source change that breaks the app's build
+  # fails ci.yml's production builds first, and main still builds every image before it deploys.
   pull_request:
     paths:
       - ".dockerignore"
       - ".github/workflows/publish-server-image.yml"
       - ".github/actions/publish-image/**"
-      - "apps/**"
+      - ".github/actions/setup-trivy/**"
       - "infra/compose/**"
-      - "infra/sandboxes/computer/**"
+      - "infra/sandboxes/**"
       - "infra/updater/**"
-      - "packages/**"
-      - "package.json"
+      - "patches/**"
+      - "**/package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
   workflow_dispatch:
@@ -33,8 +39,6 @@ permissions:
 env:
   # docker/metadata-action otherwise truncates commit tags to seven collision-prone characters.
   DOCKER_METADATA_SHORT_SHA_LENGTH: 40
-  # Image references must be lowercase, and the GitHub owner name is not.
-  IMAGE_NAMESPACE: ghcr.io/anviq-llc/sekundo
 
 concurrency:
   group: publish-server-image-${{ github.event.pull_request.number || github.run_id }}
@@ -82,13 +86,15 @@ jobs:
       - id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
-          images: ${{ env.IMAGE_NAMESPACE }}/${{ matrix.name }}
+          images: ghcr.io/${{ github.repository }}/${{ matrix.name }}
           tags: type=sha,prefix=sha-
-      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+      - id: image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: false
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: ${{ matrix.name == 'app' && format('GIT_SHA={0}', github.sha) || '' }}
@@ -98,6 +104,26 @@ jobs:
           cache-to: type=gha,mode=max,scope=pr-${{ github.event.pull_request.number }}-${{ matrix.name }}
           provenance: false
           sbom: false
+      - uses: ./.github/actions/setup-trivy
+      # Keep all findings, including unfixed distro advisories, for applicability review.
+      # Dependency security separately gates High/Critical workspace advisories.
+      - name: Scan the built image
+        env:
+          IMAGE_ID: ${{ steps.image.outputs.imageid }}
+        run: |
+          trivy image --scanners vuln --format json --output image-vulnerabilities.json "$IMAGE_ID"
+          trivy version --format json > scanner-version.json
+          trivy convert --format cyclonedx --output image-sbom.json image-vulnerabilities.json
+      - name: Retain image security reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: image-security-${{ matrix.name }}
+          path: |
+            image-vulnerabilities.json
+            scanner-version.json
+            image-sbom.json
+          if-no-files-found: warn
 
   build:
     name: Build ${{ matrix.name }} ${{ matrix.arch }}
@@ -108,7 +134,7 @@ jobs:
     needs: [build-depot]
     # Each architecture builds natively on its own runner and pushes by digest only.
     # No QEMU: GitHub hosts native arm64 runners, and emulated arm64 took hours for the
-    # desktop-sized computer image. See docs/self-host.md (Published images and tags).
+    # desktop-sized computer image. See docs/self-host-upgrading.md (Published images and tags).
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     permissions:
@@ -150,7 +176,7 @@ jobs:
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           # Labels only; publication applies tags after validation.
-          images: ${{ env.IMAGE_NAMESPACE }}/${{ matrix.name }}
+          images: ghcr.io/${{ github.repository }}/${{ matrix.name }}
           tags: type=sha,prefix=sha-
       - id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -160,9 +186,10 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           # A fork can publish only to its own namespace; no credential can redirect this value.
+          # The app's zstd layers unpack with far less CPU on the server than gzip ones.
           # The app's filesystem is also written locally so the credential scan needs no registry pull.
           outputs: |
-            type=image,name=${{ env.IMAGE_NAMESPACE }}/${{ matrix.name }},push-by-digest=true,name-canonical=true,push=true
+            type=image,name=ghcr.io/${{ github.repository }}/${{ matrix.name }},push-by-digest=true,name-canonical=true,push=true${{ matrix.name == 'app' && ',oci-mediatypes=true,compression=zstd' || '' }}
             ${{ matrix.name == 'app' && 'type=tar,dest=/tmp/rootfs.tar' || '' }}
           # GET /health can report the exact source commit without a deployment-supplied override.
           build-args: ${{ matrix.name == 'app' && format('GIT_SHA={0}', github.sha) || '' }}
@@ -238,7 +265,7 @@ jobs:
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           # Labels only; publication applies tags after validation.
-          images: ${{ env.IMAGE_NAMESPACE }}/${{ matrix.name }}
+          images: ghcr.io/${{ github.repository }}/${{ matrix.name }}
           tags: type=sha,prefix=sha-
       - id: build
         uses: depot/build-push-action@98e78adca7817480b8185f474a400b451d74e287 # v1.18.0
@@ -250,7 +277,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           labels: ${{ steps.meta.outputs.labels }}
           # A fork can publish only to its own namespace; no credential can redirect this value.
-          outputs: type=image,name=${{ env.IMAGE_NAMESPACE }}/${{ matrix.name }},push-by-digest=true,name-canonical=true,push=true
+          # The app's zstd layers unpack with far less CPU on the server than gzip ones.
+          outputs: type=image,name=ghcr.io/${{ github.repository }}/${{ matrix.name }},push-by-digest=true,name-canonical=true,push=true${{ matrix.name == 'app' && ',oci-mediatypes=true,compression=zstd' || '' }}
           build-args: ${{ matrix.name == 'app' && format('GIT_SHA={0}', github.sha) || '' }}
           provenance: mode=max
           sbom: true
@@ -264,7 +292,7 @@ jobs:
       - name: Check the app image ships no credentials
         if: matrix.name == 'app' && steps.build.outcome == 'success'
         env:
-          IMAGE: ${{ env.IMAGE_NAMESPACE }}/app@${{ steps.build.outputs.digest }}
+          IMAGE: ghcr.io/${{ github.repository }}/app@${{ steps.build.outputs.digest }}
         # Exporting a filesystem needs no emulation, so one runner checks both platforms.
         run: |
           set -euo pipefail
@@ -286,8 +314,12 @@ jobs:
       - if: steps.build.outcome == 'success'
         uses: ./.github/actions/publish-image
         with:
-          image: ${{ env.IMAGE_NAMESPACE }}/${{ matrix.name }}
+          image: ghcr.io/${{ github.repository }}/${{ matrix.name }}
           digests-directory: /tmp/digests
+          # Installs made before the repository moved still pull the personal account's packages.
+          # Only main and release tags publish there, so only they receive the token.
+          mirror-image: ${{ github.repository == 'anviqbot/anviq' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && format('ghcr.io/anviq-llc/sekundo/{0}', matrix.name) || '' }}
+          mirror-token: ${{ github.repository == 'anviqbot/anviq' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.LEGACY_GHCR_TOKEN || '' }}
 
   publish:
     name: Publish ${{ matrix.name }} image
@@ -329,5 +361,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: ./.github/actions/publish-image
         with:
-          image: ${{ env.IMAGE_NAMESPACE }}/${{ matrix.name }}
+          image: ghcr.io/${{ github.repository }}/${{ matrix.name }}
           digests-directory: /tmp/digests
+          # Installs made before the repository moved still pull the personal account's packages.
+          # Only main and release tags publish there, so only they receive the token.
+          mirror-image: ${{ github.repository == 'anviqbot/anviq' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && format('ghcr.io/anviq-llc/sekundo/{0}', matrix.name) || '' }}
+          mirror-token: ${{ github.repository == 'anviqbot/anviq' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && secrets.LEGACY_GHCR_TOKEN || '' }}

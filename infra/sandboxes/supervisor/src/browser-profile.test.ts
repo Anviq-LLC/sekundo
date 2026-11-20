@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   browserProfilePathForScreen,
   prepareBrowserProfileCommand,
-  stopScreensCommand,
+  stopBrowserCommand,
 } from "./supervisor-logic.js";
 
 const fixtures: string[] = [];
@@ -27,9 +27,18 @@ function fixture() {
     // GNU cp's reflink optimization has no macOS equivalent; all copy semantics remain intact.
     const portable =
       process.platform === "darwin" ? script.replaceAll(" --reflink=auto", "") : script;
+    // No browser runs here. Stopping one scans every process the host user owns, which
+    // outlasts the timeout on a busy host; desktop-runtime tests cover that discovery.
     return spawnSync(
       "bash",
-      ["-eu", "-c", portable.replaceAll("/tmp/anviq", runtime).replaceAll("/home/anviq", home)],
+      [
+        "-eu",
+        "-c",
+        portable
+          .replaceAll("/tmp/anviq", runtime)
+          .replaceAll("/home/anviq", home)
+          .replaceAll("/proc", path.join(root, "no-proc")),
+      ],
       {
         encoding: "utf8",
         timeout: 10_000,
@@ -48,14 +57,7 @@ describe("durable independent browser profiles", () => {
       expect(existsSync(path.join(profile(bot), "login"))).toBe(false);
       writeFileSync(path.join(profile(bot), "login"), `${bot}-session`);
     }
-    expect(
-      run(
-        stopScreensCommand([
-          { screenId: "writer", index: 0 },
-          { screenId: "reader", index: 1 },
-        ]),
-      ).status,
-    ).toBe(0);
+    for (const bot of ["writer", "reader"]) expect(run(stopBrowserCommand(bot)).status).toBe(0);
     for (const bot of ["writer", "reader"]) {
       expect(run(prepareBrowserProfileCommand(bot)).status).toBe(0);
       expect(readFileSync(path.join(profile(bot), "login"), "utf8")).toBe(`${bot}-session`);

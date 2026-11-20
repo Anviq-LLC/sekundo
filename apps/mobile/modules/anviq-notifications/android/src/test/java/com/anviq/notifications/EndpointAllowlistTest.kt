@@ -1,4 +1,4 @@
-package com.anviq.notifications
+package com.sekundo.notifications
 
 import org.json.JSONArray
 import org.junit.Assert.assertEquals

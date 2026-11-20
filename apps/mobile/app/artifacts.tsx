@@ -1,7 +1,16 @@
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { artifactTypeLabel } from "@anviq/core";
+import { ph } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
+import {
+  useFocusEffect,
+  useIsFocused,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { LayoutChangeEvent } from "react-native";
+import type { LayoutChangeEvent, ScrollViewInstance } from "react-native";
 import {
   ActivityIndicator,
   Alert,
@@ -13,24 +22,24 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BotAvatar } from "../components/bot-avatar";
-import { NativeSymbol } from "../components/native-symbol";
-import { formatActivityRelativeTime } from "../lib/activity";
-import type { MobileBot } from "../lib/api";
-import { rpc } from "../lib/api";
-import { mobileTokens } from "../lib/appearance";
-import type { MobileArtifactSummary } from "../lib/artifacts";
+import { BotAvatar } from "../components/bots/bot-avatar";
+import { NativeSegmentedControl } from "../components/native/native-segmented-control";
+import { NativeSymbol } from "../components/native/native-symbol";
+import { rpc } from "../lib/api/api";
+import type { MobileBot } from "../lib/api/mobile-types";
+import { useSpaceChanges } from "../lib/api/roster-signals";
+import { errorText } from "../lib/api/user-error";
+import { mobileTokens } from "../lib/appearance/appearance";
+import type { MobileArtifactSummary } from "../lib/artifacts/artifacts";
 import {
   listSpaceArtifacts,
   matchesArtifactQuery,
-  mimeBadgeLabel,
   removeArtifact,
-} from "../lib/artifacts";
-import { useI18n } from "../lib/i18n";
-import { native, useThemedStyles } from "../lib/native";
-import { useSideInsets } from "../lib/side-insets";
-import { errorText } from "../lib/user-error";
+} from "../lib/artifacts/artifacts";
+import { formatActivityRelativeTime } from "../lib/inbox/activity";
+import { useContentBottomInset } from "../lib/layout/content-bottom-inset";
+import { useSideInsets } from "../lib/layout/side-insets";
+import { native, useThemedStyles } from "../lib/native/native";
 
 const PAGE_SIZE = 30;
 
@@ -38,14 +47,16 @@ export default function ArtifactsScreen() {
   const sideInsets = useSideInsets();
   const navigation = useNavigation();
   const router = useRouter();
-  const { t } = useI18n();
+  const focused = useIsFocused();
+  const { t } = useLingui();
   const styles = useThemedStyles(createStyles);
-  const insets = useSafeAreaInsets();
+  const contentBottomInset = useContentBottomInset();
 
   const [bots, setBots] = useState<MobileBot[]>([]);
   const { botId } = useLocalSearchParams<{ botId?: string }>();
   const [activeBotId, setActiveBotId] = useState<string | null>(botId || null);
-  const chipsScrollRef = useRef<ScrollView>(null);
+  const [madeByBots, setMadeByBots] = useState(false);
+  const chipsScrollRef = useRef<ScrollViewInstance>(null);
   const initialChipLayout = useRef({
     viewportWidth: 0,
     contentWidth: 0,
@@ -66,23 +77,34 @@ export default function ArtifactsScreen() {
   }
 
   const [items, setItems] = useState<MobileArtifactSummary[] | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [next, setNext] = useState<{
+    cursor: string;
+    botId: string | null;
+    madeByBots: boolean;
+  } | null>(null);
+  const nextCursor =
+    next?.botId === activeBotId && next.madeByBots === madeByBots ? next.cursor : null;
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [searchPageFailed, setSearchPageFailed] = useState(false);
   const loadingMoreRef = useRef(false);
+  const loadedPagesRef = useRef(1);
   const generationRef = useRef(0);
+  const loadingPageRef = useRef(false);
+  const [loadingPage, setLoadingPage] = useState(false);
   const autoFetchedCursorRef = useRef<string | null>(null);
   const activeBotIdRef = useRef(activeBotId);
+  const madeByBotsRef = useRef(madeByBots);
   const didFocusRef = useRef(false);
   activeBotIdRef.current = activeBotId;
+  madeByBotsRef.current = madeByBots;
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerSearchBarOptions: {
-        placeholder: t("Search artifacts…"),
+        placeholder: t`Search artifacts…`,
         hideWhenScrolling: false,
         autoCapitalize: "none",
         onChangeText: (event: { nativeEvent: { text: string } }) =>
@@ -102,26 +124,46 @@ export default function ArtifactsScreen() {
   );
 
   const load = useCallback(
-    async (botId: string | null, mode: "replace" | "refresh") => {
+    async (botId: string | null, madeByBots: boolean, mode: "replace" | "refresh" | "live") => {
+      const pageCount = mode === "live" ? loadedPagesRef.current : 1;
       const generation = ++generationRef.current;
+      loadingPageRef.current = true;
+      setLoadingPage(true);
       loadingMoreRef.current = false;
       setLoadingMore(false);
       autoFetchedCursorRef.current = null;
       setSearchPageFailed(false);
       setLoadError(null);
       if (mode === "replace") {
+        loadedPagesRef.current = 1;
         setItems(null);
-        setNextCursor(null);
+        setNext(null);
       }
       try {
-        const page = await listSpaceArtifacts({ botId: botId ?? undefined, limit: PAGE_SIZE });
+        const input = {
+          botId: botId ?? undefined,
+          madeByBots,
+          limit: PAGE_SIZE,
+        };
+        let page = await listSpaceArtifacts(input);
+        const nextItems = [...page.items];
+        let loaded = 1;
+        while (loaded < pageCount && page.nextCursor && generation === generationRef.current) {
+          page = await listSpaceArtifacts({ ...input, cursor: page.nextCursor });
+          nextItems.push(...page.items);
+          loaded++;
+        }
         if (generation !== generationRef.current) return;
-        setItems(page.items);
-        setNextCursor(page.nextCursor);
+        loadedPagesRef.current = loaded;
+        setItems(nextItems);
+        setNext(page.nextCursor ? { cursor: page.nextCursor, botId, madeByBots } : null);
       } catch (error) {
         if (generation !== generationRef.current) return;
-        if (mode === "replace") {
-          setLoadError(errorText(error, t("Could not load artifacts.")));
+        setLoadError(errorText(error, t`Could not load artifacts.`));
+      } finally {
+        if (generation === generationRef.current) {
+          loadingPageRef.current = false;
+          setLoadingPage(false);
         }
       }
     },
@@ -134,24 +176,31 @@ export default function ArtifactsScreen() {
         didFocusRef.current = true;
         return;
       }
-      void load(activeBotIdRef.current, "refresh");
+      void load(activeBotIdRef.current, madeByBotsRef.current, "refresh");
     }, [load]),
+  );
+  useSpaceChanges(
+    "artifacts",
+    () => load(activeBotIdRef.current, madeByBotsRef.current, "live"),
+    focused,
   );
 
   const loadMore = useCallback(async () => {
-    if (!nextCursor || loadingMoreRef.current) return;
+    if (!nextCursor || loadingMoreRef.current || loadingPageRef.current) return;
     const generation = generationRef.current;
     loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const page = await listSpaceArtifacts({
         botId: activeBotId ?? undefined,
+        madeByBots,
         cursor: nextCursor,
         limit: PAGE_SIZE,
       });
       if (generation !== generationRef.current) return;
+      loadedPagesRef.current++;
       setItems((current) => (current ?? []).concat(page.items));
-      setNextCursor(page.nextCursor);
+      setNext(page.nextCursor ? { cursor: page.nextCursor, botId: activeBotId, madeByBots } : null);
       setSearchPageFailed(false);
     } catch {
       if (generation === generationRef.current) setSearchPageFailed(true);
@@ -161,12 +210,12 @@ export default function ArtifactsScreen() {
         setLoadingMore(false);
       }
     }
-  }, [activeBotId, nextCursor]);
+  }, [activeBotId, madeByBots, nextCursor]);
 
   async function refresh() {
     setRefreshing(true);
     try {
-      await load(activeBotId, "refresh");
+      await load(activeBotId, madeByBots, "refresh");
     } finally {
       setRefreshing(false);
     }
@@ -174,24 +223,23 @@ export default function ArtifactsScreen() {
 
   function confirmDelete(item: MobileArtifactSummary) {
     Alert.alert(
-      t('Delete "{name}"?', { name: item.name }),
+      t`Delete "${ph({ name: item.name })}"?`,
       item.versionCount > 1
-        ? t("This deletes all {count} versions of this artifact. This can't be undone.", {
-            count: item.versionCount,
-          })
-        : t("This can't be undone."),
+        ? t`This deletes all ${ph({ count: item.versionCount })} versions of this artifact. This can't be undone.`
+        : t`This can't be undone.`,
       [
-        { text: t("Cancel"), style: "cancel" },
+        { text: t`Cancel`, style: "cancel" },
         {
-          text: t("Delete"),
+          text: t`Delete`,
           style: "destructive",
           onPress: () =>
             void removeArtifact(item.id)
-              .then(() =>
-                setItems((current) => current?.filter((row) => row.id !== item.id) ?? current),
-              )
+              .then(() => {
+                setItems((current) => current?.filter((row) => row.id !== item.id) ?? current);
+                void load(activeBotIdRef.current, madeByBotsRef.current, "refresh");
+              })
               .catch((error: unknown) =>
-                Alert.alert(t("Could not delete this artifact"), errorText(error, t("Try again."))),
+                Alert.alert(t`Could not delete this artifact`, errorText(error, t`Try again.`)),
               ),
         },
       ],
@@ -209,63 +257,100 @@ export default function ArtifactsScreen() {
   useEffect(() => {
     autoFetchedCursorRef.current = null;
     setSearchPageFailed(false);
-  }, [query, activeBotId]);
+  }, [query, activeBotId, madeByBots]);
 
   useEffect(() => {
-    if (searchPageFailed || !queryActive || !nextCursor || loadingMore || items === null) return;
+    if (
+      loadingPage ||
+      searchPageFailed ||
+      !queryActive ||
+      !nextCursor ||
+      loadingMore ||
+      items === null
+    )
+      return;
     if (filtered && filtered.length > 0) return;
     if (autoFetchedCursorRef.current === nextCursor) return;
     autoFetchedCursorRef.current = nextCursor;
     void loadMore();
-  }, [filtered, items, loadMore, loadingMore, nextCursor, queryActive, searchPageFailed]);
+  }, [
+    filtered,
+    items,
+    loadMore,
+    loadingMore,
+    loadingPage,
+    nextCursor,
+    queryActive,
+    searchPageFailed,
+  ]);
 
   useEffect(() => {
-    void load(activeBotId, "replace");
-  }, [activeBotId, load]);
+    void load(activeBotId, madeByBots, "replace");
+  }, [activeBotId, madeByBots, load]);
 
   return (
-    <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.screen, { paddingBottom: contentBottomInset }]}>
       <FlatList<MobileArtifactSummary>
         ListHeaderComponent={
-          <ScrollView
-            ref={chipsScrollRef}
-            onLayout={(event) => {
-              initialChipLayout.current.viewportWidth = event.nativeEvent.layout.width;
-              revealInitialChip();
-            }}
-            onContentSizeChange={(width) => {
-              initialChipLayout.current.contentWidth = width;
-              revealInitialChip();
-            }}
-            horizontal
-            contentInsetAdjustmentBehavior="never"
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipsScroll}
-            contentContainerStyle={styles.chipsRow}
-          >
-            <Chip
-              label={t("All bots")}
-              active={activeBotId === null}
-              onPress={() => setActiveBotId(null)}
-            />
-            {bots.map((bot) => (
-              <Chip
-                key={bot.id}
-                onLayout={
-                  bot.id === botId && activeBotId === botId
-                    ? (event) => {
-                        initialChipLayout.current.chip = event.nativeEvent.layout;
-                        revealInitialChip();
-                      }
-                    : undefined
-                }
-                label={bot.name}
-                active={activeBotId === bot.id}
-                onPress={() => setActiveBotId(bot.id)}
-                avatar={<BotAvatar color={bot.color} identity={bot.id} size={16} />}
+          <View>
+            <View style={styles.sourceControl}>
+              <NativeSegmentedControl
+                accessibilityLabel={t`Filter by who made it`}
+                value={madeByBots ? "bots" : "all"}
+                onChange={(value) => setMadeByBots(value === "bots")}
+                options={[
+                  { value: "all" as const, label: t`All files` },
+                  { value: "bots" as const, label: t`Made by bots` },
+                ]}
               />
-            ))}
-          </ScrollView>
+            </View>
+            <ScrollView
+              ref={chipsScrollRef}
+              onLayout={(event) => {
+                initialChipLayout.current.viewportWidth = event.nativeEvent.layout.width;
+                revealInitialChip();
+              }}
+              onContentSizeChange={(width) => {
+                initialChipLayout.current.contentWidth = width;
+                revealInitialChip();
+              }}
+              horizontal
+              contentInsetAdjustmentBehavior="never"
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipsScroll}
+              contentContainerStyle={styles.chipsRow}
+            >
+              <Chip
+                label={t`All bots`}
+                active={activeBotId === null}
+                onPress={() => setActiveBotId(null)}
+              />
+              {bots.map((bot) => (
+                <Chip
+                  key={bot.id}
+                  onLayout={
+                    bot.id === botId && activeBotId === botId
+                      ? (event) => {
+                          initialChipLayout.current.chip = event.nativeEvent.layout;
+                          revealInitialChip();
+                        }
+                      : undefined
+                  }
+                  label={bot.name}
+                  active={activeBotId === bot.id}
+                  onPress={() => setActiveBotId(bot.id)}
+                  avatar={
+                    <BotAvatar
+                      color={bot.color}
+                      avatarSet={bot.avatarSet}
+                      identity={bot.id}
+                      size={16}
+                    />
+                  }
+                />
+              ))}
+            </ScrollView>
+          </View>
         }
         style={[styles.listView, sideInsets]}
         contentInsetAdjustmentBehavior="automatic"
@@ -300,8 +385,8 @@ export default function ArtifactsScreen() {
               }}
               style={styles.centered}
             >
-              <Text style={styles.empty}>{t("Could not load artifacts.")}</Text>
-              <Text style={styles.empty}>{t("Try again.")}</Text>
+              <Text style={styles.empty}>{t`Could not load artifacts.`}</Text>
+              <Text style={styles.empty}>{t`Try again.`}</Text>
             </Pressable>
           ) : queryActive &&
             filtered?.length === 0 &&
@@ -312,7 +397,7 @@ export default function ArtifactsScreen() {
             </View>
           ) : (
             <Text style={styles.empty}>
-              {queryActive ? t("No matching artifacts") : t("No artifacts yet")}
+              {queryActive || madeByBots ? t`No matching artifacts` : t`No artifacts yet`}
             </Text>
           )
         }
@@ -321,7 +406,7 @@ export default function ArtifactsScreen() {
             <View style={styles.footer}>
               <ActivityIndicator color={native.secondaryLabel} />
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <ArtifactRow
@@ -378,13 +463,13 @@ function ArtifactRow({
   onLongPress: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
-  const { t } = useI18n();
+  const { t } = useLingui();
   const isCode = item.mimeType === "text/html";
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={bot ? `${item.name}, ${bot.name}` : item.name}
-      accessibilityHint={t("Long press to delete")}
+      accessibilityHint={t`Long press to delete`}
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
@@ -402,7 +487,7 @@ function ArtifactRow({
             {item.name}
           </Text>
           {item.versionCount > 1 ? <Text style={styles.badge}>{`v${item.version}`}</Text> : null}
-          <Text style={styles.badge}>{mimeBadgeLabel(item.mimeType)}</Text>
+          <Text style={styles.badge}>{artifactTypeLabel(item.mimeType)}</Text>
         </View>
         {item.description ? (
           <Text style={styles.rowDescription} numberOfLines={1}>
@@ -412,7 +497,7 @@ function ArtifactRow({
         <View style={styles.rowFooter}>
           {bot ? (
             <>
-              <BotAvatar color={bot.color} identity={bot.id} size={14} />
+              <BotAvatar color={bot.color} avatarSet={bot.avatarSet} identity={bot.id} size={14} />
               <Text style={styles.rowBotName} numberOfLines={1}>
                 {bot.name}
               </Text>
@@ -430,6 +515,7 @@ function createStyles() {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: native.page },
     centered: { alignItems: "center", justifyContent: "center", paddingTop: 40 },
+    sourceControl: { paddingHorizontal: 16, paddingTop: 10 },
     chipsScroll: { flexGrow: 0, flexShrink: 0 },
     chipsRow: {
       flexDirection: "row",

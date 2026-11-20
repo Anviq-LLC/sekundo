@@ -34,6 +34,15 @@ export const DEFAULT_DESKTOP_ENV: DesktopEnvironment = {
   bindHost: "127.0.0.1",
   preservePrimaryDisplay: true,
 };
+/** Rebuildable tool caches live outside the saved home. Tools create these under /tmp. */
+export const COMPUTER_CACHE_ENV = {
+  XDG_CACHE_HOME: "/tmp/anviq-cache/xdg",
+  npm_config_cache: "/tmp/anviq-cache/npm",
+  PIP_CACHE_DIR: "/tmp/anviq-cache/pip",
+  PLAYWRIGHT_BROWSERS_PATH: "/tmp/anviq-cache/ms-playwright",
+  UV_CACHE_DIR: "/tmp/anviq-cache/uv",
+};
+
 function gatewayHost(host = "127.0.0.1") {
   if (host !== "localhost" && host !== "::" && !isIPv4(host))
     throw new Error("invalid screen gateway bind host");
@@ -176,6 +185,233 @@ export function browserLauncherPath(displayNumber: number | string) {
   return `/tmp/anviq/browser-launch-${displayNumber}`;
 }
 
+// Bookworm installs the portal backends as flat files. Same paths as the boot script.
+const DESKTOP_PORTAL = "/usr/libexec/xdg-desktop-portal";
+const DESKTOP_PORTAL_GTK = "/usr/libexec/xdg-desktop-portal-gtk";
+
+function screenSessionPaths(displayNumber: string) {
+  return {
+    bus: `/tmp/anviq/dbus-session-${displayNumber}`,
+    dbusPid: `/tmp/anviq/dbus-pid-${displayNumber}`,
+    portalPid: `/tmp/anviq/portal-pid-${displayNumber}`,
+    gtkPid: `/tmp/anviq/portal-gtk-pid-${displayNumber}`,
+    portalLog: `/tmp/anviq/portal-${displayNumber}.log`,
+    gtkLog: `/tmp/anviq/portal-gtk-${displayNumber}.log`,
+  };
+}
+
+function portalStartLine(binary: string, display: string, log: string) {
+  return `DISPLAY=${display} DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" nohup ${binary} 8>&- 9>&- </dev/null >${log} 2>&1 &`;
+}
+
+// dbus-daemon copies its own environment into the activation environment.
+// Publish the screen display before any backend starts, or an activated GTK
+// portal inherits the image display and the explicitly started one exits.
+function screenActivationLine(display: string) {
+  return `if command -v dbus-update-activation-environment >/dev/null 2>&1; then dbus-update-activation-environment DISPLAY=${display} || exit 1; fi`;
+}
+
+function screenClaimGtkLines(display: string, log: string) {
+  return [
+    "screen_claim_gtk() {",
+    `  ${portalStartLine(DESKTOP_PORTAL_GTK, display, log)}`,
+    "  screen_gtk_pid=$!",
+    "  screen_gtk_ready=0",
+    "  for i in $(seq 1 50); do",
+    // Right after the fork the pid still runs the shell or nohup until it execs the portal.
+    '    screen_starting "$screen_gtk_pid" xdg-desktop-portal-gtk || break',
+    "    if dbus-send --session --print-reply --dest=org.freedesktop.DBus \\",
+    "        /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner \\",
+    "        string:org.freedesktop.impl.portal.desktop.gtk 2>/dev/null | grep -q 'boolean true'; then",
+    "      screen_gtk_ready=1",
+    "      break",
+    "    fi",
+    "    sleep 0.1",
+    "  done",
+    '  if [ "$screen_gtk_ready" -ne 1 ]; then',
+    '    if screen_live "$screen_gtk_pid" xdg-desktop-portal-gtk; then',
+    '      kill "$screen_gtk_pid" 2>/dev/null || true',
+    '      kill -KILL "$screen_gtk_pid" 2>/dev/null || true',
+    "    fi",
+    "    echo 'screen file chooser did not claim the bus' >&2",
+    "    exit 1",
+    "  fi",
+    '  screen_record "$screen_gtk_pid" "$screen_gtk_pid_file"',
+    "}",
+  ];
+}
+
+// Pid files outlive the container, and the kernel reuses the numbers.
+// Trust a recorded pid only when its start time and executable still match.
+function screenSessionMatchers() {
+  return [
+    "screen_starttime() {",
+    '  screen_stat=$(cat "/proc/$1/stat" 2>/dev/null) || return 1',
+    '  case "$screen_stat" in',
+    "    *')'*) ;;",
+    "    *) return 1 ;;",
+    "  esac",
+    // Field 22 of stat is field 20 after the last ')'. $20 is not that field.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
+    "  screen_rest=${screen_stat##*)}",
+    "  set -f",
+    "  set -- $screen_rest",
+    "  set +f",
+    '  [ "$#" -ge 20 ] || return 1',
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
+    "  case \"${20}\" in ''|*[!0-9]*) return 1 ;; esac",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
+    "  screen_starttime_value=${20}",
+    "}",
+    "screen_record() {",
+    '  screen_starttime "$1" || return 1',
+    '  printf \'%s %s\\n\' "$1" "$screen_starttime_value" >"$2"',
+    "}",
+    // A pid this script just forked. Start time is recorded after the claim.
+    "screen_live() {",
+    "  case \"$1\" in ''|*[!0-9]*|0|1) return 1 ;; esac",
+    '  kill -0 "$1" 2>/dev/null || return 1',
+    '  case "$(readlink "/proc/$1/exe" 2>/dev/null || true)" in',
+    '    */"$2"|"$2") return 0 ;;',
+    "  esac",
+    "  return 1",
+    "}",
+    "screen_starting() {",
+    '  kill -0 "$1" 2>/dev/null || return 1',
+    '  case "$(readlink "/proc/$1/exe" 2>/dev/null || true)" in',
+    '    */"$2"|"$2"|*/bash|*/dash|*/sh|*/nohup) return 0 ;;',
+    "  esac",
+    "  return 1",
+    "}",
+    "screen_recorded() {",
+    '  [ -r "$1" ] || return 1',
+    "  screen_recorded_exe=$2",
+    '  screen_line=$(cat "$1" 2>/dev/null || true)',
+    '  case "$screen_line" in',
+    "    *' '*) ;;",
+    "    *) return 1 ;;",
+    "  esac",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
+    "  screen_recorded_pid=${screen_line%% *}",
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: shell parameter expansion
+    "  screen_recorded_start=${screen_line#* }",
+    '  case "$screen_recorded_start" in',
+    "    *' '*) return 1 ;;",
+    "  esac",
+    "  case \"$screen_recorded_pid\" in ''|*[!0-9]*|0|1) return 1 ;; esac",
+    "  case \"$screen_recorded_start\" in ''|*[!0-9]*) return 1 ;; esac",
+    '  kill -0 "$screen_recorded_pid" 2>/dev/null || return 1',
+    '  screen_starttime "$screen_recorded_pid" || return 1',
+    '  [ "$screen_starttime_value" = "$screen_recorded_start" ] || return 1',
+    '  case "$(readlink "/proc/$screen_recorded_pid/exe" 2>/dev/null || true)" in',
+    '    */"$screen_recorded_exe"|"$screen_recorded_exe") return 0 ;;',
+    '    */"$screen_recorded_exe (deleted)"|"$screen_recorded_exe (deleted)") return 0 ;;',
+    "  esac",
+    "  return 1",
+    "}",
+    "screen_stop_recorded() {",
+    '  if screen_recorded "$1" "$2"; then',
+    '    kill "$screen_recorded_pid" 2>/dev/null || true',
+    '    kill -KILL "$screen_recorded_pid" 2>/dev/null || true',
+    "  fi",
+    '  rm -f "$1"',
+    "}",
+  ];
+}
+
+// One GTK portal process draws on a single DISPLAY. The boot backend stays on
+// displayStart; every other screen needs its own session bus and backend.
+function renderStartScreenSessionCommand(index: number | undefined, env: DesktopEnvironment) {
+  if (index === 0) return [];
+  const layout = commandLayout(index, env);
+  const paths = screenSessionPaths(String(layout.displayNumber));
+  const lines = [
+    `screen_bus_file=${paths.bus}`,
+    `screen_dbus_pid_file=${paths.dbusPid}`,
+    `screen_portal_pid_file=${paths.portalPid}`,
+    `screen_gtk_pid_file=${paths.gtkPid}`,
+    ...screenSessionMatchers(),
+    ...screenClaimGtkLines(layout.display, paths.gtkLog),
+    "screen_portals=0",
+    `if [ -x ${DESKTOP_PORTAL} ] && [ -x ${DESKTOP_PORTAL_GTK} ]; then screen_portals=1; fi`,
+    "screen_bus_alive=0",
+    'if [ -r "$screen_bus_file" ] && screen_recorded "$screen_dbus_pid_file" dbus-daemon; then screen_bus_alive=1; fi',
+    'if [ "$screen_bus_alive" -eq 0 ]; then',
+    '  screen_stop_recorded "$screen_portal_pid_file" xdg-desktop-portal',
+    '  screen_stop_recorded "$screen_gtk_pid_file" xdg-desktop-portal-gtk',
+    '  screen_stop_recorded "$screen_dbus_pid_file" dbus-daemon',
+    '  rm -f "$screen_bus_file"',
+    "    if command -v dbus-launch >/dev/null 2>&1; then",
+    `      eval "$(DISPLAY=${layout.display} dbus-launch --sh-syntax)"`,
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: generated shell parameter expansion
+    '      if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] || [ -z "${DBUS_SESSION_BUS_PID:-}" ]; then echo \'screen session bus did not start\' >&2; exit 1; fi',
+    '      printf \'export DBUS_SESSION_BUS_ADDRESS=%q\\nexport DBUS_SESSION_BUS_PID=%q\\n\' "$DBUS_SESSION_BUS_ADDRESS" "$DBUS_SESSION_BUS_PID" >"$screen_bus_file"',
+    '      screen_record "$DBUS_SESSION_BUS_PID" "$screen_dbus_pid_file"',
+    `      ${screenActivationLine(layout.display)}`,
+    '      if [ "$screen_portals" -eq 1 ]; then',
+    "        screen_claim_gtk",
+    `        ${portalStartLine(DESKTOP_PORTAL, layout.display, paths.portalLog)}`,
+    '        screen_record "$!" "$screen_portal_pid_file"',
+    "      fi",
+    "      unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID",
+    "    fi",
+    "  else",
+    '    . "$screen_bus_file"',
+    `    ${screenActivationLine(layout.display)}`,
+    '    if [ "$screen_portals" -eq 1 ]; then',
+    '      if ! screen_recorded "$screen_gtk_pid_file" xdg-desktop-portal-gtk; then',
+    "        screen_claim_gtk",
+    "      fi",
+    '      if ! screen_recorded "$screen_portal_pid_file" xdg-desktop-portal; then',
+    `        ${portalStartLine(DESKTOP_PORTAL, layout.display, paths.portalLog)}`,
+    '        screen_record "$!" "$screen_portal_pid_file"',
+    "      fi",
+    "    fi",
+    "    unset DBUS_SESSION_BUS_ADDRESS DBUS_SESSION_BUS_PID",
+    "  fi",
+  ];
+  if (index !== undefined) return lines;
+  return [`if [ "$desktop_display" != "${env.displayStart}" ]; then`, ...lines, "fi"];
+}
+
+function renderStopScreenSessionCommand(index: number | undefined, env: DesktopEnvironment) {
+  if (index === 0) return [];
+  const layout = commandLayout(index, env);
+  const paths = screenSessionPaths(String(layout.displayNumber));
+  const lines = [
+    ...screenSessionMatchers(),
+    `screen_stop_recorded ${paths.portalPid} xdg-desktop-portal`,
+    `screen_stop_recorded ${paths.gtkPid} xdg-desktop-portal-gtk`,
+    `screen_stop_recorded ${paths.dbusPid} dbus-daemon`,
+    `rm -f ${paths.bus}`,
+  ];
+  if (index !== undefined) return lines;
+  return [`if [ "$desktop_display" != "${env.displayStart}" ]; then`, ...lines, "fi"];
+}
+
+function browserSessionBusLines(index: number | undefined, env: DesktopEnvironment) {
+  if (index === 0) {
+    return [
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: generated shell parameter expansion
+      'if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -r /tmp/anviq/dbus-session ]; then . /tmp/anviq/dbus-session; fi',
+    ];
+  }
+  if (index === undefined) {
+    return [
+      `if [ "$desktop_display" = "${env.displayStart}" ]; then`,
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: generated shell parameter expansion
+      '  if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -r /tmp/anviq/dbus-session ]; then . /tmp/anviq/dbus-session; fi',
+      "else",
+      "  screen_bus=/tmp/anviq/dbus-session-$desktop_display",
+      '  if [ -r "$screen_bus" ]; then . "$screen_bus"; else unset DBUS_SESSION_BUS_ADDRESS; fi',
+      "  unset screen_bus",
+      "fi",
+    ];
+  }
+  const bus = `/tmp/anviq/dbus-session-${env.displayStart + index}`;
+  return [`if [ -r ${bus} ]; then . ${bus}; else unset DBUS_SESSION_BUS_ADDRESS; fi`];
+}
+
 function browserLauncherCommand(
   index: number | undefined,
   screenId: string,
@@ -192,8 +428,8 @@ function browserLauncherCommand(
     "browser=$(command -v anviq-browser || command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)",
     `export DISPLAY=${layout.display} HOME=${shellQuote(env.homeDir)}`,
     // Docker exec does not inherit the session bus exported by container startup.
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: generated shell parameter expansion
-    'if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -r /tmp/anviq/dbus-session ]; then . /tmp/anviq/dbus-session; fi',
+    // The boot portal draws on displayStart; other screens must source their own bus.
+    ...browserSessionBusLines(index, env),
     // The image preloads libnss_wrapper so arbitrary UIDs resolve. Chromium's
     // process stays up with these flags while that library is loaded, and the
     // debugging port never opens. Drop only that entry for this exec.
@@ -276,6 +512,9 @@ export function browserCloseProgram() {
   return CLOSE_BROWSER;
 }
 
+/** Exit status of a browser stop that found a browser open on the profile again. */
+export const BROWSER_STILL_RUNNING_EXIT = 76;
+
 export function stopBrowserCommand(screenId: string, env = DEFAULT_DESKTOP_ENV) {
   return stopBrowserProfileCommand(
     browserProfilePathForScreen(screenId, env),
@@ -295,7 +534,7 @@ export function stopBrowserProfileCommand(profile: string, pidFile: string) {
     `fi`,
     // A supervisor may have replaced the selected PID while it was closing.
     // Rediscover once before removing lock state rather than on every close poll.
-    `if browser_running; then echo 'browser still running' >&2; exit 1; fi`,
+    `if browser_running; then echo 'browser still running' >&2; exit ${BROWSER_STILL_RUNNING_EXIT}; fi`,
     `rm -f ${pidFile}`,
     `rm -f ${shellQuote(profile)}/SingletonLock ${shellQuote(profile)}/SingletonCookie ${shellQuote(profile)}/SingletonSocket`,
   ].join("\n");
@@ -309,6 +548,7 @@ function stopProfileDirectoriesCommand(profileList: string) {
   return [
     "set -eu",
     "failed=0",
+    "running=0",
     "mkdir -p /tmp/anviq",
     `for profile in ${profileList}; do`,
     '  [ -d "$profile" ] || continue',
@@ -318,9 +558,10 @@ function stopProfileDirectoriesCommand(profileList: string) {
     '    *) hash=$(basename -- "$profile") ;;',
     "  esac",
     '  pid_file="/tmp/anviq/browser-pid-$hash"',
-    `  bash -eu -c ${shellQuote(`profile=$1; pid_file=$2;\n${stop}`)} desktop "$profile" "$pid_file" || failed=1`,
+    `  bash -eu -c ${shellQuote(`profile=$1; pid_file=$2;\n${stop}`)} desktop "$profile" "$pid_file" || { [ "$?" -eq ${BROWSER_STILL_RUNNING_EXIT} ] && running=1 || failed=1; }`,
     "done",
     '[ "$failed" -eq 0 ] || exit 1',
+    `[ "$running" -eq 0 ] || exit ${BROWSER_STILL_RUNNING_EXIT}`,
   ].join("\n");
 }
 
@@ -348,6 +589,7 @@ export function resetDesktopRuntimeCommand(env = DEFAULT_DESKTOP_ENV) {
   const stop = [
     ...layoutVariables(undefined, env),
     renderStopScreenTransportsCommand(undefined, env),
+    ...renderStopScreenSessionCommand(undefined, env),
     ...(env.preservePrimaryDisplay
       ? [`if [ "$desktop_display" != "${env.displayStart}" ]; then`]
       : []),
@@ -446,7 +688,11 @@ function gatewayCommand(port: string, host = "127.0.0.1") {
     "fi",
     `for i in $(seq 1 50); do (echo >/dev/tcp/${probeHost}/${port}) >/dev/null 2>&1 && break; sleep 0.1; done`,
     `flock -u 10; exec 10>&-`,
-    `(echo >/dev/tcp/${probeHost}/${port}) >/dev/null 2>&1`,
+    `if ! (echo >/dev/tcp/${probeHost}/${port}) >/dev/null 2>&1; then`,
+    "  echo 'screen gateway did not start' >&2",
+    `  tail -c 2000 /tmp/anviq/gateway-${port}.log >&2 || true`,
+    "  exit 1",
+    "fi",
   ].join("\n");
 }
 
@@ -494,6 +740,7 @@ function renderStopExtraScreenCommand(
     renderStopScreenTransportsCommand(index, env),
     stopBrowserCommand(screenId, env),
     `rm -f /tmp/anviq/browser-profile-${layout.displayNumber} ${browserLauncherPath(layout.displayNumber)}`,
+    ...renderStopScreenSessionCommand(index, env),
     ...(index === 0 && env.preservePrimaryDisplay
       ? []
       : [
@@ -543,17 +790,23 @@ function renderEnsureScreenCommand(
           // branch below does not run. Rewrite the menu anyway; fluxbox rereads that file,
           // so leave the display and window manager running.
           `mkdir -p ${fluxHome}/.fluxbox`,
-          `printf '[begin] (Desktop)\\n[exec] (Browser) {%s}\\n[exec] (Terminal) {%s}\\n[end]\\n' ${browserLauncherPath(layout.displayNumber)} ${shellQuote(TERMINAL_MENU_COMMAND)} >${fluxHome}/.fluxbox/menu`,
+          // Keep apps a derived image adds to its menu; its browser entries open this screen's browser.
+          `{ [ -r /etc/anviq/fluxbox/menu ] && sed "s#{anviq-browser\\([ }]\\)#{${browserLauncherPath(layout.displayNumber)}\\1#g" /etc/anviq/fluxbox/menu || printf '[begin] (Desktop)\\n[exec] (Browser) {%s}\\n[exec] (Terminal) {%s}\\n[end]\\n' ${browserLauncherPath(layout.displayNumber)} ${shellQuote(TERMINAL_MENU_COMMAND)}; } >${fluxHome}/.fluxbox/menu`,
           `if ! xdpyinfo -display ${layout.display} >/dev/null 2>&1; then`,
           `  mkdir -p /tmp/anviq ${fluxHome}/.fluxbox /tmp/.X11-unix`,
           `  rm -f /tmp/.X${layout.displayNumber}-lock /tmp/.X11-unix/X${layout.displayNumber}`,
           `  nohup Xvfb ${layout.display} -screen 0 1280x800x24 -ac +extension RANDR +render -noreset -nolisten tcp 8>&- 9>&- </dev/null >${log}-xvfb.log 2>&1 &`,
           `  for i in $(seq 1 100); do xdpyinfo -display ${layout.display} >/dev/null 2>&1 && break; sleep 0.1; done`,
-          `  xdpyinfo -display ${layout.display} >/dev/null 2>&1 || exit 1`,
+          `  if ! xdpyinfo -display ${layout.display} >/dev/null 2>&1; then echo 'computer display did not start' >&2; tail -c 2000 ${log}-xvfb.log >&2 || true; exit 1; fi`,
           `  if [ -f /etc/anviq/fluxbox/init ]; then cp /etc/anviq/fluxbox/init ${fluxHome}/.fluxbox/init; else printf "session.screen0.toolbar.visible: false\\n" >${fluxHome}/.fluxbox/init; fi`,
           `  cp /etc/anviq/fluxbox/apps ${fluxHome}/.fluxbox/apps 2>/dev/null || true`,
           `  printf '\\nsession.menuFile: %s\\n' ${fluxHome}/.fluxbox/menu >>${fluxHome}/.fluxbox/init`,
-          `  HOME=${shellQuote(env.homeDir)} CHROME_USER_DATA_DIR=${shellQuote(profile)} BROWSER=${browserLauncherPath(layout.displayNumber)} DISPLAY=${layout.display} nohup fluxbox -rc ${fluxHome}/.fluxbox/init 8>&- 9>&- </dev/null >${log}-fluxbox.log 2>&1 &`,
+          // A stock image's style sets its wallpaper through fbsetbg, which opens an error dialog
+          // on the screen when no wallpaper tool is installed. Paint the computer image's color.
+          `  mkdir -p ${fluxHome}/bin && printf '#!/bin/sh\\nexec xsetroot -solid "#111113"\\n' >${fluxHome}/bin/fbsetbg && chmod +x ${fluxHome}/bin/fbsetbg`,
+          // Without $HOME/.fluxbox, fluxbox copies the system's default settings over its -rc file.
+          `  mkdir -p ${shellQuote(`${env.homeDir}/.fluxbox`)}`,
+          `  PATH=${fluxHome}/bin:$PATH HOME=${shellQuote(env.homeDir)} CHROME_USER_DATA_DIR=${shellQuote(profile)} BROWSER=${browserLauncherPath(layout.displayNumber)} DISPLAY=${layout.display} nohup fluxbox -rc ${fluxHome}/.fluxbox/init 8>&- 9>&- </dev/null >${log}-fluxbox.log 2>&1 &`,
           "fi",
         ];
   const targetFile = `${TARGETS}/view-${layout.displayNumber}`;
@@ -565,7 +818,7 @@ function renderEnsureScreenCommand(
     `  nohup x11vnc -display ${layout.display} -forever -shared -viewonly -nopw -rfbport 0 -unixsock ${socket} -xkb -ncache 0 8>&- 9>&- </dev/null >${log}-x11vnc.log 2>&1 &`,
     "fi",
     `for i in $(seq 1 50); do [ -S ${socket} ] && break; sleep 0.1; done`,
-    `[ -S ${socket} ] || exit 1`,
+    `if [ ! -S ${socket} ]; then echo 'screen viewer did not start' >&2; tail -c 2000 ${log}-x11vnc.log >&2 || true; exit 1; fi`,
     // Leave an unchanged mapping in place. Replacing it on every ensure races
     // TokenFile, which reloads the directory on each handshake.
     `desired=$(printf '%s: unix_socket:%s\\n' "$desktop_view_token" ${socket})`,
@@ -585,16 +838,34 @@ function renderEnsureScreenCommand(
     `printf %s ${shellQuote(browserLauncherCommand(index, screenId, env))} >${browserLauncherPath(layout.displayNumber)}`,
     `chmod 700 ${browserLauncherPath(layout.displayNumber)}`,
     ...setupDisplay,
-    `xdpyinfo -display ${layout.display} >/dev/null 2>&1 || exit 1`,
+    `xdpyinfo -display ${layout.display} >/dev/null 2>&1 || { echo 'computer display is not running' >&2; exit 1; }`,
     `mkdir -p /tmp/anviq ${shellQuote(path.posix.dirname(profile))}`,
     ...browserRunningFunction(profile, pidFile),
     `printf %s ${shellQuote(profile)} >/tmp/anviq/browser-profile-${layout.displayNumber}`,
-    "if ! browser_running; then",
-    prepareBrowserProfileCommand(screenId, env),
+    ...renderStartScreenSessionCommand(index, env),
+    "launch_browser() {",
+    `  ${prepareBrowserProfileCommand(screenId, env)}`,
     `  rm -f ${shellQuote(profile)}/SingletonLock ${shellQuote(profile)}/SingletonCookie ${shellQuote(profile)}/SingletonSocket`,
-    `  nohup ${browserLauncherPath(layout.displayNumber)} 8>&- 9>&- </dev/null >${log}-browser.log 2>&1 & printf %s "$!" >${pidFile}`,
-    "fi",
-    `for i in $(seq 1 80); do browser_running && (echo >/dev/tcp/127.0.0.1/${layout.debugPort}) >/dev/null 2>&1 && break; sleep 0.25; done`,
+    `  nohup ${browserLauncherPath(layout.displayNumber)} 8>&- 9>&- </dev/null >${log}-browser.log 2>&1 & launched=$!`,
+    `  printf %s "$launched" >${pidFile}`,
+    "}",
+    "launched=",
+    "relaunched=0",
+    "browser_running || launch_browser",
+    "waited=0",
+    'while [ "$waited" -lt 80 ]; do',
+    "  if browser_running; then",
+    `    (echo >/dev/tcp/127.0.0.1/${layout.debugPort}) >/dev/null 2>&1 && break`,
+    // The browser found running can be closed, by its window or a home save, before its port
+    // answers. Start it again once rather than wait out a browser that is gone.
+    '  elif [ "$relaunched" -eq 0 ] && ! { [ -n "$launched" ] && kill -0 "$launched" 2>/dev/null; }; then',
+    "    relaunched=1",
+    "    waited=0",
+    "    launch_browser",
+    "  fi",
+    "  sleep 0.25",
+    "  waited=$((waited + 1))",
+    "done",
     `if ! browser_running || ! (echo >/dev/tcp/127.0.0.1/${layout.debugPort}) >/dev/null 2>&1; then`,
     `  echo "computer browser CDP not ready on ${layout.debugPort} (running=$(browser_running && echo yes || echo no))" >&2`,
     `  tail -c 4000 ${log}-browser.log >&2 || true`,
@@ -602,6 +873,7 @@ function renderEnsureScreenCommand(
     "fi",
     ...setupView,
     `for i in $(seq 1 50); do (echo >/dev/tcp/${gatewayProbeHost(layout.bindHost)}/${layout.viewPort}) >/dev/null 2>&1 && exit 0; sleep 0.1; done`,
+    "echo 'screen view port did not open' >&2",
     "exit 1",
   ].join("\n");
 }
@@ -638,7 +910,8 @@ export function interactiveScreenCommand(
     `if ! { [ -f ${tokenFile} ] && [ "$(cat ${tokenFile})" = ${shellQuote(controlToken)} ] && [ -S ${socket} ] && pgrep -f ${process} >/dev/null; }; then`,
     stopProcesses,
     `mkdir -p ${TARGETS} /tmp/anviq/sockets`,
-    `nohup x11vnc -display ${layout.display} -forever -shared -nopw -rfbport 0 -unixsock ${socket} -xkb -ncache 0 8>&- 9>&- </dev/null >/tmp/anviq/x11vnc-control-${layout.displayNumber}.log 2>&1 &`,
+    // A person is typing here: shorter polling and batching show input sooner.
+    `nohup x11vnc -display ${layout.display} -forever -shared -nopw -rfbport 0 -unixsock ${socket} -xkb -ncache 0 -wait 5 -defer 5 8>&- 9>&- </dev/null >/tmp/anviq/x11vnc-control-${layout.displayNumber}.log 2>&1 &`,
     `for i in $(seq 1 50); do [ -S ${socket} ] && pgrep -f ${process} >/dev/null && break; sleep 0.1; done`,
     `[ -S ${socket} ] && pgrep -f ${process} >/dev/null || exit 1`,
     `printf %s ${shellQuote(controlToken)} >${tokenFile}`,
@@ -741,6 +1014,24 @@ function acceptLeaseCommand(leaseId?: string, release = false) {
   ];
 }
 
+export function desktopWorkCommand(
+  screenId: string,
+  leaseId: string | undefined,
+  expectedIndex: number,
+  command: string,
+) {
+  return [
+    ...registryLockCommand(screenId),
+    '[ -f "$slot" ] || exit 75',
+    `[ "$(sed -n '1p' "$slot")" = ${shellQuote(String(expectedIndex))} ] || exit 75`,
+    ...(leaseId === undefined
+      ? []
+      : [`[ "$(sed -n '2p' "$slot")" = ${shellQuote(leaseId)} ] || exit 75`]),
+    "flock -u 9; exec 9>&-",
+    command,
+  ].join("\n");
+}
+
 /** Allocate a live slot while keeping the durable profile keyed by bot identity. */
 export function managedDesktopCommand(
   screenId: string,
@@ -780,6 +1071,20 @@ print(index)
     `bash -eu -c ${shellQuote(renderEnsureScreenCommand(undefined, screenId, TOKEN_PLACEHOLDER, env).replace(shellQuote(TOKEN_PLACEHOLDER), '"$2"'))} desktop "$index" "$view_token"`,
     'printf "ANVIQ_DESKTOP=%s:%s\\n" "$index" "$view_token"',
   ].join("\n");
+}
+
+/**
+ * Run `argv` with DISPLAY on the screen assigned to `screenId`, so screen tools in a bot's
+ * shell see its own desktop. Without an assignment the inherited DISPLAY stays.
+ */
+export function screenDisplayArgv(argv: readonly string[], screenId: string, displayStart: number) {
+  const slot = `${REGISTRY}/${browserKeyForScreen(screenId)}.slot`;
+  const program = [
+    `index=$(sed -n 1p ${shellQuote(slot)} 2>/dev/null)`,
+    `case "$index" in ''|*[!0-9]*) ;; *) DISPLAY=:$((index + ${displayStart})); export DISPLAY ;; esac`,
+    'exec "$@"',
+  ].join("\n");
+  return ["sh", "-c", program, "sh", ...argv];
 }
 
 /** Tear down before freeing a slot; failed teardown leaves it reserved for retry. */

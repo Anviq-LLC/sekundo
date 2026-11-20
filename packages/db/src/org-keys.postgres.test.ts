@@ -1,17 +1,16 @@
 // Copyright 2026 Anviq LLC. All rights reserved.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createDb } from "./client.js";
+import { createDb } from "./database/client.js";
+import { runAsSystem } from "./database/row-security.js";
 import {
   clearOrganizationKey,
   organizationKeys,
   PgOrgKeyLookup,
   setOrganizationKey,
 } from "./org-keys.js";
-import { runAsSystem } from "./row-security.js";
 
 const url = process.env.DATABASE_URL;
-const describePostgres =
-  process.env.VERIFY_DATABASE === "1" && url ? describe.sequential : describe.skip;
+const describePostgres = process.env.VERIFY_DATABASE === "1" && url ? describe : describe.skip;
 
 const arn = (name: string) => `arn:aws:kms:eu-central-1:111111111111:key/${name}`;
 

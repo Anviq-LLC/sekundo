@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { withRowLevelSecurity } from "./database/row-security.js";
 import type { PrismaClient } from "./generated/prisma/client.js";
-import { withRowLevelSecurity } from "./row-security.js";
 
 type Operation = (input: {
   operation: string;

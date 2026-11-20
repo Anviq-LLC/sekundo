@@ -4,14 +4,17 @@ import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
 import type { ListRenderItem } from "react-native";
 import { ActivityIndicator, FlatList, Platform, ScrollView, StyleSheet, View } from "react-native";
-import type { MobileMessage } from "../../lib/api";
-import { mobileTokens } from "../../lib/appearance";
-import type { ThreadListScroll } from "../../lib/thread-list-scroll";
-import type { useThreadPaging } from "../../lib/thread-paging";
-import { ThreadScrollSurface } from "../thread-scroll-surface";
+import type { MobileMessage } from "../../lib/api/mobile-types";
+import { mobileTokens } from "../../lib/appearance/appearance";
+import type { ThreadColumnPadding } from "../../lib/thread/scroll/thread-edges";
+import type { ThreadListScroll } from "../../lib/thread/scroll/thread-list-scroll";
+import type { useThreadPaging } from "../../lib/thread/thread-paging";
 import { JumpToLatestButton } from "./thread-list-controls";
+import { ThreadScrollSurface } from "./thread-scroll-surface";
 
 const styles = StyleSheet.create({
+  // Full screen width. Column padding stays on the content so the indicator
+  // is drawn on the screen edge rather than inside the column.
   list: { flex: 1 },
 });
 const messageListPosition = { minIndexForVisible: 0 };
@@ -30,6 +33,7 @@ export function ThreadMessageList({
   threadKey,
   headerClearance,
   bottomInset,
+  columnPadding,
   visibleMessages,
   liveItems,
   renderItem,
@@ -47,6 +51,8 @@ export function ThreadMessageList({
   headerClearance: { padding: number; minHeight: number };
   /** Space under the list that the composer does not cover. */
   bottomInset: number;
+  /** Message inset. Applied to the content, never the scroll view frame. */
+  columnPadding: ThreadColumnPadding;
   visibleMessages: MobileMessage[];
   liveItems: ThreadItem<MobileMessage>[];
   renderItem: ListRenderItem<ThreadItem<MobileMessage>>;
@@ -65,8 +71,15 @@ export function ThreadMessageList({
   const { showPinnedPage, pinnedTarget, pinnedNewerCursor, behavior, state } = scroll;
   const { jumpTarget } = scroll;
   const listContentStyle = useMemo(
-    () => ({ paddingBottom: headerClearance.padding, paddingTop: bottomInset + 16 }),
-    [headerClearance.padding, bottomInset],
+    () => ({
+      paddingBottom: headerClearance.padding,
+      paddingTop: bottomInset + 16,
+      // An inverted Android list mirrors with scale: -1, so asymmetric padding swaps sides.
+      paddingStart:
+        Platform.OS === "android" ? columnPadding.paddingEnd : columnPadding.paddingStart,
+      paddingEnd: Platform.OS === "android" ? columnPadding.paddingStart : columnPadding.paddingEnd,
+    }),
+    [headerClearance.padding, bottomInset, columnPadding],
   );
 
   return (
@@ -81,14 +94,15 @@ export function ThreadMessageList({
           <ScrollView
             key={jumpTarget ?? pinnedTarget?.messageId ?? threadKey}
             ref={scroll.pinnedList}
-            style={{ flex: 1 }}
+            style={styles.list}
             // A pinned page always shows the floating jump button (44pt, 12pt from the
             // bottom), so its last message must be able to scroll clear of it.
             contentContainerStyle={{
               paddingTop: headerClearance.padding,
-              paddingBottom: 12 + 44 + 16,
+              paddingBottom: bottomInset + 12 + 44 + 16,
+              ...columnPadding,
             }}
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
             maintainVisibleContentPosition={messageListPosition}
             scrollEventThrottle={16}
             {...pinnedListHandlers}
@@ -117,15 +131,15 @@ export function ThreadMessageList({
             // This callback tracks every row input, including reply, reaction and highlight state.
             extraData={renderMessageRow}
             style={styles.list}
-            // Swiping down hides the keyboard; on iOS it follows the finger.
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+            // On iOS a swipe down hides the keyboard, following the finger; Android keeps it open.
+            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
             // Inverted, so the bottom padding is the visual top, clear of the transparent header.
             contentContainerStyle={listContentStyle}
             // Follow changes to the recovery card while already at the newest content.
             maintainVisibleContentPosition={liveMessageListPosition}
             scrollEventThrottle={16}
             {...scroll.liveListHandlers}
-            ListFooterComponent={loadEarlierControl}
+            ListFooterComponent={loadEarlierControl ?? undefined}
             ListHeaderComponent={
               <View onLayout={() => scroll.performScroll(behavior.current.onLayout())}>
                 {errorNotice}
@@ -134,11 +148,17 @@ export function ThreadMessageList({
               </View>
             }
             renderItem={renderItem}
+            // A screenful of the newest messages draws first and the rest follow in small
+            // batches, so opening a chat neither waits on rows off screen nor stalls behind them.
+            initialNumToRender={6}
+            maxToRenderPerBatch={4}
           />
         </ThreadScrollSurface>
       )}
       {showPinnedPage || state.detached ? (
         <JumpToLatestButton
+          bottomInset={bottomInset}
+          insetEnd={columnPadding.paddingEnd}
           unread={state.unread}
           onPress={() => {
             if (showPinnedPage) {

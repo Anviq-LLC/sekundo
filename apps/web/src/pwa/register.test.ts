@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AnviqDesktop } from "../lib/desktop.js";
+import type { AnviqDesktop } from "../lib/platform/desktop.js";
 import { registerServiceWorker } from "./register.js";
 
 function host(desktop?: AnviqDesktop) {

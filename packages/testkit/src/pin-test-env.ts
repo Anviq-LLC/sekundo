@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { afterAll } from "vitest";
+import { pinLocalSecretStore } from "./pin-secret-store.js";
 
 const dom = (
   globalThis as typeof globalThis & {
@@ -31,6 +33,8 @@ if (!process.env.VERIFY_PROVIDERS) {
   process.env.CLOUD_AGENT_PROVIDER = "emulator";
   process.env.MEDIA_GENERATION_PROVIDER = "disabled";
   delete process.env.MEDIA_GENERATION_API_KEY;
+  process.env.PAID_SERVICES_PROVIDER = "disabled";
+  delete process.env.PAID_SERVICES_API_KEY;
   delete process.env.CURSOR_API_KEY;
   process.env.WAKEUP_DRIVER = "memory";
   delete process.env.COMPOSIO_API_KEY;
@@ -38,6 +42,8 @@ if (!process.env.VERIFY_PROVIDERS) {
   delete process.env.EMAIL_PROVIDER;
   delete process.env.EMAIL_API_KEY;
   delete process.env.SMTP_URL;
+  delete process.env.BOT_EMAIL_SMTP_URL;
+  pinLocalSecretStore();
   if (!process.env.VERIFY_DATABASE) {
     delete process.env.DATABASE_URL;
     delete process.env.REALTIME_DATABASE_URL;
@@ -63,7 +69,29 @@ process.env.ANALYTICS_PROVIDER = "none";
 // without runAsTenant/runAsSystem returns nothing there, as in production, so
 // fail the suite on it instead. Loaded only then: other tests need no database.
 if (process.env.VERIFY_DATABASE) {
-  const { drainUnscopedDatabaseAccess } = await import("@anviq/db");
+  const { createPool, drainUnscopedDatabaseAccess } = await import("@anviq/db");
+  // Each app reconciles all durable work in its database, including a fixture's unfinished
+  // runs, so parallel files each get a copy of the pristine migrated database.
+  if (process.env.COPY_TEST_DATABASE) {
+    const owner = new URL(process.env.DATABASE_MIGRATION_URL!);
+    const template = owner.pathname.slice(1);
+    const copy = `${template}_${randomUUID().replaceAll("-", "")}`;
+    owner.pathname = "/postgres";
+    const admin = createPool(owner.href);
+    try {
+      await admin.query(`CREATE DATABASE "${copy}" TEMPLATE "${template}"`);
+      // Timestamp columns hold UTC and SQL compares them with CURRENT_TIMESTAMP, as on the
+      // UTC servers we deploy to; a developer's Postgres otherwise takes the machine's zone.
+      await admin.query(`ALTER DATABASE "${copy}" SET timezone TO 'UTC'`);
+    } finally {
+      await admin.end();
+    }
+    for (const name of ["DATABASE_URL", "DATABASE_MIGRATION_URL", "REALTIME_DATABASE_URL"]) {
+      const url = new URL(process.env[name]!);
+      url.pathname = `/${copy}`;
+      process.env[name] = url.href;
+    }
+  }
   afterAll(() => {
     const sites = drainUnscopedDatabaseAccess();
     if (sites.length) {
