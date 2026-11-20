@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { contentKeyProviderFromEnv } from "@anviq/adapters";
+import { contentKeyProviderFromEnv, unwrapEnvFromKeyManager } from "@anviq/adapters";
 import { createAuth } from "@anviq/auth";
 import { bootstrapUserSpace, createDb, runAsSystem } from "@anviq/db";
 
@@ -9,6 +9,7 @@ function required(name: string): string {
   return value;
 }
 
+await unwrapEnvFromKeyManager();
 const { prisma, pool } = createDb(required("DATABASE_URL"), {
   keyProvider: contentKeyProviderFromEnv(),
 });
@@ -69,9 +70,5 @@ async function bootstrap() {
     process.stdout.write("Account verified\n");
   }
   const user = await prisma.user.findUniqueOrThrow({ where: { email } });
-  await bootstrapUserSpace(prisma, user, { signupsEnabled: "false", signupAllowlist: "" });
-  await prisma.deploymentSettings.update({
-    where: { id: "default" },
-    data: { signupsEnabled: false, signupPolicyInitialized: true },
-  });
+  await bootstrapUserSpace(prisma, user);
 }

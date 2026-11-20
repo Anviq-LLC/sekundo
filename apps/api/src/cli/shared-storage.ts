@@ -6,19 +6,21 @@ import {
   migrateLocalArtifacts,
   migrateLocalPushTokens,
   PrismaPushTokenStore,
+  unwrapEnvFromKeyManager,
 } from "@anviq/adapters";
-import { resolveEncryptionKey } from "@anviq/core";
 import { loadRootEnv } from "@anviq/core/node/load-root-env";
+import { resolveEncryptionKey } from "@anviq/core/node/secrets-guard";
 import { createDb } from "@anviq/db";
 
 loadRootEnv();
+await unwrapEnvFromKeyManager();
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: { "dry-run": { type: "boolean" } },
 });
 if (positionals.length !== 1 || !["artifacts", "push-tokens"].includes(positionals[0]!))
   throw new Error(
-    "Usage: shared-storage <artifacts|push-tokens> [--dry-run] (see docs/self-host.md#shared-storage-migration)",
+    "Usage: shared-storage <artifacts|push-tokens> [--dry-run] (see docs/self-host-storage.md#shared-storage-migration)",
   );
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
 const { prisma, pool, contentKeys } = createDb(process.env.DATABASE_URL, {

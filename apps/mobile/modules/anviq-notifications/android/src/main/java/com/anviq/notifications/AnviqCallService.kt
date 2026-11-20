@@ -1,4 +1,4 @@
-package com.anviq.notifications
+package com.sekundo.notifications
 
 import android.Manifest
 import android.app.Notification
@@ -28,12 +28,13 @@ class AnviqCallService : Service() {
       stopSelf()
       return START_NOT_STICKY
     }
-    val title = intent?.getStringExtra(EXTRA_TITLE)?.takeIf(String::isNotBlank) ?: getString(
+    val copyContext = localizedContext(this, NotificationStorage(this).locale)
+    val title = intent?.getStringExtra(EXTRA_TITLE)?.takeIf(String::isNotBlank) ?: copyContext.getString(
       R.string.anviq_call_title,
     )
-    createChannel()
+    createChannel(copyContext)
     try {
-      startForegroundCompat(title)
+      startForegroundCompat(copyContext, title)
     } catch (_: Exception) {
       report(started = false)
       stopSelf()
@@ -55,11 +56,11 @@ class AnviqCallService : Service() {
     super.onDestroy()
   }
 
-  private fun startForegroundCompat(title: String) {
+  private fun startForegroundCompat(copyContext: Context, title: String) {
     val notification = builder()
       .setSmallIcon(R.drawable.ic_anviq_notification)
       .setContentTitle(title)
-      .setContentText(getString(R.string.anviq_call_text))
+      .setContentText(copyContext.getString(R.string.anviq_call_text))
       .setContentIntent(openApp())
       .setOngoing(true)
       .setOnlyAlertOnce(true)
@@ -110,18 +111,18 @@ class AnviqCallService : Service() {
     )
   }
 
-  private fun createChannel() {
+  private fun createChannel(copyContext: Context) {
     if (Build.VERSION.SDK_INT < 26) return
     val manager = getSystemService(NotificationManager::class.java)
     manager.createNotificationChannel(
-      NotificationChannel(CHANNEL_ID, getString(R.string.anviq_call_channel), NotificationManager.IMPORTANCE_LOW),
+      NotificationChannel(CHANNEL_ID, copyContext.getString(R.string.anviq_call_channel), NotificationManager.IMPORTANCE_LOW),
     )
   }
 
   companion object {
     private const val CHANNEL_ID = "anviq_call"
     private const val NOTIFICATION_ID = 1102
-    private const val EXTRA_TITLE = "com.anviq.notifications.CALL_TITLE"
+    private const val EXTRA_TITLE = "com.sekundo.notifications.CALL_TITLE"
     private const val WAKE_LOCK_TAG = "anviq:call"
 
     /** Answers the start request that is still waiting for [onStartCommand]. */

@@ -1,6 +1,9 @@
 {
-  "platforms": ["android"],
+  "platforms": ["android", "apple"],
   "android": {
-    "modules": ["com.anviq.filedrop.AnviqFileDropModule"]
+    "modules": ["com.sekundo.filedrop.AnviqFileDropModule"]
+  },
+  "apple": {
+    "modules": ["AnviqFileDropModule"]
   }
 }

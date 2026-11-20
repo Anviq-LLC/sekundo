@@ -33,7 +33,7 @@ const DROP = [
 
 const rules = [
   [/\b[\w.-]+@rakazo\.com\b/gi, "lvoss@anviq.net"],
-  [/rakazo\.com/gi, "anviq.net"],
+  [/rakazo(\\?\.)com/gi, "anviq$1net"],
   [/ghcr\.io\/elie222\/rakazo/g, "ghcr.io/anviq-llc/anviq-agents"],
   [
     /(e)lie222(\\?\/)rakazo/gi,
@@ -58,12 +58,15 @@ const rules = [
   // The product name shown to people. Identifiers, paths and package names keep the short form.
   [/(?<![\w@./\\:-])Rakazo['’]s\b/g, "Anviq Agents'"],
   [/(?<![\w@./\\:-])Rakazo(?![\w/\\-]|\.[A-Za-z])/g, "Anviq Agents"],
+  [/rakazO\/computer:edge/g, "anviQ/computer:edge"],
   [/Rakazo/g, "Anviq"],
   [/RAKAZO/g, "ANVIQ"],
   [/rakazo/g, "anviq"],
+  // Any other casing (for example a test of case-insensitive registry names).
+  [/rakazo/gi, "anviq"],
 ];
 
-const rewritePath = (p) => p.replace(/Rakazo/g, "Anviq").replace(/rakazo/g, "anviq");
+const rewritePath = (p) => p.replace(/Rakazo/g, "Anviq").replace(/rakazo/gi, "anviq");
 
 const files = git("ls-files", "-z").split("\0").filter(Boolean);
 

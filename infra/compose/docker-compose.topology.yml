@@ -48,6 +48,9 @@ services:
       # Test stack: CI runners do not install the host egress ruleset.
       SANDBOX_COMPUTER_EGRESS: ${SANDBOX_COMPUTER_EGRESS:-open}
       SANDBOX_COMPUTER_DNS: ${SANDBOX_COMPUTER_DNS:-}
+      SANDBOX_COMPUTER_MOUNTS: ${SANDBOX_COMPUTER_MOUNTS:-}
+      SANDBOX_COMPUTER_COMPUTE_GPUS: ${SANDBOX_COMPUTER_COMPUTE_GPUS:-}
+      SANDBOX_COMPUTER_BROWSER_PROXY_PAC_URL: ${SANDBOX_COMPUTER_BROWSER_PROXY_PAC_URL:-}
       LOG_LEVEL: info
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -79,6 +82,7 @@ services:
       - DATABASE_MIGRATION_URL=postgres://anviq:topology-only-password@postgres:5432/anviq pnpm db:deploy && exec node --enable-source-maps dist/index.js
     environment: &app-environment
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-10}
+      MAX_ATTACHMENTS_PER_MESSAGE: ${MAX_ATTACHMENTS_PER_MESSAGE:-4}
       NODE_ENV: production
       DATABASE_URL: postgres://anviq_app:topology-only-runtime-password@postgres:5432/anviq
       DATA_DIR: /data
@@ -109,7 +113,7 @@ services:
       API_PORT: "3100"
       API_HOST: "0.0.0.0"
       # Proxies whose X-Forwarded-For is believed. Unset trusts this stack's own networks: the web
-      # proxy and a reverse proxy on the host. See docs/self-host.md#client-addresses.
+      # proxy and a reverse proxy on the host. See docs/self-host-production.md#client-addresses.
       TRUSTED_PROXIES:
       OIDC_ISSUER: ${OIDC_ISSUER:-}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
@@ -117,6 +121,13 @@ services:
       OIDC_NAME: ${OIDC_NAME:-SSO}
       OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
       OIDC_ALLOW_SIGNUP_BYPASS: ${OIDC_ALLOW_SIGNUP_BYPASS:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      APPLE_KEY_ID: ${APPLE_KEY_ID:-}
+      APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY:-}
+      APPLE_PRIVATE_KEY_FILE: ${APPLE_PRIVATE_KEY_FILE:-}
       AUTH_PASSWORD_ENABLED: ${AUTH_PASSWORD_ENABLED:-true}
       AUTH_BREACHED_PASSWORD_CHECK_ENABLED: ${AUTH_BREACHED_PASSWORD_CHECK_ENABLED:-false}
     ports:

@@ -8,7 +8,6 @@ import {
   MAX_DESKTOP_DISPLAY,
   resetDesktopRuntimeCommand,
   screenPorts,
-  shellQuote,
   stopBrowserCommand,
   stopExtraScreenCommand,
   stopScreenTransportsCommand,
@@ -24,8 +23,10 @@ export {
 
 import { timingSafeEqual } from "node:crypto";
 import path from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import { pathToFileURL } from "node:url";
-import { canReleaseScreenLease, canTakeScreenLease } from "@anviq/core";
+import { canReleaseScreenLease, canTakeScreenLease } from "@anviq/core/node/screen-lease";
+import type Docker from "dockerode";
 import { z } from "zod";
 import type { SandboxInput } from "./computer-spec.js";
 import { xdotoolCommand } from "./computer-spec.js";
@@ -294,6 +295,8 @@ export function releaseAssignedScreen(
   }
   if (slot.releasing) return slot.index;
   slot.releasing = true;
+  // Release stops the screen's viewer, so the next request sets the screen up again.
+  delete slot.ensuredAt;
   return slot.index;
 }
 
@@ -363,6 +366,54 @@ export interface ScreenAssignment {
   idleAt?: number;
   controlled?: boolean;
   controlToken?: string;
+  /** When the setup script last finished for this screen on the current boot. */
+  ensuredAt?: number;
+}
+
+/** The page helper reached no browser, before dispatching anything. */
+export function pageBrowserNotReady(result: { code: number; stdout: string }) {
+  if (result.code !== 0) return false;
+  try {
+    const output = JSON.parse(result.stdout) as {
+      ok?: unknown;
+      error?: unknown;
+      uncertain?: unknown;
+    };
+    return (
+      output.ok === false &&
+      output.uncertain !== true &&
+      typeof output.error === "string" &&
+      output.error.startsWith("CDP not ready")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** The page helper's own reply when it refused a command (exit 2), or nothing when the output is not one. */
+export function refusedCommand(stdout: string): { ok: false; error: string } | undefined {
+  try {
+    const reply = JSON.parse(stdout) as { ok?: unknown; error?: unknown };
+    return reply && reply.ok === false && typeof reply.error === "string"
+      ? (reply as { ok: false; error: string })
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** How long a page-browser request trusts the last setup instead of rerunning it. */
+export const SCREEN_REUSE_MS = 30_000;
+
+/** A screen set up moments ago on this boot still runs; a human-held one may need its viewer back. */
+export function screenRecentlyEnsured(slot: ScreenAssignment | undefined, now: number) {
+  return (
+    slot?.ensuredAt !== undefined &&
+    !slot.releasing &&
+    !slot.controlled &&
+    !slot.controlToken &&
+    now - slot.ensuredAt < SCREEN_REUSE_MS
+  );
 }
 
 /** Forget screen assignments and their boot marker together on every cleanup path. */
@@ -415,17 +466,6 @@ export function screenReleaseStopCommand(
     return stopBrowserCommand(options.screenId);
   }
   return "";
-}
-
-export function stopScreensCommand(screens: Array<{ screenId: string; index: number }>) {
-  return [
-    "set -eu",
-    "failed=0",
-    ...screens.map(
-      ({ screenId }) => `bash -eu -c ${shellQuote(stopBrowserCommand(screenId))} || failed=1`,
-    ),
-    '[ "$failed" -eq 0 ] || { echo "computer browser failed to stop" >&2; exit 1; }',
-  ].join("\n");
 }
 
 export function resetManagedScreensCommand() {
@@ -625,12 +665,14 @@ export interface DockerStreamChunk {
 export function createDockerStreamDemuxer() {
   let mode: "pending" | "raw" | "multiplex" = "pending";
   let buffer = Buffer.alloc(0);
+  // Docker splits output at arbitrary bytes, so a character can straddle two frames.
+  const decoders = { stdout: new StringDecoder("utf8"), stderr: new StringDecoder("utf8") };
 
   const consume = (final: boolean): DockerStreamChunk[] => {
     const events: DockerStreamChunk[] = [];
     if (mode === "raw") {
       if (buffer.length === 0) return events;
-      events.push({ stream: "stdout", data: buffer.toString("utf8") });
+      events.push({ stream: "stdout", data: decoders.stdout.write(buffer) });
       buffer = Buffer.alloc(0);
       return events;
     }
@@ -642,7 +684,7 @@ export function createDockerStreamDemuxer() {
       if (!frameReady) {
         if (!final && headerReady) return events;
         mode = "raw";
-        events.push({ stream: "stdout", data: buffer.toString("utf8") });
+        events.push({ stream: "stdout", data: decoders.stdout.write(buffer) });
         buffer = Buffer.alloc(0);
         return events;
       }
@@ -652,10 +694,10 @@ export function createDockerStreamDemuxer() {
     while (offset + 8 <= buffer.length && isDockerFrameHeader(buffer, offset)) {
       const size = buffer.readUInt32BE(offset + 4);
       if (offset + 8 + size > buffer.length) break;
-      const payload = Buffer.from(buffer.subarray(offset + 8, offset + 8 + size));
+      const stream = buffer[offset] === 2 ? "stderr" : "stdout";
       events.push({
-        stream: buffer[offset] === 2 ? "stderr" : "stdout",
-        data: payload.toString("utf8"),
+        stream,
+        data: decoders[stream].write(buffer.subarray(offset + 8, offset + 8 + size)),
       });
       offset += 8 + size;
     }
@@ -670,7 +712,12 @@ export function createDockerStreamDemuxer() {
       return consume(false);
     },
     finish() {
-      return consume(true);
+      const events = consume(true);
+      for (const stream of ["stdout", "stderr"] as const) {
+        const rest = decoders[stream].end();
+        if (rest) events.push({ stream, data: rest });
+      }
+      return events;
     },
   };
 }
@@ -724,4 +771,48 @@ export function computerCommandEnv(layout: { display: string }) {
     "NPM_CONFIG_PREFIX=/home/anviq/.local",
     "PIP_USER=1",
   ];
+}
+
+/** Resolve the inspected ID before removing, so a changed name cannot target another container. */
+export async function removeOwnedComputer(
+  named: Pick<Docker.Container, "inspect">,
+  remove: (id: string) => Promise<unknown>,
+  owns: (info: Docker.ContainerInspectInfo) => boolean,
+  removed: (id: string) => void,
+): Promise<boolean> {
+  try {
+    const info = await named.inspect();
+    if (!info.Id || !owns(info)) return false;
+    await remove(info.Id);
+    removed(info.Id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Only create's 409 can reclaim an owned name holder; never retry start failures. */
+export async function createComputerWithNameRetry<T>(
+  create: () => Promise<T>,
+  removeNamed: () => Promise<boolean>,
+): Promise<T> {
+  try {
+    return await create();
+  } catch (error) {
+    if ((error as { statusCode?: number })?.statusCode !== 409 || !(await removeNamed())) {
+      throw error;
+    }
+    return await create();
+  }
+}
+
+export function isManagedComputer(
+  info: Docker.ContainerInspectInfo,
+  botId: string,
+  spaceId: string,
+  image: string,
+) {
+  const labels = info.Config.Labels ?? {};
+  const managed = labels["anviq.managed"] === "true" || info.Config.Image === image;
+  return managed && hasComputerIdentity(labels, botId, spaceId);
 }

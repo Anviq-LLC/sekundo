@@ -1,29 +1,19 @@
-import type {
-  AgentSkillCatalogEntry,
-  Bot,
-  ComputerStatus,
-  Group,
-  ThreadSnapshot,
-} from "@anviq/contracts";
-import type { AgentImportReader } from "@anviq/core";
+import type { Bot, Group, ThreadSnapshot } from "@anviq/contracts";
 import { Button } from "@anviq/ui-web";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Monitor, Settings, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { ComponentProps, Dispatch, ReactNode, SetStateAction } from "react";
-import { useEffect, useState } from "react";
-import { ComputerMaintenanceActions } from "../../components/ComputerMaintenanceActions";
-import type { Panel } from "../../lib/right-panel-state";
-import type { createSpaceRpc } from "../../lib/rpc";
-import { computerPanelNeedsMaintenance } from "../../lib/thread-events";
-import { CreateGroupForm, GroupSettings } from "../GroupPanel";
-import { ResizableSidePanel } from "../ResizableSidePanel";
-import { RoutineEditor } from "../RoutineEditor";
-import type { SettingsSection } from "../shell-overlay";
-import { AgentImportForm } from "./agent-import";
-import { BotSettings } from "./bot-panel";
+import { PagesList } from "../../components/pages/PagesList";
+import type { createSpaceRpc } from "../../lib/query/rpc";
+import { RoutineEditor } from "../routines/RoutineEditor";
+import type { RoutineList } from "../routines/RoutineList";
+import { CreateGroupForm, GroupSettings } from "../space/GroupPanel";
+import { BotSettings } from "./bots/bot-panel";
+import { ResizableSidePanel } from "./resizable-side-panel";
+import type { Panel } from "./right-panel-state";
 import { firstThreadRoute } from "./use-shell-navigation";
 
-/** The panel beside the chat: its computer, settings, routines, a new group, or an import. */
+/** The panel beside the chat: a bot, a routine, a group, or an import. */
 export function ShellSidePanel({
   rpc,
   panel,
@@ -36,25 +26,15 @@ export function ShellSidePanel({
   setGroups,
   navigate,
   refreshBots,
-  refreshThread,
   refreshGroupThread,
-  refreshActiveThread,
-  computer,
   computerOpen,
-  booting,
   computerPanel,
+  routineList,
   routineEditorProps,
   openBot,
-  openCreatedBot,
-  droppedAgent,
-  setDroppedAgent,
-  importFromDialog,
-  setCreateBotOpen,
   modelFocusRequest,
-  openSettings,
-  memoryProviderConfigured,
-  setAgentSkills,
   onClearBot,
+  discardChatAttachments,
 }: {
   rpc: ReturnType<typeof createSpaceRpc>;
   panel: Panel;
@@ -67,42 +47,20 @@ export function ShellSidePanel({
   setGroups: Dispatch<SetStateAction<Group[]>>;
   navigate: (path: string, options?: { replace?: boolean }) => void;
   refreshBots: (includeArchived?: boolean) => Promise<void>;
-  refreshThread: (botId: string) => Promise<ThreadSnapshot>;
   refreshGroupThread: (groupId: string) => Promise<ThreadSnapshot>;
-  refreshActiveThread: () => Promise<void>;
-  computer: ComputerStatus | null;
   computerOpen: boolean;
-  booting: boolean;
   computerPanel: ReactNode;
+  routineList: Omit<ComponentProps<typeof RoutineList>, "preview">;
   routineEditorProps: ComponentProps<typeof RoutineEditor> | null;
   openBot: (botId: string) => void;
-  openCreatedBot: (bot: Bot) => void;
-  droppedAgent: AgentImportReader | null;
-  setDroppedAgent: (agent: AgentImportReader | null) => void;
-  importFromDialog: boolean;
-  setCreateBotOpen: (open: boolean) => void;
   modelFocusRequest: number;
-  openSettings: (section: SettingsSection) => void;
-  memoryProviderConfigured: boolean;
-  setAgentSkills: (skills: AgentSkillCatalogEntry[]) => void;
   onClearBot: (bot: Bot) => void;
+  /** Drops a deleted chat's pending attachments with their previews. */
+  discardChatAttachments: (threadKey: string) => void;
 }) {
   const { t } = useLingui();
-  const open = Boolean(panel && (active || activeGroup || panel === "import-agent"));
-  const [people, setPeople] = useState<Array<{ userId: string; name: string }>>([]);
-  useEffect(() => {
-    if (panel !== "group-settings") return;
-    let cancelled = false;
-    void rpc.spaces
-      .people()
-      .then((list) => {
-        if (!cancelled) setPeople(list);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [panel, rpc]);
+  const open = Boolean(panel && (active || activeGroup));
+  const botView = panel === "routines" || panel === "pages" || panel === "settings" ? panel : null;
 
   async function createGroup(input: { name: string; botIds: string[] }) {
     const group = await rpc.groups.create(input);
@@ -118,44 +76,17 @@ export function ShellSidePanel({
     <ResizableSidePanel open={open} panel={panel ?? "closed"}>
       {open ? (
         <div className="rk-scroll h-full w-full overflow-y-auto px-5 py-[17px]">
-          {panel !== "routine" &&
+          {!(botView && active) &&
+          panel !== "routine" &&
           panel !== "create-group" &&
-          panel !== "group-settings" &&
-          panel !== "import-agent" ? (
+          panel !== "group-settings" ? (
             <div className="mb-4 flex items-center justify-between">
               {!active && panel !== "settings" ? (
-                <span className="text-[13.5px] text-muted-foreground">
+                <span className="text-body text-muted-foreground">
                   <Trans>Group</Trans>
                 </span>
               ) : null}
               <div className="ml-auto flex gap-1">
-                {active &&
-                panel === "computer" &&
-                !computerOpen &&
-                computerPanelNeedsMaintenance(computer?.state, booting) ? (
-                  <ComputerMaintenanceActions
-                    botId={active.id}
-                    computer={computer}
-                    onChanged={async () => {
-                      await refreshThread(active.id);
-                    }}
-                  />
-                ) : null}
-                {active ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={panel === "settings" ? t`Show computer` : t`Show settings`}
-                    onClick={() => setPanel(panel === "settings" ? "computer" : "settings")}
-                    className={panel === "settings" ? "text-foreground" : "text-muted-foreground"}
-                  >
-                    {panel === "settings" ? (
-                      <Monitor size={16} strokeWidth={1.7} />
-                    ) : (
-                      <Settings size={16} strokeWidth={1.7} />
-                    )}
-                  </Button>
-                ) : null}
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -167,7 +98,6 @@ export function ShellSidePanel({
               </div>
             </div>
           ) : null}
-          {panel === "computer" && active ? computerPanel : null}
           {panel === "create-group" ? (
             <CreateGroupForm
               bots={bots}
@@ -184,31 +114,7 @@ export function ShellSidePanel({
               key={activeGroup.id}
               group={activeGroup}
               bots={bots}
-              people={people}
-              onShare={async (userIds) => {
-                const updated = await rpc.groups.setParticipants({
-                  groupId: activeGroup.id,
-                  userIds,
-                });
-                setGroups((current) =>
-                  current.map((group) => (group.id === updated.id ? updated : group)),
-                );
-              }}
-              onSetMyBots={async (botIds) => {
-                const updated = await rpc.groups.setMyBots({ groupId: activeGroup.id, botIds });
-                setGroups((current) =>
-                  current.map((group) => (group.id === updated.id ? updated : group)),
-                );
-                void refreshGroupThread(activeGroup.id).catch(() => undefined);
-              }}
-              onLeave={async () => {
-                await rpc.groups.leave({ groupId: activeGroup.id });
-                const remainingGroups = groups.filter((group) => group.id !== activeGroup.id);
-                setGroups(remainingGroups);
-                setPanel(null);
-                navigate(firstThreadRoute(bots, remainingGroups), { replace: true });
-                await refreshBots().catch(() => undefined);
-              }}
+              pages={<PagesList groupId={activeGroup.id} />}
               onSave={async (input) => {
                 const updated = await rpc.groups.update({ groupId: activeGroup.id, ...input });
                 setGroups((current) =>
@@ -220,6 +126,7 @@ export function ShellSidePanel({
               }}
               onRemove={async () => {
                 await rpc.groups.remove({ groupId: activeGroup.id });
+                discardChatAttachments(activeGroup.id);
                 const remainingGroups = groups.filter((group) => group.id !== activeGroup.id);
                 setGroups(remainingGroups);
                 setPanel(null);
@@ -231,36 +138,16 @@ export function ShellSidePanel({
               covered={computerOpen}
             />
           ) : null}
-          {panel === "import-agent" ? (
-            <AgentImportForm
-              bots={bots.filter((bot) => !bot.archivedAt)}
-              initialSource={droppedAgent ?? undefined}
-              onBack={() => {
-                setDroppedAgent(null);
-                setPanel(null);
-                if (importFromDialog) setCreateBotOpen(true);
-              }}
-              onCancel={() => {
-                setDroppedAgent(null);
-                setPanel(null);
-              }}
-              onCreated={(bot) => {
-                setDroppedAgent(null);
-                openCreatedBot(bot);
-                // An import into an existing bot changes it and its chat.
-                void refreshBots().catch(() => undefined);
-                if (bot.id === active?.id) void refreshActiveThread();
-              }}
-            />
-          ) : null}
-          {panel === "settings" && active ? (
+          {botView && active ? (
             <BotSettings
               key={active.id}
               bot={active}
+              view={botView}
+              onViewChange={setPanel}
+              onClose={() => setPanel(null)}
+              computer={computerPanel}
+              routines={routineList}
               focusModel={modelFocusRequest}
-              onOpenConnections={() => openSettings("models")}
-              memoryProviderConfigured={memoryProviderConfigured}
-              onSkillsChange={setAgentSkills}
               onSave={async ({ computerMode, ...patch }) => {
                 if (computerMode !== undefined && computerMode !== active.computerMode) {
                   await rpc.bots.setComputer({
@@ -286,12 +173,6 @@ export function ShellSidePanel({
                 URL.revokeObjectURL(url);
               }}
               onClear={() => onClearBot(active)}
-              onUndoImport={() => {
-                setPanel(null);
-                void refreshBots(true);
-                // An import into an existing bot is undone without removing the bot.
-                void refreshActiveThread().catch(() => undefined);
-              }}
             />
           ) : null}
           {panel === "routine" && routineEditorProps ? (

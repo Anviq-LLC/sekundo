@@ -35,12 +35,18 @@ describe("worker health", () => {
       { heartbeat: 0, reconciled: 1_000_000 },
       { heartbeat: 1_000_000, reconciled: 0 },
       { heartbeat: "invalid", reconciled: NaN },
+      { heartbeat: 1_000_000 - 90_001, reconciled: 1_000_000 },
+      { heartbeat: 1_000_000, reconciled: 1_000_000 - 300_001 },
+      { heartbeat: 1_000_000 + 5_001, reconciled: 1_000_000 },
     ]) {
       expect(workerHealthIsFresh(health, 1_000_000)).toBe(false);
     }
     for (const name of ["images", "prod", "topology", ""]) {
       const suffix = name ? `.${name}` : "";
-      const source = readFileSync(`infra/compose/docker-compose${suffix}.yml`, "utf8");
+      const source = readFileSync(
+        new URL(`../../../infra/compose/docker-compose${suffix}.yml`, import.meta.url),
+        "utf8",
+      );
       expect(source.slice(source.indexOf("\n  worker:"))).toContain(
         'test: ["CMD", "node", "dist/health-check.js"]',
       );

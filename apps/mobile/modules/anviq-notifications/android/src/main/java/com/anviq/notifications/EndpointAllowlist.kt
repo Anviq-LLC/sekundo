@@ -1,4 +1,4 @@
-package com.anviq.notifications
+package com.sekundo.notifications
 
 import java.net.URI
 

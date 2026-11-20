@@ -1,0 +1,404 @@
+# See ../../self-host-kubernetes.md before applying.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-default-deny
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-computers
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq-sandboxes
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: anviq
+          podSelector:
+            matchLabels:
+              app: anviq-api
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: anviq
+          podSelector:
+            matchLabels:
+              app: anviq-worker
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: anviq
+          podSelector:
+            matchLabels:
+              app: anviq-web
+      ports:
+        - port: 6080
+          protocol: TCP
+        - port: 6100
+          endPort: 6199
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.0.0.0/24
+              - 192.0.2.0/24
+              - 192.168.0.0/16
+              - 198.18.0.0/15
+              - 198.51.100.0/24
+              - 203.0.113.0/24
+              - 224.0.0.0/3
+      ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-postgres
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  podSelector:
+    matchLabels:
+      app: anviq-postgres
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: anviq-api
+        - podSelector:
+            matchLabels:
+              app: anviq-worker
+        - podSelector:
+            matchLabels:
+              app: anviq-migrate
+        - podSelector:
+            matchLabels:
+              app: anviq-bootstrap
+      ports:
+        - port: 5432
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-web
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  podSelector:
+    matchLabels:
+      app: anviq-web
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 5173
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: anviq-api
+      ports:
+        - port: 3100
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: anviq-sandboxes
+      ports:
+        - port: 6080
+          protocol: TCP
+        - port: 6100
+          endPort: 6199
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-api
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  podSelector:
+    matchLabels:
+      app: anviq-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: anviq-web
+        - podSelector:
+            matchLabels:
+              app: anviq-worker
+      ports:
+        - port: 3100
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: anviq-postgres
+      ports:
+        - port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: anviq-api
+      ports:
+        - port: 3100
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: anviq-sandboxes
+      ports:
+        - port: 6080
+          protocol: TCP
+        - port: 6100
+          endPort: 6199
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.0.0.0/24
+              - 192.0.2.0/24
+              - 192.168.0.0/16
+              - 198.18.0.0/15
+              - 198.51.100.0/24
+              - 203.0.113.0/24
+              - 224.0.0.0/3
+      ports:
+        - port: 80
+        - port: 443
+    - to:
+        - ipBlock:
+            cidr: 192.0.2.10/32
+      ports:
+        - port: 6443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-worker
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  podSelector:
+    matchLabels:
+      app: anviq-worker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: anviq-postgres
+      ports:
+        - port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: anviq-api
+      ports:
+        - port: 3100
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: anviq-sandboxes
+      ports:
+        - port: 6080
+          protocol: TCP
+        - port: 6100
+          endPort: 6199
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 0.0.0.0/8
+              - 10.0.0.0/8
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 169.254.0.0/16
+              - 172.16.0.0/12
+              - 192.0.0.0/24
+              - 192.0.2.0/24
+              - 192.168.0.0/16
+              - 198.18.0.0/15
+              - 198.51.100.0/24
+              - 203.0.113.0/24
+              - 224.0.0.0/3
+      ports:
+        - port: 80
+        - port: 443
+    - to:
+        - ipBlock:
+            cidr: 192.0.2.10/32
+      ports:
+        - port: 6443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-migrate
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  podSelector:
+    matchLabels:
+      app: anviq-migrate
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: anviq-postgres
+      ports:
+        - port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: anviq-bootstrap
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  podSelector:
+    matchLabels:
+      app: anviq-bootstrap
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: anviq-postgres
+      ports:
+        - port: 5432

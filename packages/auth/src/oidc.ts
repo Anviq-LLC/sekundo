@@ -47,6 +47,7 @@ export function oidcDiscovery(config: OidcConfig) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
   let availability: "checking" | "available" | "unavailable" = "checking";
+  let resolveProvider: (() => Promise<Provider>) | undefined;
   const unavailable = () =>
     new APIError("SERVICE_UNAVAILABLE", {
       code: "SSO_UNAVAILABLE",
@@ -109,6 +110,7 @@ export function oidcDiscovery(config: OidcConfig) {
       };
       schedule(0);
       const getProvider = () => (provider ? Promise.resolve(provider) : discover());
+      resolveProvider = getProvider;
       const lazy: Provider = {
         id: "oidc",
         name: config.name,
@@ -125,11 +127,15 @@ export function oidcDiscovery(config: OidcConfig) {
           }
           // Better Auth's state read/delete is not atomic. Consume a separate
           // server-side marker before code exchange, including concurrent callbacks.
-          await ctx.internalAdapter.createVerificationValue({
-            identifier: `oidc-callback-${data.state}`,
-            value: data.idTokenNonce!,
-            expiresAt: new Date(Date.now() + 10 * 60_000),
-          });
+          // Better Auth's Expo plugin probes providers with a synthetic request
+          // that has no ID token nonce. Only real OIDC sign-ins need this marker.
+          if (typeof data.idTokenNonce === "string" && data.idTokenNonce.length > 0) {
+            await ctx.internalAdapter.createVerificationValue({
+              identifier: `oidc-callback-${data.state}`,
+              value: data.idTokenNonce,
+              expiresAt: new Date(Date.now() + 10 * 60_000),
+            });
+          }
           return url;
         },
         validateAuthorizationCode: async (data) => {
@@ -209,6 +215,17 @@ export function oidcDiscovery(config: OidcConfig) {
   return {
     plugin,
     availability: () => availability,
+    /** The Expo proxy must only send a browser to the provider's real authorization endpoint. */
+    isAuthorizationURL: async (value: string) => {
+      if (!resolveProvider) return false;
+      const endpoint = await (await resolveProvider()).createAuthorizationURL({
+        state: "probe",
+        codeVerifier: "probe",
+        redirectURI: config.issuer,
+      });
+      const url = URL.parse(value);
+      return url?.origin === endpoint.origin && url.pathname === endpoint.pathname;
+    },
     dispose: () => {
       disposed = true;
       clearTimeout(timer);

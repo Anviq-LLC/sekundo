@@ -1,7 +1,7 @@
 import type { ProductEvent } from "@anviq/contracts";
 import { I18nProvider } from "@lingui/react";
 import { createRoot } from "react-dom/client";
-import { bootstrapI18n, i18n } from "../../src/lib/i18n";
+import { bootstrapI18n, i18n } from "../../src/lib/locale/i18n";
 import "../../src/styles.css";
 import { FixtureTranscript, reduceThreadEvents } from "./thread-fixture";
 

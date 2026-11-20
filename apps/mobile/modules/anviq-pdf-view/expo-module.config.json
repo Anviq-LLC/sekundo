@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["AnviqPdfViewModule"]
+  },
+  "android": {
+    "modules": ["com.sekundo.pdfview.AnviqPdfViewModule"]
+  }
+}

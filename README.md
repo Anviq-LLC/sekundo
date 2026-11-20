@@ -79,11 +79,11 @@ guide, [docs/self-host.md](./docs/self-host.md).
 
 Set `SANDBOX_PROVIDER` to one of:
 
-| Value | Notes |
-| --- | --- |
-| `docker` | Default. Docker computers on the same server, through the sandbox supervisor. |
-| `e2b`, `daytona`, `railway`, `boat`, `createos` | Remote providers. Each needs its own API key. |
-| `none` | No bot computers. |
+| Value                                           | Notes                                                                         |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- |
+| `docker`                                        | Default. Docker computers on the same server, through the sandbox supervisor. |
+| `e2b`, `daytona`, `railway`, `boat`, `createos` | Remote providers. Each needs its own API key.                                 |
+| `none`                                          | No bot computers.                                                             |
 
 Provider details and isolation notes are in
 [docs/self-host-sandbox-providers.md](./docs/self-host-sandbox-providers.md) and
@@ -143,7 +143,7 @@ Report vulnerabilities as described in [SECURITY.md](./SECURITY.md), not in publ
 
 ## License
 
-Sekundo is derived from Anviq Agents, which includes code from
+Sekundo is derived from Sekundo, which includes code from
 [rakazo](https://github.com/elie222/rakazo), licensed under the Apache License 2.0, see
 [LICENSE](./LICENSE). Everything else is owned by Anviq LLC and is proprietary, see
 [LICENSE-ANVIQ.md](./LICENSE-ANVIQ.md) and [NOTICE](./NOTICE).

@@ -1,5 +1,3 @@
-import type { ThinkingLevel } from "@anviq/contracts";
-import { isOllamaCloudBaseUrl } from "@anviq/contracts";
 import { toggleEnabledModelId } from "@anviq/core";
 import {
   Button,
@@ -7,13 +5,13 @@ import {
   Disclosure,
   Input,
   Label,
-  ModelThinkingOptions,
-  NativeSelect,
-  NativeSelectOption,
+  ListSearchInput,
+  OptionSelect,
 } from "@anviq/ui-web";
-import { Trans, useLingui } from "@lingui/react/macro";
-import { ModelPreflightFeedback } from "../../components/ModelConnectionPreflightNotice";
-import { ModelHeadersEditor } from "../../components/ModelHeadersEditor";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
+import { ModelPreflightFeedback } from "../../components/models/ModelConnectionPreflightNotice";
+import { ModelHeadersEditor } from "../../components/models/ModelHeadersEditor";
+import { useListSearch } from "../../lib/use-list-search";
 
 import type { ModelSettingsState } from "./use-model-settings";
 
@@ -23,37 +21,28 @@ export function CompatibleModelFields({
   setHeaderRows,
   savedHeaderEndpointMatches,
   credential,
+  apiProtocol,
   baseUrl,
   busy,
   cancelOAuthAttempt,
   compatibleRows,
-  contextWindow,
   defaultModelOptions,
   effectiveBaseUrl,
   enabledModelIds,
+  endpointPreset,
   invalidatePreflight,
-  maxImagesPerPrompt,
-  maxTokens,
   modelId,
+  setModelId,
   preflightFailure,
   preflightTarget,
   probeModels,
   probeServerModels,
   probing,
-  reasoning,
   selectionRevisionRef,
-  setContextWindow,
   setEnabledModelIds,
   setError,
-  setMaxImagesPerPrompt,
-  setMaxTokens,
   setNotice,
-  setReasoning,
-  setSupportsImages,
-  setThinkingLevel,
-  stageCompatibleModelId,
-  supportsImages,
-  thinkingLevel,
+  updateApiProtocol,
   updateBaseUrl,
 }: Pick<
   ModelSettingsState,
@@ -62,42 +51,45 @@ export function CompatibleModelFields({
   | "setHeaderRows"
   | "savedHeaderEndpointMatches"
   | "credential"
+  | "apiProtocol"
   | "baseUrl"
   | "busy"
   | "cancelOAuthAttempt"
   | "compatibleRows"
-  | "contextWindow"
   | "defaultModelOptions"
   | "effectiveBaseUrl"
   | "enabledModelIds"
+  | "endpointPreset"
   | "invalidatePreflight"
-  | "maxImagesPerPrompt"
-  | "maxTokens"
   | "modelId"
+  | "setModelId"
   | "preflightFailure"
   | "preflightTarget"
   | "probeModels"
   | "probeServerModels"
   | "probing"
-  | "reasoning"
   | "selectionRevisionRef"
-  | "setContextWindow"
   | "setEnabledModelIds"
   | "setError"
-  | "setMaxImagesPerPrompt"
-  | "setMaxTokens"
   | "setNotice"
-  | "setReasoning"
-  | "setSupportsImages"
-  | "setThinkingLevel"
-  | "stageCompatibleModelId"
-  | "supportsImages"
-  | "thinkingLevel"
+  | "updateApiProtocol"
   | "updateBaseUrl"
 >) {
   const { t } = useLingui();
+  const {
+    query,
+    setQuery,
+    showSearch,
+    visible: visibleRows,
+    hiddenSelectedCount,
+  } = useListSearch(compatibleRows, {
+    text: (id) => id,
+    id: (id) => id,
+    selectedIds: [modelId, ...enabledModelIds],
+  });
+  const hasSearchQuery = query.trim().length > 0;
   return (
-    <div className="block text-[13.5px] text-muted-foreground">
+    <div className="block text-body text-muted-foreground">
       <label className="block" htmlFor="model-base-url">
         <Trans>Server URL</Trans>
         <Input
@@ -107,7 +99,8 @@ export function CompatibleModelFields({
           aria-label={t`OpenAI-compatible server URL`}
           placeholder="http://127.0.0.1:8000/v1"
           autoComplete="off"
-          className="mt-2 h-10 text-foreground"
+          size="lg"
+          className="mt-2 text-foreground"
         />
       </label>
       <div className="mt-3 flex items-center gap-2">
@@ -121,9 +114,9 @@ export function CompatibleModelFields({
           {probing ? <Trans>Finding…</Trans> : <Trans>Find models</Trans>}
         </Button>
       </div>
-      {!isOllamaCloudBaseUrl(baseUrl) ? (
+      {!endpointPreset ? (
         <Disclosure
-          className="mt-3 text-[13.5px] text-muted-foreground"
+          className="mt-3 text-body text-muted-foreground"
           summary={<Trans>Setup help</Trans>}
         >
           <p className="mt-1">
@@ -131,6 +124,30 @@ export function CompatibleModelFields({
           </p>
         </Disclosure>
       ) : null}
+      <div className="mt-4 block">
+        <label className="block" htmlFor="model-protocol">
+          <Trans>Protocol</Trans>
+          <OptionSelect<ModelSettingsState["apiProtocol"]>
+            id="model-protocol"
+            size="lg"
+            className="mt-2 text-foreground"
+            value={apiProtocol}
+            disabled={busy}
+            onValueChange={(value) => {
+              selectionRevisionRef.current += 1;
+              updateApiProtocol(value);
+              setError(null);
+              setNotice(null);
+            }}
+            aria-label={t`Protocol`}
+            options={[
+              { value: "chat-completions", label: t`Chat Completions` },
+              { value: "responses", label: t`Responses` },
+              { value: "anthropic-messages", label: t`Anthropic Messages` },
+            ]}
+          />
+        </label>
+      </div>
       {preflightTarget === "compatible" ? (
         <ModelPreflightFeedback success={null} failure={preflightFailure} />
       ) : null}
@@ -139,28 +156,24 @@ export function CompatibleModelFields({
           <Trans>Model</Trans>
         </span>
         {compatibleRows.includes(modelId) ? (
-          <NativeSelect
-            className="mt-2 w-full text-foreground"
+          <OptionSelect
+            size="lg"
+            className="mt-2 text-foreground"
             value={modelId}
-            onChange={(event) => {
+            onValueChange={(value) => {
               cancelOAuthAttempt();
               selectionRevisionRef.current += 1;
               invalidatePreflight();
-              stageCompatibleModelId(event.target.value);
+              setModelId(value);
               setError(null);
               setNotice(null);
             }}
             aria-label={t`Models from server`}
-          >
-            {defaultModelOptions.map((id) => (
-              <NativeSelectOption key={id} value={id}>
-                {id}
-              </NativeSelectOption>
-            ))}
-            <NativeSelectOption value="">
-              <Trans>Other model…</Trans>
-            </NativeSelectOption>
-          </NativeSelect>
+            options={[
+              ...defaultModelOptions.map((id) => ({ value: id, label: id })),
+              { value: "", label: t`Other model…` },
+            ]}
+          />
         ) : (
           <Input
             value={modelId}
@@ -168,18 +181,36 @@ export function CompatibleModelFields({
               cancelOAuthAttempt();
               selectionRevisionRef.current += 1;
               invalidatePreflight();
-              stageCompatibleModelId(event.target.value);
+              setModelId(event.target.value);
               setError(null);
               setNotice(null);
             }}
             aria-label={t`Model id`}
             placeholder="exact-model-id"
-            className="mt-2 h-10 text-foreground"
+            size="lg"
+            className="mt-2 text-foreground"
           />
         )}
-        {compatibleRows.length ? (
-          <div className="mt-3 grid gap-2">
-            {compatibleRows.map((id) => (
+        {compatibleRows.length || hasSearchQuery ? (
+          <div className="mt-3 grid gap-2" data-testid="compatible-model-rows">
+            {showSearch ? (
+              <ListSearchInput
+                query={query}
+                setQuery={setQuery}
+                label={t`Search models`}
+                placeholder={t`Search`}
+              />
+            ) : null}
+            {hiddenSelectedCount > 0 ? (
+              <p className="text-body-sm leading-[1.5] text-muted-foreground">
+                <Plural
+                  value={hiddenSelectedCount}
+                  one="# selected model is hidden by your search."
+                  other="# selected models are hidden by your search."
+                />
+              </p>
+            ) : null}
+            {visibleRows.map((id) => (
               <Label key={id} className="font-normal text-foreground">
                 <Checkbox
                   checked={id === modelId || enabledModelIds.includes(id)}
@@ -193,78 +224,28 @@ export function CompatibleModelFields({
                 <span className="min-w-0 break-all">{id}</span>
               </Label>
             ))}
+            {visibleRows.length ? null : (
+              <p>
+                <Trans>No matching models</Trans>
+              </p>
+            )}
           </div>
         ) : null}
         {probeModels.length && !compatibleRows.includes(modelId) ? (
           <Button
             type="button"
             variant="link"
-            className="mt-2 h-auto px-0 text-[13px] leading-[1.5] text-muted-foreground underline"
+            className="mt-2 h-auto px-0 text-body-sm leading-[1.5] text-muted-foreground underline"
             onClick={() => {
               invalidatePreflight();
-              stageCompatibleModelId(probeModels[0] ?? "");
+              setModelId(probeModels[0] ?? "");
             }}
           >
             <Trans>Use a found model</Trans>
           </Button>
         ) : null}
       </div>
-      <ModelThinkingOptions
-        reasoning={reasoning}
-        onReasoningChange={(value) => {
-          selectionRevisionRef.current += 1;
-          setReasoning(value);
-          if (!value) setThinkingLevel(null);
-          setNotice(null);
-        }}
-        disabled={busy}
-        advancedLabel={t`Advanced`}
-        thinkingLabel={t`Supports thinking`}
-        thinkingLevel={thinkingLevel}
-        onThinkingLevelChange={(value) => {
-          selectionRevisionRef.current += 1;
-          setThinkingLevel(value as ThinkingLevel | null);
-          setNotice(null);
-        }}
-        thinkingLevelOptions={[
-          { value: "minimal", label: t`Minimal` },
-          { value: "low", label: t`Low` },
-          { value: "medium", label: t`Medium` },
-          { value: "high", label: t`High` },
-          { value: "xhigh", label: t`Extra high` },
-          { value: "max", label: t`Max` },
-        ]}
-        thinkingLevelLabel={t`Reasoning effort`}
-        thinkingLevelDefaultLabel={t`Default`}
-        maxTokens={maxTokens}
-        onMaxTokensChange={(value) => {
-          selectionRevisionRef.current += 1;
-          setMaxTokens(value);
-          setNotice(null);
-        }}
-        maxTokensLabel={t`Maximum output tokens`}
-        contextWindow={contextWindow}
-        onContextWindowChange={(value) => {
-          selectionRevisionRef.current += 1;
-          setContextWindow(value);
-          setNotice(null);
-        }}
-        contextWindowLabel={t`Context limit`}
-        supportsImages={supportsImages}
-        onSupportsImagesChange={(value) => {
-          selectionRevisionRef.current += 1;
-          setSupportsImages(value);
-          setNotice(null);
-        }}
-        imagesLabel={t`Supports images`}
-        maxImagesPerPrompt={maxImagesPerPrompt}
-        onMaxImagesPerPromptChange={(value) => {
-          selectionRevisionRef.current += 1;
-          setMaxImagesPerPrompt(value);
-          setNotice(null);
-        }}
-        maxImagesLabel={t`Maximum images per request`}
-      >
+      <Disclosure className="mt-4 text-body text-muted-foreground" summary={t`Advanced`}>
         <ModelHeadersEditor
           rows={headerRows}
           savedNames={savedHeaderEndpointMatches ? credential?.headerNames : []}
@@ -276,7 +257,7 @@ export function CompatibleModelFields({
             setNotice(null);
           }}
         />
-      </ModelThinkingOptions>
+      </Disclosure>
     </div>
   );
 }

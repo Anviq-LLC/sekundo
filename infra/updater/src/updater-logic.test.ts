@@ -26,6 +26,49 @@ describe("resolveUpdaterConfig", () => {
       projectName: DEFAULT_COMPOSE_PROJECT_NAME,
       token: base.ANVIQ_UPDATER_TOKEN,
       port: DEFAULT_UPDATER_PORT,
+      autoUpdateIntervalMs: 0,
+    });
+  });
+
+  it("only schedules when an operator explicitly selects a valid interval", () => {
+    expect(resolveUpdaterConfig({ ...base, ANVIQ_AUTO_UPDATE_INTERVAL_HOURS: "6" })).toMatchObject({
+      autoUpdateIntervalMs: 6 * 3_600_000,
+    });
+    for (const hours of ["true", "-1", "0.5", "169", "Infinity"]) {
+      expect(() =>
+        resolveUpdaterConfig({ ...base, ANVIQ_AUTO_UPDATE_INTERVAL_HOURS: hours }),
+      ).toThrow(/ANVIQ_AUTO_UPDATE_INTERVAL_HOURS/);
+    }
+  });
+
+  it("disables unsupported mirror scheduling without taking down manual controls", () => {
+    const config = resolveUpdaterConfig({
+      ...base,
+      ANVIQ_IMAGE: "registry.example.com/custom/app",
+      ANVIQ_AUTO_UPDATE_INTERVAL_HOURS: "6",
+    });
+    expect(config.autoUpdateIntervalMs).toBe(0);
+    expect(config.autoUpdateDisabledReason).toMatch(/manual controls remain available/);
+    expect(
+      resolveUpdaterConfig({ ...base, ANVIQ_IMAGE: "registry.example.com/custom/app" }),
+    ).toMatchObject({ autoUpdateIntervalMs: 0, autoUpdateDisabledReason: null });
+  });
+
+  it("disables scheduling for a managed mirrored computer repository", () => {
+    const env = {
+      ...base,
+      ANVIQ_COMPUTER_IMAGE: "registry.example.com/mirror/computer",
+      ANVIQ_AUTO_UPDATE_INTERVAL_HOURS: "6",
+    };
+    expect(
+      resolveUpdaterConfig({ ...env, ANVIQ_UPDATE_SERVICES: "supervisor,computer" }),
+    ).toMatchObject({
+      autoUpdateIntervalMs: 0,
+      autoUpdateDisabledReason: expect.stringContaining("managed computer"),
+    });
+    expect(resolveUpdaterConfig(env)).toMatchObject({
+      autoUpdateIntervalMs: 6 * 3_600_000,
+      autoUpdateDisabledReason: null,
     });
   });
 

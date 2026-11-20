@@ -6,13 +6,16 @@ import {
   migrateSecrets,
   PostgresRealtimeFanout,
   secretStoreOptionsFromEnv,
+  unwrapEnvFromKeyManager,
 } from "@anviq/adapters";
-import { resolveEncryptionKey } from "@anviq/core";
 import { loadRootEnv } from "@anviq/core/node/load-root-env";
+import { resolveEncryptionKey } from "@anviq/core/node/secrets-guard";
 import { createDb, runAsSystem } from "@anviq/db";
-import { createSecretMigrationRepository } from "../secret-migration.js";
+import { bestEffort } from "@anviq/logging";
+import { createSecretMigrationRepository } from "./secret-migration.js";
 
 loadRootEnv();
+await unwrapEnvFromKeyManager();
 
 const args = process.argv.slice(2);
 if (args.some((arg) => !["--dry-run", "--reverse"].includes(arg)))
@@ -72,7 +75,7 @@ try {
 } finally {
   await infisical.close();
   await encrypted.close();
-  await realtime.close().catch(() => undefined);
-  await prisma.$disconnect().catch(() => undefined);
-  await pool.end().catch(() => undefined);
+  await bestEffort("close realtime connection", realtime.close());
+  await bestEffort("disconnect database client", prisma.$disconnect());
+  await bestEffort("close database pool", pool.end());
 }

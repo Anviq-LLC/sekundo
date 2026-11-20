@@ -1,0 +1,45 @@
+# See ../../self-host-kubernetes.md before applying.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: anviq-database
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: anviq-data
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: anviq-web-assets
+  labels:
+    anviq.example/phase: foundation
+  namespace: anviq
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,0 +1,3 @@
+<resources>
+  <style name="AnviqIncomingCallTheme" parent="android:style/Theme.DeviceDefault.DayNight" />
+</resources>

@@ -1,26 +1,33 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import type { Server, ServerResponse } from "node:http";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { ElectronApplication } from "@playwright/test";
+import type { AnviqDesktop } from "@anviq/contracts";
+import type { ElectronApplication, Page } from "@playwright/test";
 import { _electron as electron, expect, test } from "@playwright/test";
+import { shownWindow } from "./shown-window.js";
 
 const APP_MARKER = "Existing Sekundo instance ready";
-/** Outlasts the shell's 20s wait for a mounted app before it rejects the server. */
-const NOT_READY_TIMEOUT_MS = 30_000;
+/**
+ * The shell waits 20s for a page to mount the app before it rejects the server. A page that never
+ * mounts is rejected the same way after any wait, so those specs shorten it instead of sitting out
+ * the production deadline.
+ */
+const NOT_READY_MOUNT_ENV = { ANVIQ_APP_MOUNT_TIMEOUT_MS: "2000" };
 const execFileAsync = promisify(execFile);
 
 let server: Server;
 let serverUrl: string;
-let closedUrl: string;
 let userData: string;
 let app: ElectronApplication | undefined;
 let monitoringRequests = 0;
 
-/** A port nothing listens on, so a connection attempt is refused rather than blocked. */
+/** A port nothing listens on, so a connection attempt is refused rather than blocked. Reserved by
+ * each test just before use: a port freed earlier in the run can be taken by a later server. */
 async function reserveClosedPort() {
   const probe = createServer();
   await new Promise<void>((resolve) => probe.listen(0, "127.0.0.1", resolve));
@@ -41,6 +48,12 @@ test.beforeAll(async () => {
       response.end(JSON.stringify({ dsn: null }));
       return;
     }
+    if (request.url?.startsWith("/redirect?")) {
+      const target = new URL(request.url, serverUrl).searchParams.get("to") ?? "/";
+      response.writeHead(302, { location: target });
+      response.end();
+      return;
+    }
     if (request.url === "/rpc/health" && request.method === "POST") {
       response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       response.end(JSON.stringify({ json: { ok: true, version: "0.1.0" } }));
@@ -55,7 +68,6 @@ test.beforeAll(async () => {
   const address = server.address();
   if (address === null || typeof address === "string") throw new Error("stub server has no port");
   serverUrl = `http://127.0.0.1:${address.port}`;
-  closedUrl = await reserveClosedPort();
 });
 
 test.afterAll(async () => {
@@ -66,28 +78,40 @@ test.afterAll(async () => {
 
 test.beforeEach(async () => {
   userData = await mkdtemp(path.join(tmpdir(), "anviq-desktop-e2e-"));
+  // Setup otherwise follows the machine's language; these specs read its English text.
+  await writeFile(path.join(userData, "ui-locale.txt"), "en\n");
 });
 
 test.afterEach(async () => {
-  await app?.close();
-  app = undefined;
-  await rm(userData, { recursive: true, force: true });
+  try {
+    await app?.close();
+  } finally {
+    app = undefined;
+    await rm(userData, { recursive: true, force: true });
+  }
 });
 
 function launch(extraEnv: Record<string, string> = {}) {
-  const env = { ...process.env, ANVIQ_PERFORMANCE_USER_DATA: userData };
+  const env: Record<string, string | undefined> = {
+    ...process.env,
+    ANVIQ_PERFORMANCE_USER_DATA: userData,
+  };
   // A stale ANVIQ_WEB_URL from the developer's shell would bypass setup entirely.
   delete env.ANVIQ_WEB_URL;
+  // A first launch opens Sekundo Cloud; these specs stay offline and start in setup instead.
+  if (!extraEnv.ANVIQ_WEB_URL && !existsSync(path.join(userData, "setup.json"))) {
+    env.ANVIQ_FORCE_SETUP = "1";
+  }
   const executablePath = process.env.ANVIQ_E2E_EXECUTABLE;
   return electron.launch({
     ...(executablePath ? { executablePath: path.resolve(executablePath) } : {}),
     args: executablePath ? [] : ["."],
     cwd: path.resolve(import.meta.dirname, ".."),
-    env: { ...env, ...extraEnv },
+    env: { ...env, ...extraEnv } as Record<string, string>,
   });
 }
 
-test("first run offers Sekundo Cloud first, with local and existing instances", async () => {
+test("setup offers Sekundo Cloud first, with local and existing instances", async () => {
   app = await launch();
   if (process.env.ANVIQ_E2E_EXECUTABLE) {
     expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
@@ -95,10 +119,10 @@ test("first run offers Sekundo Cloud first, with local and existing instances", 
   const setup = await app.firstWindow();
 
   await expect(setup.getByRole("heading", { name: "Welcome to Sekundo" })).toBeVisible();
-  await expect(setup.getByText("Choose which server this app should use.")).toBeVisible();
-  await expect(setup.getByText("Sekundo Cloud")).toBeVisible();
-  await expect(setup.getByText("This computer")).toBeVisible();
-  await expect(setup.getByText("Existing instance")).toBeVisible();
+  await expect(setup.getByText("Choose where Sekundo runs.")).toBeVisible();
+  await expect(setup.getByText("Sekundo Cloud", { exact: true })).toBeVisible();
+  await expect(setup.getByText("This computer", { exact: true })).toBeVisible();
+  await expect(setup.getByText("Existing instance", { exact: true })).toBeVisible();
   await expect(setup.locator(".card")).toHaveCount(0);
 
   // Cloud is the default: one click opens the hosted app, with nothing to fill in.
@@ -150,6 +174,34 @@ test("first run offers Sekundo Cloud first, with local and existing instances", 
       path.join(import.meta.dirname, "screenshots", "08-setup-macos-native-controls.png"),
     ]);
   }
+});
+
+test("setup opens in the language the app last used", async () => {
+  await writeFile(path.join(userData, "ui-locale.txt"), "es\n");
+  app = await launch();
+  const setup = await app.firstWindow();
+
+  await expect(setup.locator("html")).toHaveAttribute("lang", "es");
+  await expect(
+    setup.getByRole("heading", { name: "Te damos la bienvenida a Sekundo" }),
+  ).toBeVisible();
+  await expect(setup.getByRole("button", { name: "Continuar" })).toBeEnabled();
+  await setup.screenshot({
+    path: path.join(import.meta.dirname, "screenshots", "10-setup-spanish.png"),
+  });
+});
+
+test("setup lays out right to left in Hebrew", async () => {
+  await writeFile(path.join(userData, "ui-locale.txt"), "he\n");
+  app = await launch();
+  const setup = await app.firstWindow();
+
+  await expect(setup.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(setup.getByRole("heading", { name: "ברוכים הבאים ל-Sekundo" })).toBeVisible();
+  await expect(setup.getByRole("button", { name: "המשך" })).toBeEnabled();
+  await setup.screenshot({
+    path: path.join(import.meta.dirname, "screenshots", "11-setup-hebrew.png"),
+  });
 });
 
 test("Sekundo Cloud saves the hosted address and is reselected when saved", async () => {
@@ -258,12 +310,13 @@ test("Continue verifies and remembers the instance so setup does not run again",
   await app.close();
 
   app = await launch();
-  const relaunched = await app.firstWindow();
+  const relaunched = await shownWindow(app);
   await expect(relaunched.getByText(APP_MARKER)).toBeVisible();
   await expect(relaunched.locator("#setup")).toHaveCount(0);
 });
 
 test("an unreachable address is reported instead of being saved", async () => {
+  const closedUrl = await reserveClosedPort();
   app = await launch();
   const setup = await app.firstWindow();
 
@@ -316,7 +369,6 @@ test("an HTTP error document is not accepted after a healthy probe", async () =>
 });
 
 test("a session-pending shell skeleton is not accepted as a ready app", async () => {
-  test.setTimeout(2 * NOT_READY_TIMEOUT_MS);
   const skeletonHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sekundo</title></head>
 <body><div id="root"><div data-anviq-app-state="session-pending"><aside></aside><main><div>Opening your Space…</div></main></div></div></body></html>`;
   const skeleton = createServer((request, response) => {
@@ -334,14 +386,14 @@ test("a session-pending shell skeleton is not accepted as a ready app", async ()
     throw new Error("skeleton server has no port");
 
   try {
-    app = await launch();
+    app = await launch(NOT_READY_MOUNT_ENV);
     const setup = await app.firstWindow();
     await setup.getByRole("radio", { name: /Existing instance/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Continue" }).click();
 
     await expect(setup.locator("#status")).toContainText("Could not open that server.", {
-      timeout: NOT_READY_TIMEOUT_MS,
+      timeout: 10_000,
     });
     await expect(async () => {
       await expect(readFile(path.join(userData, "setup.json"), "utf8")).rejects.toThrow();
@@ -417,7 +469,6 @@ for (const { name, surface } of [
 }
 
 test("a shell mount before workspace bootstrap is not accepted", async () => {
-  test.setTimeout(2 * NOT_READY_TIMEOUT_MS);
   const preBootstrapHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sekundo</title></head>
 <body><div id="root"><div data-anviq-app-state="ready"><div data-testid="shell-root" data-ready="false">Workspace</div></div></div></body></html>`;
   const preBootstrap = createServer((request, response) => {
@@ -435,14 +486,14 @@ test("a shell mount before workspace bootstrap is not accepted", async () => {
     throw new Error("pre-bootstrap server has no port");
 
   try {
-    app = await launch();
+    app = await launch(NOT_READY_MOUNT_ENV);
     const setup = await app.firstWindow();
     await setup.getByRole("radio", { name: /Existing instance/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Continue" }).click();
 
     await expect(setup.locator("#status")).toContainText("Could not open that server.", {
-      timeout: NOT_READY_TIMEOUT_MS,
+      timeout: 10_000,
     });
     await expect(async () => {
       await expect(readFile(path.join(userData, "setup.json"), "utf8")).rejects.toThrow();
@@ -455,7 +506,6 @@ test("a shell mount before workspace bootstrap is not accepted", async () => {
 });
 
 test("a session-ready marker without a route surface is not accepted", async () => {
-  test.setTimeout(2 * NOT_READY_TIMEOUT_MS);
   const emptyReadyHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sekundo</title></head>
 <body><div id="root"><div data-anviq-app-state="ready" class="h-full"></div></div></body></html>`;
   const emptyReady = createServer((request, response) => {
@@ -473,14 +523,14 @@ test("a session-ready marker without a route surface is not accepted", async () 
     throw new Error("empty-ready server has no port");
 
   try {
-    app = await launch();
+    app = await launch(NOT_READY_MOUNT_ENV);
     const setup = await app.firstWindow();
     await setup.getByRole("radio", { name: /Existing instance/ }).check();
     await setup.locator("#server-url").fill(`http://127.0.0.1:${address.port}`);
     await setup.getByRole("button", { name: "Continue" }).click();
 
     await expect(setup.locator("#status")).toContainText("Could not open that server.", {
-      timeout: NOT_READY_TIMEOUT_MS,
+      timeout: 10_000,
     });
     await expect(async () => {
       await expect(readFile(path.join(userData, "setup.json"), "utf8")).rejects.toThrow();
@@ -567,6 +617,7 @@ test("the setup probe refuses redirects instead of following them", async () => 
 });
 
 test("an unreachable saved server falls back to setup with a recovery message", async () => {
+  const closedUrl = await reserveClosedPort();
   await writeFile(
     path.join(userData, "setup.json"),
     `${JSON.stringify({ mode: "existing", serverUrl: closedUrl }, null, 2)}\n`,
@@ -587,7 +638,7 @@ test("an unreachable saved server falls back to setup with a recovery message", 
 
 test("the native application menu can reopen setup without exposing setup IPC to the server", async () => {
   app = await launch({ ANVIQ_WEB_URL: serverUrl });
-  const appWindow = await app.firstWindow();
+  const appWindow = await shownWindow(app);
   await expect(appWindow.getByText(APP_MARKER)).toBeVisible();
 
   const setupPromise = app.waitForEvent("window");
@@ -643,13 +694,13 @@ test("servers on the same host but different ports do not share login cookies", 
 
   try {
     app = await launch({ ANVIQ_WEB_URL: `http://127.0.0.1:${firstAddress.port}` });
-    const firstWindow = await app.firstWindow();
+    const firstWindow = await shownWindow(app);
     await expect(firstWindow.getByText("Cookie stored")).toBeVisible();
     await expect.poll(() => firstWindow.evaluate(() => document.cookie)).toContain("fake-one");
     await app.close();
 
     app = await launch({ ANVIQ_WEB_URL: `http://127.0.0.1:${secondAddress.port}` });
-    const secondWindow = await app.firstWindow();
+    const secondWindow = await shownWindow(app);
     await expect(secondWindow.getByText("Cookies: none")).toBeVisible();
   } finally {
     await app?.close();
@@ -667,13 +718,97 @@ test("servers on the same host but different ports do not share login cookies", 
 
 test("setup IPC is not reachable from the connected app window", async () => {
   app = await launch({ ANVIQ_WEB_URL: serverUrl });
-  const appWindow = await app.firstWindow();
+  const appWindow = await shownWindow(app);
   await expect(appWindow.getByText(APP_MARKER)).toBeVisible();
 
   const exposed = await appWindow.evaluate(() =>
     Object.keys((window as typeof window & { anviqSetup?: unknown }).anviqSetup ?? {}),
   );
   expect(exposed).toEqual([]);
+});
+
+test("the app window stays on its server when a link redirects to another site", async () => {
+  const elsewhere = createServer((_request, response) => {
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.end("<!doctype html><main>Another site</main>");
+  });
+  await new Promise<void>((resolve) => elsewhere.listen(0, "127.0.0.1", resolve));
+  const address = elsewhere.address();
+  if (address === null || typeof address === "string") throw new Error("fixture has no port");
+  const elsewhereUrl = `http://127.0.0.1:${address.port}/landing`;
+  const signInUrl = "https://sign-in.invalid/authorize";
+  const openSignIn = (page: Page) =>
+    page.evaluate(
+      (url) =>
+        (window as typeof window & { anviqDesktop: AnviqDesktop }).anviqDesktop.oauth.open!(
+          url,
+        ).then(
+          () => "opened",
+          (error: Error) => error.message,
+        ),
+      signInUrl,
+    );
+
+  try {
+    const launched = await launch({ ANVIQ_WEB_URL: serverUrl });
+    app = launched;
+    const appWindow = await shownWindow(launched);
+    await expect(appWindow.getByText(APP_MARKER)).toBeVisible();
+    await launched.evaluate(({ shell }) => {
+      const opened: string[] = [];
+      Object.assign(globalThis, { opened });
+      shell.openExternal = async (url) => {
+        opened.push(url);
+      };
+    });
+    const openedUrls = () =>
+      launched.evaluate(() => (globalThis as typeof globalThis & { opened: string[] }).opened);
+
+    // Links to another site go to the system browser.
+    await appWindow.evaluate((to) => window.location.assign(to), elsewhereUrl);
+    await expect.poll(openedUrls).toEqual([elsewhereUrl]);
+    // Playwright keeps waiting on a navigation cancelled before it starts, so ask the page itself.
+    expect(await appWindow.evaluate(() => window.location.href)).toBe(`${serverUrl}/`);
+
+    // So does a server redirect to another site.
+    await appWindow.evaluate(
+      (to) => window.location.assign(`/redirect?to=${encodeURIComponent(to)}`),
+      elsewhereUrl,
+    );
+    await expect.poll(openedUrls).toEqual([elsewhereUrl, elsewhereUrl]);
+    await expect(appWindow).toHaveURL(`${serverUrl}/`);
+    await expect(appWindow.getByText(APP_MARKER)).toBeVisible();
+
+    // Embedded frames may still follow redirects to other sites.
+    await appWindow.evaluate((to) => {
+      const frame = document.createElement("iframe");
+      frame.src = `/redirect?to=${encodeURIComponent(to)}`;
+      document.body.append(frame);
+    }, elsewhereUrl);
+    await expect(appWindow.frameLocator("iframe").getByText("Another site")).toBeVisible();
+
+    // Redirects within the server still load in the app.
+    await appWindow.evaluate(() => window.location.assign("/redirect?to=/after"));
+    await expect(appWindow).toHaveURL(`${serverUrl}/after`);
+    await expect(appWindow.getByText(APP_MARKER)).toBeVisible();
+    expect(await openSignIn(appWindow)).toBe("opened");
+    await expect.poll(openedUrls).toEqual([elsewhereUrl, elsewhereUrl, signInUrl]);
+
+    // Another site in the app window cannot start a browser sign-in.
+    await launched.evaluate(
+      ({ BrowserWindow }, url) => BrowserWindow.getAllWindows()[0]?.webContents.loadURL(url),
+      elsewhereUrl,
+    );
+    await expect(appWindow.getByText("Another site")).toBeVisible();
+    expect(await openSignIn(appWindow)).toContain("may not call desktop.oauth.open");
+    expect(await openedUrls()).toEqual([elsewhereUrl, elsewhereUrl, signInUrl]);
+  } finally {
+    await app?.close();
+    app = undefined;
+    await new Promise<void>((resolve, reject) => {
+      elsewhere.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
 });
 
 for (const failure of ["load", "save"] as const) {
@@ -684,7 +819,7 @@ for (const failure of ["load", "save"] as const) {
     );
     const initialRequests = monitoringRequests;
     app = await launch();
-    const previous = await app.firstWindow();
+    const previous = await shownWindow(app);
     await expect(previous.getByText(APP_MARKER)).toBeVisible();
     await expect.poll(() => monitoringRequests).toBeGreaterThan(initialRequests);
     const connectedRequests = monitoringRequests;

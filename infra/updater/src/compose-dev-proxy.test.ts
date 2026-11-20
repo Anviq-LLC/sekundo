@@ -77,3 +77,16 @@ describe("source-checkout compose postgres hardening", () => {
     ]);
   });
 });
+
+describe("web allowed hosts passthrough", () => {
+  it("passes ANVIQ_ALLOWED_HOSTS to the web service in the checkout, prod, and images compose files", () => {
+    for (const rel of [
+      "infra/compose/docker-compose.yml",
+      "infra/compose/docker-compose.prod.yml",
+      "infra/compose/docker-compose.images.yml",
+    ]) {
+      const env = loadCompose(rel).services.web?.environment;
+      expect(env?.ANVIQ_ALLOWED_HOSTS, rel).toBe("${ANVIQ_ALLOWED_HOSTS:-}");
+    }
+  });
+});

@@ -1,14 +1,23 @@
-import { MEMORY_REVISION_CONFLICT_ERROR } from "@anviq/adapter-kit";
-import { isScratchpadStatus, listScratchpadItems, mapScratchpadItem } from "@anviq/adapters";
+import { MemoryRevisionConflictError } from "@anviq/adapter-kit";
+import {
+  buildAgentMemoryPrompt,
+  isScratchpadStatus,
+  listScratchpadItems,
+  mapScratchpadItem,
+  memoryProviderDescriptors,
+  readAgentMemory,
+} from "@anviq/adapters";
 import { isDeletableMemoryDocument } from "@anviq/contracts";
+import { ClientError } from "@anviq/core";
 import { findSpaceMemoryConfig, IsolationError } from "@anviq/db";
 import { ORPCError } from "@orpc/server";
 import {
   disconnectMemoryProvider,
   persistMemoryProviderConfig,
   serializeSpaceMemoryConfig,
+  updateMemoryProviderConfig,
   updateMemoryProviderDefaultScope,
-} from "../memory-provider-config.js";
+} from "../integrations/memory-provider-config.js";
 import type { RouterContext } from "./context.js";
 
 export function memoryRoutes(ctx: RouterContext) {
@@ -19,7 +28,6 @@ export function memoryRoutes(ctx: RouterContext) {
         const docs = await deps.prisma.memoryDocument.findMany({
           where: {
             spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
             ...(input.botId ? { botId: input.botId } : {}),
             ...(input.scope ? { scope: input.scope } : {}),
           },
@@ -34,12 +42,24 @@ export function memoryRoutes(ctx: RouterContext) {
           updatedAt: doc.updatedAt.toISOString(),
         }));
       }),
+      budget: authed.memory.budget.handler(async ({ context, input }) => {
+        await repos.getBot(context.actor, input.botId);
+        // Read through the store a run uses, so the numbers match what the bot receives.
+        const documents = await readAgentMemory(deps.memory, input.botId, {
+          operationId: "mem",
+          traceId: "mem",
+          spaceId: context.actor.spaceId,
+          userId: context.actor.userId,
+          botId: input.botId,
+          signal: context.signal ?? new AbortController().signal,
+        });
+        return buildAgentMemoryPrompt(documents).plan;
+      }),
       update: authed.memory.update.handler(async ({ context, input }) => {
         const doc = await deps.prisma.memoryDocument.findFirst({
           where: {
             id: input.documentId,
             spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
           },
         });
         if (!doc) throw new IsolationError();
@@ -61,8 +81,8 @@ export function memoryRoutes(ctx: RouterContext) {
             },
           )
           .catch((error: unknown) => {
-            if (error instanceof Error && error.message === MEMORY_REVISION_CONFLICT_ERROR) {
-              throw new ORPCError("CONFLICT", { message: error.message });
+            if (error instanceof MemoryRevisionConflictError) {
+              throw new ClientError("CONFLICT", error.message);
             }
             throw error;
           });
@@ -81,7 +101,6 @@ export function memoryRoutes(ctx: RouterContext) {
           where: {
             id: input.documentId,
             spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
           },
         });
         if (!doc) throw new IsolationError();
@@ -111,7 +130,6 @@ export function memoryRoutes(ctx: RouterContext) {
         const docs = await deps.prisma.memoryDocument.findMany({
           where: {
             spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
             ...(input.botId ? { botId: input.botId } : {}),
           },
         });
@@ -121,8 +139,12 @@ export function memoryRoutes(ctx: RouterContext) {
         const config = await findSpaceMemoryConfig(deps.prisma, context.actor.spaceId);
         return config ? serializeSpaceMemoryConfig(config) : null;
       }),
+      providers: authed.memory.providers.handler(() => memoryProviderDescriptors()),
       connectProvider: authed.memory.connectProvider.handler(async ({ context, input }) =>
         persistMemoryProviderConfig(deps, context.actor, input),
+      ),
+      updateProvider: authed.memory.updateProvider.handler(async ({ context, input }) =>
+        updateMemoryProviderConfig(deps, context.actor, input),
       ),
       setDefaultScope: authed.memory.setDefaultScope.handler(async ({ context, input }) =>
         updateMemoryProviderDefaultScope(deps, context.actor, input.defaultMemoryScope),
@@ -163,7 +185,6 @@ export function memoryRoutes(ctx: RouterContext) {
           where: {
             id: input.itemId,
             spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
           },
         });
         if (!existing) throw new IsolationError();
@@ -185,7 +206,6 @@ export function memoryRoutes(ctx: RouterContext) {
           where: {
             id: input.itemId,
             spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
           },
         });
         if (!existing) throw new IsolationError();

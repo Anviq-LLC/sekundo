@@ -1,7 +1,7 @@
 import type { TaughtSkill } from "@anviq/contracts";
 import { DEFAULT_COMPUTER_SCREEN, mapTeachPointer, teachCaptureKey } from "@anviq/core";
 import { useEffect, useRef } from "react";
-import { rpc } from "../../lib/rpc";
+import { rpc } from "../../lib/query/rpc";
 import { enqueueTeachComputerInput } from "./teach-computer-input-chain";
 
 export function TeachCaptureOverlay({

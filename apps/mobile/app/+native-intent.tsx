@@ -1,8 +1,23 @@
-import { closeSettingsSheet, isSettingsLink } from "../lib/settings-sheet";
+import {
+  MOBILE_MCP_OAUTH_CALLBACK_URL,
+  MOBILE_MEETING_CALENDAR_CALLBACK_URL,
+} from "@anviq/contracts";
+import { receiveIncomingShare } from "../lib/composer/incoming-share";
+import { closeSettingsSheet, isSettingsLink, linkScreen } from "../lib/settings/settings-sheet";
+
+const browserCallbacks = new Set(
+  [MOBILE_MCP_OAUTH_CALLBACK_URL, MOBILE_MEETING_CALENDAR_CALLBACK_URL].map(linkScreen),
+);
 
 /** A link to a screen outside settings closes the settings sheet first, so the screen opens on
- * the root stack instead of over the sheet. Settings links open inside the sheet. */
-export function redirectSystemPath({ path }: { path: string; initial: boolean }): string {
+ * the root stack instead of over the sheet. Settings links open inside the sheet. Something
+ * shared from another app (expo-sharing opens `sekundo://expo-sharing`) opens the share target screen. */
+export function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): string {
+  const screen = linkScreen(path);
+  const isShare = screen === "expo-sharing";
+  receiveIncomingShare(isShare, initial);
+  // The in-app browser already handed this to the sign-in that opened it; stay put.
+  if (browserCallbacks.has(screen)) return "";
   if (!isSettingsLink(path)) closeSettingsSheet();
-  return path;
+  return isShare ? "/share" : path;
 }

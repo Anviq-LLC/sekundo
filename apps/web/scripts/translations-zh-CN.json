@@ -216,8 +216,8 @@
   "Create a section and move {0} into it.": "创建分组并把 {0} 移入。",
   "Create account": "创建账户",
   "Create group": "创建群组",
+  "Create your account": "创建你的账户",
   "Create your first bot": "创建你的第一个 Bot",
-  "Create your Sekundo": "创建你的 Sekundo",
   "Creating…": "正在创建…",
   "Credential": "凭据",
   "Credential saved": "凭据已保存",
@@ -724,5 +724,6 @@
   "Nothing is still running": "没有仍在运行的任务",
   "Credentials are encrypted and never sent to the model.": "凭据已加密，不会发送给模型。",
   "Rename section": "重命名分组",
-  "Could not rename section": "无法重命名分组"
+  "Could not rename section": "无法重命名分组",
+  "{count, plural, one {# message with {peer}} other {# messages with {peer}}}": "{count, plural, other {与 {peer} 的 # 条消息}}"
 }

@@ -1,5 +1,4 @@
 import { commentTicket, createTicket, updateTicket } from "@anviq/adapters";
-import type { BoardEvent } from "@anviq/contracts";
 import { parseTicketRef } from "@anviq/contracts";
 import type { Board as BoardRow, Prisma, PrismaClient } from "@anviq/db";
 import {
@@ -14,7 +13,7 @@ import {
 } from "@anviq/db";
 import { ORPCError } from "@orpc/server";
 import type { RouterContext } from "./context.js";
-import { HEARTBEAT_MS, SESSION_RECHECK_MS } from "./shared.js";
+import { HEARTBEAT, withHeartbeats } from "./shared.js";
 
 async function resolveSpaceBoard(
   prisma: PrismaClient,
@@ -44,7 +43,8 @@ export function boardsRoutes(ctx: RouterContext) {
       rename: boardEnabled.boards.rename.handler(async ({ context, input }) => {
         const board = await ensureBoard(deps.prisma, context.actor.spaceId);
         const nextPrefix = input.ticketPrefix?.toUpperCase();
-        if (nextPrefix !== undefined && nextPrefix !== board.ticketPrefix) {
+        const changesPrefix = nextPrefix !== undefined && nextPrefix !== board.ticketPrefix;
+        if (changesPrefix) {
           const tickets = await deps.prisma.ticket.count({
             where: { boardId: board.id, spaceId: context.actor.spaceId },
           });
@@ -54,48 +54,50 @@ export function boardsRoutes(ctx: RouterContext) {
             });
           }
         }
-        const row = await deps.prisma.board.update({
-          where: { id: board.id },
-          data: {
-            ...(input.name !== undefined ? { name: input.name } : {}),
-            ...(nextPrefix !== undefined ? { ticketPrefix: nextPrefix } : {}),
-          },
-        });
+        // Only a changed prefix is written: replaying a case-only value could
+        // restore a prefix that a concurrent rename already replaced.
+        const data = {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(changesPrefix ? { ticketPrefix: nextPrefix } : {}),
+        };
+        let row: BoardRow;
+        if (changesPrefix) {
+          // The write itself must still require an empty board: createTicket
+          // commits its first insert after this count ran, so only this check
+          // stops the prefix from retroactively changing existing ticket refs.
+          // nextNumber closes the lock-wait gap: createTicket's transaction
+          // increments this same row, and Postgres rechecks a scalar predicate
+          // against the committed row, while the tickets subquery can keep its
+          // pre-wait snapshot and miss the inserted ticket.
+          const [updated] = await deps.prisma.board.updateManyAndReturn({
+            where: {
+              id: board.id,
+              spaceId: context.actor.spaceId,
+              nextNumber: board.nextNumber,
+              tickets: { none: {} },
+            },
+            data,
+          });
+          if (!updated) {
+            throw new ORPCError("BAD_REQUEST", {
+              message: "Cannot change the ticket prefix once tickets exist.",
+            });
+          }
+          row = updated;
+        } else {
+          row = await deps.prisma.board.update({ where: { id: board.id }, data });
+        }
         return toBoardDto(row);
       }),
       subscribe: boardEnabled.boards.subscribe.handler(async function* ({ context }) {
         const spaceId = context.actor.spaceId;
-        const follow = deps.boardEvents.follow(spaceId, context.signal);
         // Board signals are transient, so a heartbeat stands in for liveness and
         // gives the client a periodic catch-up reload if a push was missed.
-        let pending: Promise<IteratorResult<BoardEvent>> | undefined;
-        let authorizedAt = Date.now();
-        const assertStillAuthorized = async () => {
-          if (!context.stillAuthorized || Date.now() - authorizedAt < SESSION_RECHECK_MS) return;
-          if (!(await context.stillAuthorized())) throw new ORPCError("UNAUTHORIZED");
-          authorizedAt = Date.now();
-        };
-        try {
-          while (!context.signal?.aborted) {
-            pending ??= follow.next();
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const next = await Promise.race([
-              pending,
-              new Promise<"silent">((resolve) => {
-                timer = setTimeout(() => resolve("silent"), HEARTBEAT_MS);
-              }),
-            ]).finally(() => clearTimeout(timer));
-            await assertStillAuthorized();
-            if (next === "silent") {
-              yield { spaceId, createdAt: new Date().toISOString() };
-              continue;
-            }
-            pending = undefined;
-            if (next.done) return;
-            yield next.value;
-          }
-        } finally {
-          void follow.return(undefined).catch(() => {});
+        const events = withHeartbeats(context, (signal) =>
+          deps.boardEvents.follow(spaceId, signal),
+        );
+        for await (const next of events) {
+          yield next === HEARTBEAT ? { spaceId, createdAt: new Date().toISOString() } : next;
         }
       }),
     },

@@ -3,4 +3,6 @@
   <string name="anviq_call_channel">Actief gesprek</string>
   <string name="anviq_call_title">Sekundo-gesprek</string>
   <string name="anviq_call_text">Microfoon is actief</string>
+  <string name="anviq_call_answer">Opnemen</string>
+  <string name="anviq_call_decline">Weigeren</string>
 </resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="anviq_channel_live">סטטוס סוכנים חי</string>
+  <string name="anviq_channel_messages">הודעות סוכנים</string>
+  <string name="anviq_channel_scheduled">משימות מתוזמנות</string>
+  <string name="anviq_channel_attention">דורש תשומת לב</string>
+
+  <string name="anviq_live_one">%1$s עובד</string>
+  <string name="anviq_live_many">%1$s ועוד %2$d עובדים</string>
+  <string name="anviq_live_working">בעבודה</string>
+
+  <string name="anviq_scheduled_title">%1$s · משימה מתוזמנת</string>
+  <string name="anviq_replied_group">%1$s ענה ב-%2$s</string>
+  <string name="anviq_replied">%1$s ענה</string>
+
+  <string name="anviq_attention_failed">%1$s נתקל בבעיה</string>
+  <string name="anviq_attention_takeover">%1$s צריך אותך מול המסך</string>
+  <string name="anviq_attention_input">%1$s צריך את התגובה שלך</string>
+</resources>

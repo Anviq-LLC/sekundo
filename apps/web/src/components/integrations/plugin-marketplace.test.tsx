@@ -14,19 +14,29 @@ const api = vi.hoisted(() => ({
   skills: vi.fn(),
   skill: vi.fn(),
 }));
-vi.mock("../../lib/rpc", () => ({
+// One space, so no "Available in" choice appears.
+vi.mock("./space-availability", () => ({
+  AvailabilityControl: () => null,
+  AvailabilityLabel: () => null,
+  reachesOtherSpaces: () => false,
+  useOwnSpaces: () => [],
+}));
+
+vi.mock("../../lib/query/rpc", () => ({
   rpc: {
     capabilities: { pluginPreview: api.preview, install: api.install, pluginParts: api.parts },
     mcp: { assignments: { approve: api.approve } },
     agentSkills: { list: api.skills, get: api.skill },
   },
 }));
-vi.mock("../../lib/mcp-connect", () => ({ connectMcpOauth: api.connect }));
+vi.mock("../../lib/integrations/mcp-connect", () => ({ connectMcpOauth: api.connect }));
 vi.mock("@anviq/chat-ui/web", () => ({
   useLinkFavicon: () => ({ icon: null, unusable: () => undefined }),
 }));
 vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: (parts: TemplateStringsArray) => parts.join("") }),
+  useLingui: () => ({
+    t: (parts: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: parts }, ...values),
+  }),
   Trans: ({ children }: { children: ReactNode }) => children,
   Plural: ({ value, other }: { value: number; other: string }) => other.replace("#", `${value}`),
 }));
@@ -48,7 +58,11 @@ vi.mock("@anviq/ui-web", () => {
   };
 });
 
-import { PluginDetail } from "./plugin-marketplace";
+import { ConnectorDetail } from "../../pages/plugins/connector-detail";
+import { ConnectorIcon } from "../../pages/plugins/parts";
+import type { PluginConnections } from "../../pages/plugins/use-plugin-connections";
+
+import { PluginDetail, PluginLogo } from "./plugin-marketplace";
 
 const source = "https://github.com/example/notes";
 const preview = {
@@ -91,9 +105,13 @@ const server = {
   installId: install.id,
   name: "notes: notes-mcp",
   endpoint: "https://notes.example.test/mcp",
+  enabled: true,
   oauthStatus: "none",
   health: { status: "unknown", message: null, toolCount: null, checkedAt: null },
 } as McpServer;
+
+const ok = { status: "ok", message: null, toolCount: 1, checkedAt: null } as const;
+const failed = { status: "error", message: "HTTP 500", toolCount: null, checkedAt: null } as const;
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -190,6 +208,23 @@ describe("plugin detail", () => {
     expect(api.approve).toHaveBeenCalledWith({ botId: "bot-1", serverId: server.id });
   });
 
+  it("offers the shared troubleshooting guide for a documented sign-in error", async () => {
+    api.connect.mockRejectedValue(
+      Object.assign(new Error("Sign-in configuration mismatch"), {
+        code: "MCP_OAUTH_REDIRECT_MISMATCH",
+      }),
+    );
+    await render({ install, servers: [server] });
+    await click("Sign in");
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.querySelector("a")?.getAttribute("href")).toBe(
+      "https://anviq.net/docs/troubleshooting/#mcp-oauth-redirect-mismatch",
+    );
+    api.connect.mockRejectedValue(new Error("Could not sign in"));
+    await click("Sign in");
+    expect(container.querySelector('[role="alert"] a')).toBeNull();
+  });
+
   it("removes the connector only after confirmation and keeps the skills", async () => {
     await render({ install, servers: [server] });
     await click("Remove");
@@ -216,6 +251,18 @@ describe("plugin detail", () => {
     expect(container.textContent).toContain("Not added: hooks/");
     await click("Add");
     expect(api.install).toHaveBeenCalledWith(expect.objectContaining({ pluginParts: ["skills"] }));
+  });
+
+  it("says why a skill repeating a built-in one was not added", async () => {
+    api.preview.mockResolvedValue({
+      ...preview,
+      skipped: [{ kind: "editor_only", name: "hooks/", reason: "Runs only inside an editor" }],
+      builtinNames: ["interrogate"],
+    });
+    await render();
+    expect(container.textContent).toContain(
+      "Not added: hooks/, interrogate (same name as a built-in skill)",
+    );
   });
 
   it("connects the managed app of the same brand instead of the plugin's connector", async () => {
@@ -273,5 +320,101 @@ describe("plugin detail", () => {
     });
     expect(container.querySelector('[aria-label="Connected"]')).not.toBeNull();
     expect(() => button("Sign in")).toThrow();
+  });
+
+  it.each([
+    ["signed in", { oauthStatus: "connected" }, true, []],
+    ["signed in with a failed check", { oauthStatus: "connected", health: failed }, false, []],
+    ["never signed in with a failed check", { health: failed }, false, ["Sign in"]],
+    ["disabled", { oauthStatus: "connected", enabled: false }, false, []],
+    [
+      "signed out after an ok check",
+      { oauthStatus: "reconnect", health: ok },
+      false,
+      ["Reconnect"],
+    ],
+  ] as const)(
+    "marks a connector %s the way Your apps does",
+    async (_, change, connected, actions) => {
+      await render({ install, servers: [{ ...server, ...change }] });
+      expect(container.querySelector('[aria-label="Connected"]') !== null).toBe(connected);
+      const signIn = [...container.querySelectorAll("button")]
+        .map((node) => node.textContent?.trim())
+        .filter((text) => text === "Sign in" || text === "Reconnect");
+      expect(signIn).toEqual(actions);
+    },
+  );
+});
+
+describe("integration fallback icons", () => {
+  it.each([
+    ["🦞 OpenClaw", "🦞", "🦞"],
+    ["𠮷野", "𠮷", "𠮷"],
+    ["中文", "中", "中"],
+    ["notes", "N", "n"],
+    ["", "", ""],
+  ])("preserves the first code point of %s", async (name, pluginInitial, connectorInitial) => {
+    const item = {
+      connectorId: "test",
+      slug: "test",
+      name,
+      logo: null,
+      connected: false,
+      noAuth: false,
+    };
+    const state = {
+      connections: [],
+      pending: null,
+      tools: [],
+      labelDrafts: {},
+    } as unknown as PluginConnections;
+    await act(async () =>
+      root.render(
+        <>
+          <section data-icon="plugin">
+            <PluginLogo name={name} />
+          </section>
+          <section data-icon="connector">
+            <ConnectorIcon name={name} />
+          </section>
+          <ConnectorDetail item={item} state={state} onBack={() => undefined} />
+        </>,
+      ),
+    );
+    expect(container.querySelector('[data-icon="plugin"]')?.textContent).toBe(pluginInitial);
+    expect(container.querySelector('[data-icon="connector"]')?.textContent).toBe(connectorInitial);
+    expect(
+      container.querySelector('[data-testid="connection-detail"] .place-items-center')?.textContent,
+    ).toBe(connectorInitial);
+  });
+
+  it("keeps explicit image logos instead of initials", async () => {
+    const logo = "https://example.test/logo.png";
+    const item = {
+      connectorId: "test",
+      slug: "test",
+      name: "🦞 OpenClaw",
+      logo,
+      connected: false,
+      noAuth: false,
+    };
+    const state = {
+      connections: [],
+      pending: null,
+      tools: [],
+      labelDrafts: {},
+    } as unknown as PluginConnections;
+    await act(async () =>
+      root.render(
+        <>
+          <PluginLogo name={item.name} logo={logo} />
+          <ConnectorIcon name={item.name} logo={logo} />
+          <ConnectorDetail item={item} state={state} onBack={() => undefined} />
+        </>,
+      ),
+    );
+    expect(
+      [...container.querySelectorAll("img")].map((image) => image.getAttribute("src")),
+    ).toEqual([logo, logo, logo]);
   });
 });

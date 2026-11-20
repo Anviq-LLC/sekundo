@@ -5,6 +5,8 @@ import { parse } from "yaml";
 
 interface ComposeService {
   image?: string;
+  profiles?: string[];
+  pull_policy?: string;
   build?: unknown;
   command?: unknown;
   env_file?: unknown;
@@ -36,6 +38,8 @@ const publishWorkflow = parse(readFileSync(publishWorkflowFile, "utf8")) as {
   };
 };
 
+const interpolated = (name: string, fallback = "") => `\${${name}:-${fallback}}`;
+
 const appServices = ["api", "worker", "web", "supervisor", "migrate"] as const;
 const FIRST_PARTY_IMAGE = /ghcr\.io\/anviq-llc\/sekundo\/([a-z0-9][a-z0-9._-]*)/g;
 
@@ -58,6 +62,7 @@ describe("the images compose file", () => {
       "migrate",
       "postgres",
       "supervisor",
+      "updater",
       "web",
       "worker",
     ]);
@@ -66,6 +71,7 @@ describe("the images compose file", () => {
       expect(compose.services[service]?.image).toContain("ANVIQ_IMAGE_TAG");
     }
     expect(compose.services.computer?.image).toContain("ghcr.io/anviq-llc/sekundo/computer");
+    expect(compose.services.computer?.pull_policy).toBe("missing");
     expect(compose.services.computer?.image).toContain("ANVIQ_COMPUTER_IMAGE_TAG");
     expect(compose.services.postgres?.image).toMatch(
       /^\$\{POSTGRES_IMAGE:-postgres:16@sha256:[0-9a-f]{64}\}$/,
@@ -77,7 +83,45 @@ describe("the images compose file", () => {
     expect(firstPartyImageNames(null)).toEqual([]);
     expect(firstPartyImageNames(true)).toEqual([]);
     expect(firstPartyImageNames(7091)).toEqual([]);
-    expect(firstPartyImageNames("ghcr.io/anviq-llc/sekundo/computer:edge")).toEqual(["computer"]);
+    expect(firstPartyImageNames("ghcr.io/anviq-llc/sekundo/computer:edge")).toEqual([
+      "computer",
+    ]);
+  });
+
+  it("defaults application and computer images to stable releases", () => {
+    for (const name of appServices) {
+      expect(compose.services[name]?.image).toContain("ANVIQ_IMAGE_TAG:-latest");
+    }
+    expect(compose.services.computer?.image).toContain("ANVIQ_COMPUTER_IMAGE_TAG:-latest");
+    const template = readFileSync(path.join(repoRoot, "infra/compose/.env.images.example"), "utf8");
+    expect(template).toContain("ANVIQ_IMAGE_TAG=latest\n");
+    expect(template).toContain("ANVIQ_COMPUTER_IMAGE_TAG=latest\n");
+  });
+
+  it("keeps the optional scheduled updater private and disabled by default", () => {
+    const updater = compose.services.updater;
+    expect(updater?.profiles).toEqual(["updater"]);
+    expect(updater?.environment?.ANVIQ_COMPUTER_IMAGE).toBe(
+      interpolated("ANVIQ_COMPUTER_IMAGE", "ghcr.io/anviq-llc/sekundo/computer"),
+    );
+    expect(updater?.ports).toBeUndefined();
+    expect(updater?.env_file).toBeUndefined();
+    expect(updater?.build).toBeUndefined();
+    expect(updater?.networks).toEqual(["control"]);
+    expect(updater?.environment?.ANVIQ_AUTO_UPDATE_INTERVAL_HOURS).toBe(
+      interpolated("ANVIQ_AUTO_UPDATE_INTERVAL_HOURS", "0"),
+    );
+    expect(updater?.environment?.ANVIQ_COMPOSE_FILE).toBe(
+      interpolated("ANVIQ_COMPOSE_FILE", "docker-compose.images.yml"),
+    );
+    expect(updater?.environment?.ANVIQ_UPDATE_SERVICES).toBe(
+      interpolated("ANVIQ_UPDATE_SERVICES", "supervisor,computer"),
+    );
+    expect(updater?.volumes).toContain(
+      `${interpolated("ANVIQ_DEPLOY_DIR", "/srv/anviq")}:${interpolated("ANVIQ_DEPLOY_DIR", "/srv/anviq")}`,
+    );
+    expect(compose.services.api?.environment?.ANVIQ_UPDATER_TOKEN).toBeUndefined();
+    expect(compose.services.worker?.environment?.ANVIQ_UPDATER_TOKEN).toBeUndefined();
   });
 
   it("only references first-party images that the publish matrix publishes", () => {
@@ -157,7 +201,7 @@ describe("the images compose file", () => {
     );
   });
 
-  it("keeps the Docker socket on the unpublished supervisor only", () => {
+  it("keeps Docker access on the supervisor and opt-in updater only", () => {
     for (const [name, service] of Object.entries(compose.services)) {
       const hasSocket = (service.volumes ?? []).some((volume) => volume.includes("docker.sock"));
       if (name === "supervisor") {
@@ -165,14 +209,20 @@ describe("the images compose file", () => {
         expect(service.ports).toBeUndefined();
         expect(service.user).toBe("root");
         expect(String(service.command)).toContain("sandbox-supervisor");
+      } else if (name === "updater") {
+        expect(hasSocket).toBe(true);
+        expect(service.profiles).toEqual(["updater"]);
+        expect(service.ports).toBeUndefined();
       } else {
         expect(hasSocket).toBe(false);
       }
     }
   });
 
-  it("publishes the web UI on loopback only", () => {
-    expect(compose.services.web?.ports).toEqual(["127.0.0.1:${ANVIQ_WEB_PORT:-5173}:5173"]);
+  it("defaults the configurable web bind to loopback and keeps the API private", () => {
+    expect(compose.services.web?.ports).toEqual([
+      "${ANVIQ_WEB_BIND:-127.0.0.1}:${ANVIQ_WEB_PORT:-5173}:5173",
+    ]);
     expect(compose.services.api?.ports).toEqual(["127.0.0.1:${ANVIQ_API_PORT:-3100}:3100"]);
     for (const key of ["BETTER_AUTH_URL", "WEB_ORIGIN", "API_URL"]) {
       expect(compose.services.api?.environment?.[key]).toBe(`\${${key}:-http://127.0.0.1:5173}`);

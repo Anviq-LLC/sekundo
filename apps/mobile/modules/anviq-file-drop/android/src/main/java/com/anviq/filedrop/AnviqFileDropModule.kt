@@ -1,4 +1,4 @@
-package com.anviq.filedrop
+package com.sekundo.filedrop
 
 import android.app.Activity
 import android.net.Uri

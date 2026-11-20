@@ -1,9 +1,28 @@
 // Copyright 2026 Anviq LLC. All rights reserved.
-import type { PrismaClient } from "./client.js";
-import { Prisma } from "./client.js";
-import { managerOf, membership, OrganizationError } from "./organizations.js";
-import { runAsSystem } from "./row-security.js";
-import { withTransactionRetry } from "./transaction-retry.js";
+import { ClientError } from "@anviq/core";
+import type { PrismaClient } from "./database/client.js";
+import { Prisma } from "./database/client.js";
+import { runAsSystem } from "./database/row-security.js";
+import { withTransactionRetry } from "./database/transaction-retry.js";
+
+async function membership(prisma: PrismaClient, userId: string, organizationId: string) {
+  const row = await prisma.member.findFirst({
+    where: { userId, organizationId },
+    select: { role: true },
+  });
+  if (!row) throw new ClientError("NOT_FOUND", "Organization not found");
+  return row.role;
+}
+
+async function managerOf(prisma: PrismaClient, userId: string, organizationId: string) {
+  const role = await membership(prisma, userId, organizationId);
+  if (!role.includes("owner") && !role.includes("admin")) {
+    throw new ClientError(
+      "FORBIDDEN",
+      "Only an organization owner or admin can manage company memory",
+    );
+  }
+}
 
 export const COMPANY_MEMORY_PATH = "company.md";
 export const COMPANY_MEMORY_MAX_CHARS = 20_000;
@@ -21,7 +40,7 @@ async function generalSpaceOf(prisma: Pick<PrismaClient, "space">, organizationI
     where: { organizationId, isDefault: true },
     select: { id: true },
   });
-  if (!space) throw new OrganizationError("NOT_FOUND", "Team not found");
+  if (!space) throw new ClientError("NOT_FOUND", "Team not found");
   return space.id;
 }
 
@@ -65,7 +84,7 @@ export async function writeCompanyMemory(
 ): Promise<{ revision: number }> {
   await managerOf(prisma, input.userId, input.organizationId);
   if (input.content.length > COMPANY_MEMORY_MAX_CHARS)
-    throw new OrganizationError("INVALID", "Company memory is too long");
+    throw new ClientError("BAD_REQUEST", "Company memory is too long");
   const spaceId = await generalSpaceOf(prisma, input.organizationId);
   const userId = companyOwner(input.organizationId);
   return runAsSystem("write company memory", () =>
@@ -79,7 +98,7 @@ export async function writeCompanyMemory(
             input.expectedRevision !== undefined &&
             (existing?.revision ?? 0) !== input.expectedRevision
           )
-            throw new OrganizationError("CONFLICT", "Someone else changed company memory first");
+            throw new ClientError("CONFLICT", "Someone else changed company memory first");
           const doc = existing
             ? await tx.memoryDocument.update({
                 where: { id: existing.id },
@@ -160,13 +179,13 @@ export async function proposeCompanyMemory(
   await membership(prisma, input.userId, input.organizationId);
   const text = input.content.trim();
   if (!text || text.length > COMPANY_MEMORY_PROPOSAL_MAX_CHARS)
-    throw new OrganizationError("INVALID", "Suggest a short note");
+    throw new ClientError("BAD_REQUEST", "Suggest a short note");
   const spaceId = await generalSpaceOf(prisma, input.organizationId);
   const pending = await prisma.organizationMemoryProposal.count({
     where: { organizationId: input.organizationId, status: "pending" },
   });
   if (pending >= MAX_PENDING_PROPOSALS)
-    throw new OrganizationError("LIMIT", "Too many suggestions are waiting");
+    throw new ClientError("TOO_MANY_REQUESTS", "Too many suggestions are waiting");
   return runAsSystem("suggest company memory", () =>
     prisma.$transaction(async (tx) => {
       const proposal = await tx.organizationMemoryProposal.create({
@@ -241,7 +260,7 @@ export async function decideMemoryProposal(
     where: { id: input.proposalId },
   });
   if (!proposal || proposal.status !== "pending")
-    throw new OrganizationError("NOT_FOUND", "Suggestion not found");
+    throw new ClientError("NOT_FOUND", "Suggestion not found");
   await managerOf(prisma, input.userId, proposal.organizationId);
   const claimed = await prisma.organizationMemoryProposal.updateMany({
     where: { id: proposal.id, status: "pending" },
@@ -251,7 +270,7 @@ export async function decideMemoryProposal(
       decidedAt: new Date(),
     },
   });
-  if (claimed.count !== 1) throw new OrganizationError("NOT_FOUND", "Suggestion not found");
+  if (claimed.count !== 1) throw new ClientError("NOT_FOUND", "Suggestion not found");
   const spaceId = await generalSpaceOf(prisma, proposal.organizationId);
   const where = {
     spaceId,

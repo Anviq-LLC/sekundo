@@ -4,10 +4,9 @@ import { I18nProvider } from "@lingui/react";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { bootstrapI18n, getActiveUiLocale } from "../lib/i18n";
-import { resolveUiLocale } from "../lib/ui-locale";
-import { MarkdownChrome } from "./markdown-copy";
-import { MarkdownLinkPrompt } from "./markdown-link-prompt";
+import { bootstrapI18n, getActiveUiLocale } from "../lib/locale/i18n";
+import { resolveUiLocale } from "../lib/locale/ui-locale";
+import { MarkdownChrome } from "./messages/markdown-copy";
 
 export function I18nBootstrap({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(() => i18n.locale === getActiveUiLocale());
@@ -35,9 +34,7 @@ export function I18nBootstrap({ children }: { children: ReactNode }) {
   return (
     <I18nProvider i18n={i18n}>
       <KitLabels>
-        <MarkdownLinkPrompt>
-          <MarkdownChrome>{children}</MarkdownChrome>
-        </MarkdownLinkPrompt>
+        <MarkdownChrome>{children}</MarkdownChrome>
       </KitLabels>
     </I18nProvider>
   );

@@ -1,6 +1,10 @@
 {
-  "platforms": ["android"],
+  "platforms": ["android", "apple"],
   "android": {
-    "modules": ["com.anviq.notifications.AnviqNotificationsModule"]
+    "modules": ["com.sekundo.notifications.AnviqNotificationsModule"]
+  },
+  "apple": {
+    "modules": ["AnviqNotificationsModule"],
+    "appDelegateSubscribers": ["AnviqCallsSubscriber"]
   }
 }
