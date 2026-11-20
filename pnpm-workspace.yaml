@@ -65,6 +65,9 @@ overrides:
   markdown-it@>=14 <14.3.3: 14.3.3
   node-forge@<1.4.3: 1.4.3
   nodemailer@<10.4.1: 10.4.1
+  # Effect ReDoS in Schema.TemplateLiteral (GHSA-7589-6fvf-x4pw). Prisma config and
+  # Composio pull 3.20.0; the fix is 3.22.1.
+  effect@<=3.22.0: 3.22.1
 
 auditConfig:
   ignoreGhsas:

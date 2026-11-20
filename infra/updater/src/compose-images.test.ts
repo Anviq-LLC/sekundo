@@ -41,7 +41,7 @@ const publishWorkflow = parse(readFileSync(publishWorkflowFile, "utf8")) as {
 const interpolated = (name: string, fallback = "") => `\${${name}:-${fallback}}`;
 
 const appServices = ["api", "worker", "web", "supervisor", "migrate"] as const;
-const FIRST_PARTY_IMAGE = /ghcr\.io\/anviq-llc\/anviq-agents\/([a-z0-9][a-z0-9._-]*)/g;
+const FIRST_PARTY_IMAGE = /ghcr\.io\/anviq-llc\/sekundo\/([a-z0-9][a-z0-9._-]*)/g;
 
 function firstPartyImageNames(value: unknown): string[] {
   if (typeof value !== "string") return [];
