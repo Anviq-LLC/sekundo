@@ -674,7 +674,7 @@ function IndexPane({
   empty: ReactNode;
 }) {
   return (
-    <aside className="flex w-[320px] shrink-0 flex-col overflow-y-auto border-e border-border">
+    <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-e border-border md:flex">
       {items === null ? (
         <div className="grid flex-1 place-items-center p-6 text-center text-body text-muted-foreground/80">
           {loadError ?? <Spinner aria-label={t`Loading…`} />}

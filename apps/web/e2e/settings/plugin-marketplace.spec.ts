@@ -252,6 +252,11 @@ test("shows directly registered MCP servers in Integrations without catalog conn
   await captureScreenshot(page, testInfo, "integrations-direct-mcp-servers");
   await page.setViewportSize({ width: 390, height: 844 });
   await captureScreenshot(page, testInfo, "integrations-direct-mcp-mobile");
+  const close = await page
+    .getByRole("button", { name: "Close integrations", exact: true })
+    .boundingBox();
+  expect(close).not.toBeNull();
+  expect(close!.x + close!.width).toBeLessThanOrEqual(390);
   await page
     .getByTestId("connected-apps")
     .getByRole("button", { name: "Manage MCP servers", exact: true })

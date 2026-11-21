@@ -22,7 +22,6 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("@anviq/ui-web", () => ({
-  AnviqMark: () => null,
   Button: ({
     children,
     variant,
@@ -33,7 +32,7 @@ vi.mock("@anviq/ui-web", () => ({
       {children}
     </button>
   ),
-  LogoAvatar: () => <svg aria-hidden="true" data-anviq-logo="" />,
+  AnviqMark: () => <svg aria-hidden="true" data-anviq-logo="" />,
   Input: (props: React.ComponentProps<"input">) => <input {...props} />,
   InputOTP: ({
     maxLength,

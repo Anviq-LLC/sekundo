@@ -1,4 +1,4 @@
-import { BOT_COLOR_LIST, signInProviders } from "@anviq/contracts";
+import { signInProviders } from "@anviq/contracts";
 import {
   credentialIssue,
   MAX_PASSWORD_LENGTH,
@@ -7,13 +7,13 @@ import {
   suggestEmailCorrection,
 } from "@anviq/core";
 import {
+  AnviqMark,
   Button,
   Input,
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
   Label,
-  LogoAvatar,
 } from "@anviq/ui-web";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChevronLeft } from "lucide-react";
@@ -697,11 +697,9 @@ export function AuthFrame({
         >
           {leading ? <div className="mb-4 self-start">{leading}</div> : null}
           <div className={surface ? "flex w-full flex-col items-center" : "contents"}>
-            <LogoAvatar
-              size={74}
-              avatarValue={BOT_COLOR_LIST.find((color) => color.id === "orange")?.hex}
-              motion={false}
-            />
+            <div className="flex size-[74px] items-center justify-center rounded-full bg-muted">
+              <AnviqMark className="h-[29px] w-[52px]" eyeClassName="fill-muted" />
+            </div>
             <h1
               aria-live="polite"
               className={

@@ -1,4 +1,8 @@
-# Teams
+# Organizations
+
+The organization settings page and per-person runs in team spaces come from upstream. This page
+describes how an organization behaves on this fork, including what we added: the activity log,
+company memory, linked bots and organization keys.
 
 An organization is a company workspace. Anyone who is signed in can create one and becomes its owner. A
 person's own workspace, Personal, never changes and is never part of a team.
@@ -44,11 +48,13 @@ owners and admins. There is no setting and no override for this.
 
 ## Company memory
 
-One note per team that every bot in the team's spaces reads before the person's own memory. Open it
-from Settings, Organization, Company memory. Owners and admins edit it. Members can suggest an addition, and it joins company memory only when an owner or
-admin approves it. It is stored like other memory, sealed with the team's general space key, and it
-belongs to the team, so no person's memory list or export includes it. It is not given to bots
-answering an outside chat channel. The limit is 20,000 characters.
+One note per organization that every bot in its team spaces reads. Owners and admins edit it and
+members suggest additions. See [company memory](./company-memory.md).
+
+## Linked bots
+
+A person can bring their own bot into a team group without moving it. See
+[linked bots](./linked-bots.md).
 
 ## Activity log
 
@@ -58,6 +64,6 @@ who and what, never the text of memory or chats.
 
 ## Keys
 
-Team content is sealed with the keys described in [content-encryption.md](./content-encryption.md).
+Team content is sealed with the keys described in [content-encryption.md](../content-encryption.md).
 Give a team its own customer-managed key there when the team's administrators must be able to
 revoke access to its content.
