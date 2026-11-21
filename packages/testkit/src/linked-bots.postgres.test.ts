@@ -308,13 +308,7 @@ describeWithDatabase("linked bots", () => {
     });
     // Ben's own team bot is archived; his link does not count as an active bot.
     await harness.db.bot.update({ where: { id: benTeamBot.id }, data: { archivedAt: new Date() } });
-    const organizationId = (
-      await harness.db.space.findFirstOrThrow({
-        where: { id: harness.teamSpaceId },
-        select: { organizationId: true },
-      })
-    ).organizationId;
-    await harness.ok(ben, "organizations/leave", { organizationId });
+    await harness.ok(ben, "spaces/members/leave", { spaceId: harness.teamSpaceId });
     const link = await harness.db.bot.findFirstOrThrow({
       where: { id: benLink.id, linkedFromBotId: benOriginal.id },
       select: { archivedAt: true },

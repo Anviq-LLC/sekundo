@@ -26,3 +26,18 @@ unrenamed code straight into `main`.
 dropped. It fails when it finds an upstream name it does not know, so add a rule there and run the
 sync again. Files listed in `DROP` do not exist in `anviq-upstream`, so upstream edits to them never
 conflict.
+
+## Code that is ours
+
+Some features exist only in Anviq Agents, so a sync can drop them without any conflict when upstream
+moves or rewrites the files around them. After every sync, confirm each one still works before
+merging:
+
+- Company memory and suggestions: `packages/db/src/company-memory.ts`, the `memory` routes in
+  `apps/api/src/routes/organizations.ts`, and `CompanyMemorySettings.tsx` in the organization
+  settings. Bots read it through `loadAgentMemoryContext` in the run assembly.
+- Organization key custody: `packages/db/src/org-keys.ts` and `packages/adapters/src/org-key-provider.ts`.
+- Linked bots: `packages/db/src/linked-bots.ts`.
+
+The isolation tests `company-memory.postgres.test.ts` and `linked-bots.postgres.test.ts` in
+`packages/testkit` fail when these go missing, so a green run is the check.

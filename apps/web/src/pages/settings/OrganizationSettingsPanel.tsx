@@ -15,6 +15,7 @@ import { useEffect, useId, useState } from "react";
 import { AuditLog } from "../../components/audit/AuditLog";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SettingsGroup, SettingsRow } from "../../components/settings/SettingsRows";
+import { CompanyMemorySettings } from "../../components/spaces/CompanyMemorySettings";
 import { OrganizationMembersSettings } from "../../components/spaces/OrganizationMembersSettings";
 import { useQueryUserId, useSave } from "../../lib/query/query";
 import { clearSpaceSelection, rpc, selectSpace } from "../../lib/query/rpc";
@@ -22,7 +23,7 @@ import { errorText } from "../../lib/query/user-error";
 import type { Organization } from "../../lib/spaces/organizations";
 import { organizationsQuery, useOrganizations } from "../../lib/spaces/organizations";
 
-export type OrganizationPage = "main" | "members" | "log";
+export type OrganizationPage = "main" | "members" | "memory" | "log";
 
 /** The organization the app is showing: its name, its members and, for its owner, renaming. */
 export function OrganizationSettingsPanel({
@@ -145,8 +146,15 @@ function OrganizationSettings({
       />
     );
 
+  if (page === "memory")
+    return (
+      <CompanyMemorySettings organization={organization} onBack={() => onPageChange("main")} />
+    );
+
   // Alone in it, its owner is offered to invite someone instead of a count of one.
   const inviteFirst = organization.memberCount === 1 && canManageOrganizationMembers(organization);
+  // Company memory is for a team, so a workspace of one does not show it.
+  const showMemory = organization.memberCount > 1;
   return (
     <div className="space-y-8" data-testid="organization-settings">
       <SettingsGroup>
@@ -196,7 +204,7 @@ function OrganizationSettings({
         </SettingsRow>
         <button
           type="button"
-          className="flex min-h-15 w-full items-center justify-between gap-4 rounded-b-xl px-4 py-3 text-start hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+          className={`flex min-h-15 w-full items-center justify-between gap-4 px-4 py-3 text-start hover:bg-accent focus-visible:bg-accent focus-visible:outline-none ${showMemory ? "" : "rounded-b-xl"}`}
           onClick={() => onPageChange("members")}
         >
           <span className="text-body text-foreground">
@@ -207,6 +215,21 @@ function OrganizationSettings({
             <ChevronRight aria-hidden="true" className="size-4 rtl:rotate-180" />
           </span>
         </button>
+        {showMemory ? (
+          <button
+            type="button"
+            className="flex min-h-15 w-full items-center justify-between gap-4 rounded-b-xl px-4 py-3 text-start hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+            onClick={() => onPageChange("memory")}
+          >
+            <span className="text-body text-foreground">
+              <Trans>Company memory</Trans>
+            </span>
+            <ChevronRight
+              aria-hidden="true"
+              className="size-4 text-muted-foreground rtl:rotate-180"
+            />
+          </button>
+        ) : null}
       </SettingsGroup>
     </div>
   );

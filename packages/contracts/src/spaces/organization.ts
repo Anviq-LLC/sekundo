@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { Id } from "../ids.js";
+import { Id, IsoDate } from "../ids.js";
 import { PersonSchema } from "./person.js";
 
 /** The organization's one owner, admins who manage its members with them, and everyone else. */
@@ -58,3 +58,30 @@ export const OrganizationListSchema = z.object({
   ),
 });
 export type OrganizationList = z.infer<typeof OrganizationListSchema>;
+
+export const CompanyMemorySchema = z.object({
+  content: z.string(),
+  revision: z.number().int().nonnegative(),
+  updatedAt: IsoDate.nullable(),
+  canEdit: z.boolean(),
+});
+export type CompanyMemory = z.infer<typeof CompanyMemorySchema>;
+export const SetCompanyMemoryInput = z.object({
+  organizationId: Id,
+  content: z.string().max(20_000),
+  expectedRevision: z.number().int().nonnegative().optional(),
+});
+
+export const MemoryProposalSchema = z.object({
+  id: Id,
+  content: z.string(),
+  proposedBy: z.string(),
+  mine: z.boolean(),
+  createdAt: IsoDate,
+});
+export type MemoryProposal = z.infer<typeof MemoryProposalSchema>;
+export const ProposeMemoryInput = z.object({
+  organizationId: Id,
+  content: z.string().trim().min(1).max(4000),
+});
+export const DecideMemoryProposalInput = z.object({ proposalId: Id, approve: z.boolean() });

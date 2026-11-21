@@ -1,6 +1,6 @@
 import { botMessageAllowsSilence, userTurnMessageForRun } from "@anviq/core";
-import { isPartialReplyClientNonce, storedMessageBlocks } from "@anviq/db";
-import { getLogger } from "@anviq/logging";
+import { companyMemoryForSpace, isPartialReplyClientNonce, storedMessageBlocks } from "@anviq/db";
+import { bestEffort, getLogger } from "@anviq/logging";
 import { loadAgentMemoryContext } from "../../memory/memory-context.js";
 import { PARTIAL_REPLY_NOTE } from "../../messaging/automated-messages.prompt.js";
 import {
@@ -223,7 +223,12 @@ export async function loadTurnContext(
     await Promise.all([
       discoveredPromise,
       loadCurrentTurnImages(deps, turnBlocks, context),
-      nonOwnerChatRun ? Promise.resolve("") : loadAgentMemoryContext(deps.memory, bot.id, context),
+      nonOwnerChatRun
+        ? Promise.resolve("")
+        : bestEffort("company memory", companyMemoryForSpace(deps.prisma, run.spaceId)).then(
+            (companyMemory) =>
+              loadAgentMemoryContext(deps.memory, bot.id, context, undefined, companyMemory),
+          ),
       nonOwnerChatRun
         ? Promise.resolve("")
         : loadAgentScratchpadContext(deps, {

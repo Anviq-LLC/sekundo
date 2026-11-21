@@ -1,10 +1,12 @@
-import type { Bot, Group } from "@anviq/contracts";
+import type { Bot, Group, LinkableBot } from "@anviq/contracts";
 import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN, GROUP_NAME_MAX_LENGTH } from "@anviq/contracts";
 import { BotAvatar, Button, Checkbox, Input, SectionHeading } from "@anviq/ui-web";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useSpaceQueries } from "../../lib/query/query";
 import { errorText } from "../../lib/query/user-error";
 import { useEventListener } from "../../lib/use-event-listener";
 import { DeleteItemDialog } from "../shell/create-delete-dialogs";
@@ -21,6 +23,27 @@ function sameMembers(left: readonly string[], right: readonly string[]) {
   if (left.length !== right.length) return false;
   const rightIds = new Set(right);
   return left.every((id) => rightIds.has(id));
+}
+
+type PickerRow = Pick<Bot, "id" | "name" | "color"> &
+  Partial<Pick<Bot, "avatarSet" | "status">> & {
+    /** Where a bot from another space lives, and the id it already has in this one. */
+    home?: { space: string; linkedBotId: string | null };
+  };
+
+/** A bot from another space is picked by its link once it has one; the server links it on save. */
+const pickId = (row: PickerRow) => row.home?.linkedBotId ?? row.id;
+
+function toPickerRows(bots: readonly Bot[], linkable: readonly LinkableBot[]): PickerRow[] {
+  return [
+    ...bots.filter((bot) => !bot.archivedAt),
+    ...linkable.map((bot) => ({
+      id: bot.id,
+      name: bot.name,
+      color: bot.color,
+      home: { space: bot.spaceName, linkedBotId: bot.linkedBotId },
+    })),
+  ];
 }
 
 function MemberPicker({
@@ -43,15 +66,20 @@ function MemberPicker({
   // Every bot ever picked this session stays listed when collapsed, so an
   // unchecked member remains re-checkable until the form is saved.
   const [everPicked, setEverPicked] = useState<ReadonlySet<string>>(() => new Set(selected));
-  const selectable = useMemo(() => bots.filter((bot) => !bot.archivedAt), [bots]);
+  // The person's own bots from their other spaces, offered only inside a team space.
+  const linkable = useQuery(useSpaceQueries().bots.linkable.queryOptions()).data;
+  const selectable = useMemo(() => toPickerRows(bots, linkable ?? []), [bots, linkable]);
+  const isPicked = (row: PickerRow) => selected.includes(pickId(row));
   // The filter field only exists in the expanded view; never let a stale
   // query hide members when the list is collapsed.
   const needle = expanded ? query.trim().toLowerCase() : "";
   const visible = useMemo(() => {
-    const base = expanded ? selectable : selectable.filter((bot) => everPicked.has(bot.id));
+    const base = expanded
+      ? selectable
+      : selectable.filter((bot) => everPicked.has(pickId(bot)) || isPicked(bot));
     if (!needle) return base;
     return base.filter((bot) => bot.name.toLowerCase().includes(needle));
-  }, [expanded, selectable, everPicked, needle]);
+  }, [expanded, selectable, everPicked, needle, selected]);
 
   function toggle(botId: string) {
     if (selected.includes(botId)) {
@@ -96,7 +124,7 @@ function MemberPicker({
       ) : null}
       <div id={listId} className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto">
         {visible.map((bot) => {
-          const checked = selected.includes(bot.id);
+          const checked = isPicked(bot);
           return (
             <div
               key={bot.id}
@@ -106,7 +134,7 @@ function MemberPicker({
             >
               <button
                 type="button"
-                onClick={() => onOpenBot?.(bot.id)}
+                onClick={() => (bot.home ? toggle(pickId(bot)) : onOpenBot?.(bot.id))}
                 className="flex min-w-0 flex-1 items-center gap-3 text-start"
               >
                 <BotAvatar
@@ -118,6 +146,11 @@ function MemberPicker({
                 />
                 <span className="flex-1 text-body-lg text-foreground" dir="auto">
                   {bot.name}
+                  {bot.home ? (
+                    <span className="ms-2 text-body-sm text-muted-foreground">
+                      {bot.home.space}
+                    </span>
+                  ) : null}
                 </span>
               </button>
               <Checkbox
@@ -125,7 +158,7 @@ function MemberPicker({
                 aria-label={
                   checked ? t`Remove ${bot.name} from the group` : t`Add ${bot.name} to the group`
                 }
-                onCheckedChange={() => toggle(bot.id)}
+                onCheckedChange={() => toggle(pickId(bot))}
               />
             </div>
           );

@@ -758,6 +758,16 @@ async function departSpace(
             if (id) continuationRunIds.push(id);
           }
 
+          // Links to their own bots from elsewhere end here: handing one to the owner would let
+          // the owner's runs read the departed person's bot behind it.
+          await tx.chatGroupMember.deleteMany({
+            where: { bot: { spaceId, userId, linkedFromBotId: { not: null } } },
+          });
+          await tx.bot.updateMany({
+            where: { spaceId, userId, linkedFromBotId: { not: null }, archivedAt: null },
+            data: { archivedAt: new Date() },
+          });
+
           await moveSections(tx, { spaceId, fromUserId: userId, toUserId: ownerId });
           const reassign = { where: { spaceId, userId }, data: { userId: ownerId } };
           await tx.bot.updateMany(reassign);

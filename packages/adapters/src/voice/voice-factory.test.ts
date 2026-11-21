@@ -14,7 +14,12 @@ import {
   ScriptedVoiceProvider,
 } from "../providers/voice/scripted/scripted-voice.js";
 import { XaiVoiceProvider } from "../providers/voice/xai/xai-voice.js";
-import { createVoiceProvider, isVoiceProviderId, listVoiceCatalog } from "./voice-factory.js";
+import {
+  createVoiceProvider,
+  isVoiceProviderId,
+  listVoiceCatalog,
+  voiceCatalogEntry,
+} from "./voice-factory.js";
 import { MAX_VOICE_JSON_BYTES } from "./voice-http.js";
 
 const ctx = {
@@ -66,6 +71,8 @@ describe("createVoiceProvider", () => {
     expect(createVoiceProvider("cartesia").describe().capabilities.transcribe).toBe(false);
     expect(createVoiceProvider("fish-audio").describe().capabilities.transcribe).toBe(true);
     expect(createVoiceProvider("openai-compatible").describe().capabilities.transcribe).toBe(true);
+    expect(voiceCatalogEntry("openai")?.modelConnection).toBe(true);
+    expect(voiceCatalogEntry("cartesia")?.modelConnection).toBeUndefined();
     expect(isVoiceProviderId("elevenlabs")).toBe(true);
     expect(isVoiceProviderId("scripted")).toBe(false);
     expect(isVoiceProviderId("piper")).toBe(false);

@@ -127,6 +127,22 @@ export function organizationMembersQuery(userId: string | null, organizationId: 
   });
 }
 
+/** What every bot in the organization knows. */
+export function companyMemoryQuery(userId: string | null, organizationId: string) {
+  return queryOptions({
+    queryKey: [`user:${userId ?? ""}`, ORGANIZATIONS_KEY, organizationId, "memory"],
+    queryFn: () => rpc.organizations.memory.get({ organizationId }),
+  });
+}
+
+/** Waiting suggestions for company memory: every one for an owner or admin, else a member's own. */
+export function memoryProposalsQuery(userId: string | null, organizationId: string) {
+  return queryOptions({
+    queryKey: [`user:${userId ?? ""}`, ORGANIZATIONS_KEY, organizationId, "memory-proposals"],
+    queryFn: () => rpc.organizations.memory.proposals({ organizationId }),
+  });
+}
+
 /**
  * Reads again the organization list and members the server says may have changed; only screens
  * showing them refetch.

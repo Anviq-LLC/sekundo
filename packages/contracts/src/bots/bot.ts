@@ -28,6 +28,19 @@ export const InstructionVersionSchema = z.object({
   createdAt: z.string(),
 });
 
+/** One of a person's own bots in another space, which can take part in a team space. */
+export const LinkableBotSchema = z.object({
+  id: Id,
+  name: z.string(),
+  title: z.string(),
+  color: z.string(),
+  spaceId: Id,
+  spaceName: z.string(),
+  /** The bot's link in the space being worked in, once it has one. */
+  linkedBotId: Id.nullable(),
+});
+export type LinkableBot = z.infer<typeof LinkableBotSchema>;
+
 export const BotSchema = z.object({
   meetingsEnabled: z.boolean().optional(),
   id: Id,

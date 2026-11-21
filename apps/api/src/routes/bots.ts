@@ -55,8 +55,10 @@ import {
   expireComputerExecutionLeases,
   IsolationError,
   isRecordNotFound,
+  listLinkableBots,
   recordComputerRunEnd,
   recordSecurityEvent,
+  resolveGroupBotIds,
   restoreBotUnderComputerQuota,
   settingsTarget,
   THREAD_LOCK_TRANSACTION_OPTIONS,
@@ -342,6 +344,9 @@ export function botsRoutes(ctx: RouterContext) {
       list: authed.bots.list.handler(async ({ context }) => repos.listBots(context.actor)),
       listArchived: authed.bots.listArchived.handler(async ({ context }) =>
         repos.listBots(context.actor, { archived: true }),
+      ),
+      linkable: authed.bots.linkable.handler(async ({ context }) =>
+        listLinkableBots(deps.prisma, context.actor),
       ),
       get: authed.bots.get.handler(async ({ context, input }) => {
         const found = (await repos.listBots(context.actor)).find((bot) => bot.id === input.botId);
@@ -726,7 +731,10 @@ export function botsRoutes(ctx: RouterContext) {
     },
     groups: {
       create: authed.groups.create.handler(async ({ context, input }) =>
-        groupRepos.createGroup(context.actor, input),
+        groupRepos.createGroup(context.actor, {
+          ...input,
+          botIds: await resolveGroupBotIds(deps.prisma, context.actor, input.botIds),
+        }),
       ),
       list: authed.groups.list.handler(async ({ context }) => groupRepos.listGroups(context.actor)),
       listArchived: authed.groups.listArchived.handler(async ({ context }) =>
@@ -764,7 +772,12 @@ export function botsRoutes(ctx: RouterContext) {
           });
           if (!section) throw new IsolationError();
         }
-        const updated = await groupRepos.updateGroup(context.actor, input);
+        const updated = await groupRepos.updateGroup(context.actor, {
+          ...input,
+          ...(input.botIds
+            ? { botIds: await resolveGroupBotIds(deps.prisma, context.actor, input.botIds) }
+            : {}),
+        });
         await stopCancelledGroupRuns(deps, context.actor, updated);
         return updated.group;
       }),
