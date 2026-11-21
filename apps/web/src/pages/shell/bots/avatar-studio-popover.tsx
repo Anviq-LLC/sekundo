@@ -331,7 +331,6 @@ export function AvatarStudioPopover({
                 identity={identity}
                 avatarSet={avatarSet}
                 onChange={(next) => onChange(next)}
-                onAvatarSetChange={(set, next) => onChange(next, set)}
               />
             </TabsContent>
             <TabsContent value="upload">

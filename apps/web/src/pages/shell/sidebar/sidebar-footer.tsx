@@ -1,5 +1,4 @@
 import type { NavLink } from "@anviq/contracts";
-import { ANDROID_APP_STORE_URL, IOS_APP_STORE_URL } from "@anviq/contracts";
 import {
   AppMarkStack,
   Button,
@@ -23,7 +22,6 @@ import {
   Plus,
   ScrollText,
   Settings,
-  Smartphone,
   SquareKanban,
   UserPlus,
   UserRound,
@@ -243,17 +241,6 @@ export function SidebarFooter({
               </Button>
             ))}
             <div className="my-1 border-t border-border" />
-            <a
-              className={`${buttonVariants({ variant: "ghost", size: "lg" })} w-full justify-start gap-2.5 font-normal`}
-              href={
-                /Android/i.test(navigator.userAgent) ? ANDROID_APP_STORE_URL : IOS_APP_STORE_URL
-              }
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Smartphone className="text-muted-foreground" strokeWidth={1.75} />
-              <Trans>Get the mobile app</Trans>
-            </a>
             {onInvite ? (
               <Button
                 variant="ghost"

@@ -204,15 +204,6 @@ export function SettingsOverlays({
             setBootstrapMe((prev) => (prev ? { ...prev, timezone: nextMe.timezone } : nextMe));
           }}
           botAvatarSet={bootstrapMe?.botAvatarSet}
-          onBotAvatarSetChange={async (botAvatarSet) => {
-            const nextMe = await rpc.preferences.update({ botAvatarSet });
-            setBootstrapMe((prev) =>
-              prev ? { ...prev, botAvatarSet: nextMe.botAvatarSet } : nextMe,
-            );
-            // Unpinned bots were restyled with it. The save already succeeded, so a failed
-            // refresh only waits for the roster's next re-read.
-            void refreshSpaces().catch(() => undefined);
-          }}
           labs={parseLabs(bootstrapMe?.labs)}
           labsAvailable={parseLabs(bootstrapMe?.labsAvailable)}
           onLabsChange={async (labs, client) => {
