@@ -173,8 +173,10 @@ export const openaiVoice: VoiceProviderDefinition = {
   },
   catalog: {
     name: "OpenAI",
-    description: "Simple TTS plus Whisper-class transcription. Reuse an OpenAI key.",
+    description:
+      "Simple TTS plus Whisper-class transcription, with a key or your OpenAI connection.",
     transcribe: true,
+    modelConnection: true,
   },
   create: () => new OpenAIVoiceProvider(),
 };

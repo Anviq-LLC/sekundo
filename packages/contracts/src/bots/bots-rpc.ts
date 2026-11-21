@@ -24,6 +24,7 @@ import {
   BotSectionName,
   BotSectionSchema,
   CreateBotInput,
+  LinkableBotSchema,
   ReorderBotsInput,
   UpdateBotInput,
 } from "./bot.js";
@@ -54,6 +55,8 @@ export const botsRpc = {
   bots: {
     list: oc.output(z.array(BotSchema)),
     listArchived: oc.output(z.array(BotSchema)),
+    /** The person's own bots from their other spaces that a team space can take in. */
+    linkable: oc.output(z.array(LinkableBotSchema)),
     get: oc.input(botId).output(BotSchema),
     create: oc.input(CreateBotInput).output(BotSchema),
     importPreview: oc.input(AgentImportPreviewInput).output(AgentImportPlanSchema),

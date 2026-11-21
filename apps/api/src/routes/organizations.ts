@@ -4,19 +4,24 @@ import {
   cancelOrganizationInvitation,
   createOrganizationForUser,
   createOrganizationInvitation,
+  decideMemoryProposal,
   firstOrganizationSpace,
   forgetRevokedMember,
   GUEST_ROLE,
   InvalidSpaceNameError,
   leaveOrganizationSpaces,
   listMemberOrganizations,
+  listMemoryProposals,
   listOrganizationMembers,
   previewOrganizationInvitation,
+  proposeCompanyMemory,
+  readCompanyMemory,
   recordAuditEvent,
   renameOrganization,
   revokeOrganizationMember,
   runAsSystem,
   setOrganizationMemberRole,
+  writeCompanyMemory,
 } from "@anviq/db";
 import { bestEffort } from "@anviq/logging";
 import { ORPCError } from "@orpc/server";
@@ -254,6 +259,69 @@ export function organizationsRoutes(ctx: RouterContext) {
             );
             void deps.events?.publishOrganizationChange?.(joined.organizationId);
             return { spaceId: joined.spaceId };
+          }),
+        ),
+      },
+      memory: {
+        get: authed.organizations.memory.get.handler(({ context, input }) =>
+          runAsSystem("read company memory for a member", async () => {
+            const memory = await readCompanyMemory(
+              deps.prisma,
+              context.actor.userId,
+              input.organizationId,
+            );
+            return { ...memory, updatedAt: memory.updatedAt?.toISOString() ?? null };
+          }),
+        ),
+        set: authed.organizations.memory.set.handler(({ context, input }) =>
+          runAsSystem("write company memory for an owner or admin", async () => {
+            const saved = await writeCompanyMemory(deps.prisma, {
+              userId: context.actor.userId,
+              organizationId: input.organizationId,
+              content: input.content,
+              expectedRevision: input.expectedRevision,
+            });
+            await recordAuditEvent({
+              action: "organization.memory_updated",
+              actor: { type: "user", id: context.actor.userId },
+              organizationId: input.organizationId,
+              target: { type: "organization", id: input.organizationId },
+            });
+            return saved;
+          }),
+        ),
+        propose: authed.organizations.memory.propose.handler(({ context, input }) =>
+          runAsSystem("suggest company memory as a member", () =>
+            proposeCompanyMemory(deps.prisma, {
+              userId: context.actor.userId,
+              organizationId: input.organizationId,
+              content: input.content,
+            }),
+          ),
+        ),
+        proposals: authed.organizations.memory.proposals.handler(({ context, input }) =>
+          runAsSystem("list company memory suggestions", async () =>
+            (
+              await listMemoryProposals(deps.prisma, context.actor.userId, input.organizationId)
+            ).map((proposal) => ({ ...proposal, createdAt: proposal.createdAt.toISOString() })),
+          ),
+        ),
+        decide: authed.organizations.memory.decide.handler(({ context, input }) =>
+          runAsSystem("decide a company memory suggestion", async () => {
+            const decided = await decideMemoryProposal(deps.prisma, {
+              userId: context.actor.userId,
+              proposalId: input.proposalId,
+              approve: input.approve,
+            });
+            await recordAuditEvent({
+              action: input.approve
+                ? "organization.memory_approved"
+                : "organization.memory_rejected",
+              actor: { type: "user", id: context.actor.userId },
+              organizationId: decided.organizationId,
+              target: { type: "user", id: decided.proposedByUserId },
+            });
+            return { ok: true as const };
           }),
         ),
       },

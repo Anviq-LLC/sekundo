@@ -5,10 +5,15 @@ import { groupId } from "../rpc/inputs.js";
 import { SpaceSettingSchema } from "../settings-scope.js";
 import { CreateGroupInput, GroupDetailSchema, GroupSchema, UpdateGroupInput } from "./groups.js";
 import {
+  CompanyMemorySchema,
+  DecideMemoryProposalInput,
+  MemoryProposalSchema,
   OrganizationInvitationPreviewSchema,
   OrganizationListSchema,
   OrganizationMembersSchema,
   OrganizationRoleSchema,
+  ProposeMemoryInput,
+  SetCompanyMemoryInput,
 } from "./organization.js";
 import {
   SpaceInviteLinkSchema,
@@ -103,6 +108,15 @@ export const spacesRpc = {
       /** The invited person, signed in with the address it went to. */
       preview: oc.input(z.object({ invitationId: Id })).output(OrganizationInvitationPreviewSchema),
       accept: oc.input(z.object({ invitationId: Id })).output(z.object({ spaceId: Id })),
+    },
+    /** What every bot in the organization knows. Members read it; owners and admins write it. */
+    memory: {
+      get: oc.input(z.object({ organizationId: Id })).output(CompanyMemorySchema),
+      set: oc.input(SetCompanyMemoryInput).output(z.object({ revision: z.number().int() })),
+      /** A member suggests an addition; an owner or admin decides. */
+      propose: oc.input(ProposeMemoryInput).output(z.object({ id: Id })),
+      proposals: oc.input(z.object({ organizationId: Id })).output(z.array(MemoryProposalSchema)),
+      decide: oc.input(DecideMemoryProposalInput).output(z.object({ ok: z.literal(true) })),
     },
   },
   groups: {

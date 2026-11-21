@@ -7,11 +7,11 @@ import { MODEL_CONNECTION_VOICE_SECRET, resolveVoiceKey } from "./voice-model-co
 
 const scope = { userId: "user-1", spaceId: "space-1" };
 
-function credential(id: string, updatedAt: number) {
+function credential(id: string, updatedAt: number, provider = "xai") {
   return {
     id,
     userId: scope.userId,
-    provider: "xai",
+    provider,
     label: id,
     secretId: `secret-${id}`,
     createdAt: new Date(updatedAt),
@@ -57,9 +57,9 @@ describe("resolveVoiceKey", () => {
 
   it("treats the marker as a pasted key for a provider that cannot use the model connection", async () => {
     const { prisma, deps: d } = deps({});
-    await expect(resolveVoiceKey(d, scope, "openai", MODEL_CONNECTION_VOICE_SECRET)).resolves.toBe(
-      MODEL_CONNECTION_VOICE_SECRET,
-    );
+    await expect(
+      resolveVoiceKey(d, scope, "cartesia", MODEL_CONNECTION_VOICE_SECRET),
+    ).resolves.toBe(MODEL_CONNECTION_VOICE_SECRET);
     expect(prisma.userModelCredential.findMany).not.toHaveBeenCalled();
   });
 
@@ -71,6 +71,34 @@ describe("resolveVoiceKey", () => {
     await expect(resolveVoiceKey(d, scope, "xai", MODEL_CONNECTION_VOICE_SECRET)).resolves.toBe(
       "xai-new-model-key",
     );
+  });
+
+  it("uses the API key of an OpenAI model connection", async () => {
+    const { deps: d } = deps({
+      credentials: [credential("plain", 1_000, "openai")],
+      secrets: {
+        "secret-plain": serializeModelSecret({ kind: "api_key", key: "sk-model-connection-key" }),
+      },
+    });
+    await expect(resolveVoiceKey(d, scope, "openai", MODEL_CONNECTION_VOICE_SECRET)).resolves.toBe(
+      "sk-model-connection-key",
+    );
+  });
+
+  it("refuses a linked connection set to zero data retention", async () => {
+    const { deps: d } = deps({
+      credentials: [credential("zdr", 1_000, "openai")],
+      secrets: {
+        "secret-zdr": serializeModelSecret({
+          kind: "api_key",
+          key: "sk-zdr-key",
+          zeroDataRetention: true,
+        }),
+      },
+    });
+    await expect(
+      resolveVoiceKey(d, scope, "openai", MODEL_CONNECTION_VOICE_SECRET),
+    ).rejects.toBeInstanceOf(VoiceAccountError);
   });
 
   it("refuses a model connection the deployment allowlist leaves out", async () => {

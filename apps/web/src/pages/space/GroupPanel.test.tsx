@@ -15,6 +15,11 @@ vi.mock("@lingui/react/macro", () => {
     parts.reduce((text, part, index) => `${text}${index > 0 ? values[index - 1] : ""}${part}`, "");
   return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
 });
+// No bots from other spaces: these tests cover the group's own bots.
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: [] }) }));
+vi.mock("../../lib/query/query", () => ({
+  useSpaceQueries: () => ({ bots: { linkable: { queryOptions: () => ({}) } } }),
+}));
 // The alert dialog's Cancel closes it through onOpenChange, as Base UI does.
 let dismissDialog: (() => void) | undefined;
 vi.mock("@anviq/ui-web", async (importOriginal) => {
