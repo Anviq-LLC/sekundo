@@ -163,7 +163,7 @@ export function UsageSettingsPanel({ panelRef }: { panelRef?: RefObject<HTMLDivE
         </Field>
       </div>
 
-      <dl className="grid grid-cols-3 gap-3">
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { label: t`Runs`, value: number(totals?.runs) },
           { label: t`Tokens`, value: number(totals?.totalTokens) },

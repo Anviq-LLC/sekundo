@@ -392,11 +392,11 @@ export function PluginsOverlay({
       }}
     >
       <DialogContent showCloseButton={false} size="2xl" className="bg-card">
-        <DialogHeader className="flex-row items-start justify-between px-8 pt-7">
+        <DialogHeader className="flex-row flex-wrap items-start justify-between gap-y-2 px-4 pt-5 sm:px-8 sm:pt-7">
           <DialogTitle className="text-heading2 text-foreground">
             <Trans>Integrations</Trans>
           </DialogTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {browsing && appCount > 0 ? (
               <Button
                 variant="ghost"
@@ -459,7 +459,7 @@ export function PluginsOverlay({
         </DialogHeader>
 
         {browsing ? (
-          <div className="space-y-4 px-8 pt-4">
+          <div className="space-y-4 px-4 pt-4 sm:px-8">
             <Input
               disabled={loading}
               value={query}
@@ -542,7 +542,7 @@ export function PluginsOverlay({
         <div
           id="integration-list"
           hidden={loading}
-          className="rk-scroll flex-1 overflow-y-auto px-8 py-6"
+          className="rk-scroll flex-1 overflow-y-auto px-4 py-6 sm:px-8"
         >
           {catalogError || loadError ? (
             <div className="mb-4 flex items-center gap-3">

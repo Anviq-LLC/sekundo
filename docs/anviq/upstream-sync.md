@@ -1,5 +1,8 @@
 # Syncing upstream
 
+This page is the procedure for taking upstream changes. Read [what this fork adds](./README.md) first:
+it is the list of what a sync must not lose.
+
 Sekundo follows [rakazo](https://github.com/elie222/rakazo). The `upstream` remote points at it and
 `anviq-upstream` is a branch holding upstream with the Sekundo rename already applied, so merges only
 conflict where Sekundo really diverges.
@@ -29,7 +32,7 @@ conflict.
 
 ## Code that is ours
 
-Some features exist only in Anviq Agents, so a sync can drop them without any conflict when upstream
+Some features exist only in Sekundo and Anviq Agents, so a sync can drop them without any conflict when upstream
 moves or rewrites the files around them. After every sync, confirm each one still works before
 merging:
 

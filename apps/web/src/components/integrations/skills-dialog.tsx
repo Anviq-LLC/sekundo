@@ -246,7 +246,7 @@ export function SkillsDialog({
       }}
     >
       <DialogContent showCloseButton={false} size="xl" className="bg-card">
-        <DialogHeader className="flex-row items-start justify-between px-8 pt-7">
+        <DialogHeader className="flex-row flex-wrap items-start justify-between gap-y-2 px-4 pt-5 sm:px-8 sm:pt-7">
           <DialogTitle className="text-heading2 text-foreground">
             <Trans>Skills</Trans>
           </DialogTitle>
@@ -274,7 +274,7 @@ export function SkillsDialog({
             </DialogClose>
           </div>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-8 pt-5 pb-8">{content()}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 sm:px-8">{content()}</div>
       </DialogContent>
     </Dialog>
   );
