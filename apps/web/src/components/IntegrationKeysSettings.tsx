@@ -16,29 +16,13 @@ export function IntegrationKeysSettings() {
     stale: [spaceQueries.integrationSetup.get.queryKey()],
   });
   const providers = state.data?.providers ?? [];
-  const [primary, ...secondary] = providers;
 
   return (
     <div className="space-y-6">
-      {primary ? (
-        <ProviderSettingsForm
-          key={`${primary.id}:${primary.configured}`}
-          fields={primary.fields ?? []}
-          busy={save.pending}
-          connectLabel={t`Save`}
-          advancedSettings={null}
-          onSubmit={(draft) =>
-            save.run({
-              provider: primary.id,
-              ...draft.settings,
-              ...draft.credentials,
-            })
-          }
-        />
-      ) : null}
-      {secondary.map((provider) => (
+      {providers.map((provider, index) => (
         <Disclosure
           key={`${provider.id}:${provider.configured}`}
+          defaultOpen={index === 0}
           className="text-sm text-muted-foreground"
           summary={provider.displayName ?? provider.id}
         >

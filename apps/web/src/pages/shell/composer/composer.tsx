@@ -244,9 +244,11 @@ const ComposerBody = memo(function Composer({
     onSlashAction,
   });
   const onCall = useCallSession() !== null;
+  // Dictation needs only a voice provider that can transcribe; the calls flag gates calling.
+  const canTalk = Boolean(phoneCallsEnabled) || dictationTranscribe === true;
   const talk = useHoldToTalk({
     transcribe: dictationTranscribe,
-    disabled: disabled || onCall || !phoneCallsEnabled,
+    disabled: disabled || onCall || !canTalk,
     onText: (text) => {
       // Dictation rides the typed-message path: the words land in the draft and
       // the normal send carries them, with its nonce, edit guards and recovery.
@@ -350,7 +352,7 @@ const ComposerBody = memo(function Composer({
   const dictateKey = useRef({ talk, available: false });
   dictateKey.current = {
     talk,
-    available: Boolean(phoneCallsEnabled) && !disabled && !onCall && draft.trim().length === 0,
+    available: canTalk && !disabled && !onCall && draft.trim().length === 0,
   };
   useEventListener(window, "keydown", (event) => {
     if (event.repeat || event.altKey || event.shiftKey || event.key?.toLowerCase() !== "d") return;
@@ -922,7 +924,7 @@ const ComposerBody = memo(function Composer({
           expanded={expanded}
           talk={talk}
           running={running}
-          showTalk={Boolean(phoneCallsEnabled) && draft.trim().length === 0}
+          showTalk={canTalk && draft.trim().length === 0}
           talkDisabled={disabled || onCall}
           sendDisabled={sending || !canSend || disabled}
           stopDisabled={sending}

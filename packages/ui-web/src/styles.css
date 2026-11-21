@@ -193,6 +193,10 @@
   transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.anviq-mascot-avatar-body-idle {
+  animation: anviq-mascot-idle 5.6s ease-in-out infinite;
+}
+
 .anviq-mascot-avatar-body-working {
   opacity: 0;
 }
@@ -219,6 +223,22 @@
 
 .anviq-mascot-avatar[data-working="true"] .anviq-mascot-avatar-eyes-working {
   opacity: 1;
+}
+
+.anviq-mascot-avatar[data-eye-pattern="0"] .anviq-mascot-avatar-eyes-idle {
+  animation: anviq-eyes-idle-0 5.8s ease-in-out infinite;
+}
+
+.anviq-mascot-avatar[data-eye-pattern="1"] .anviq-mascot-avatar-eyes-idle {
+  animation: anviq-eyes-idle-1 6.4s ease-in-out -1.7s infinite;
+}
+
+.anviq-mascot-avatar[data-eye-pattern="2"] .anviq-mascot-avatar-eyes-idle {
+  animation: anviq-eyes-idle-2 5.2s ease-in-out -3.1s infinite;
+}
+
+.anviq-mascot-avatar[data-eye-pattern="3"] .anviq-mascot-avatar-eyes-idle {
+  animation: anviq-eyes-idle-3 6.8s ease-in-out -2.3s infinite;
 }
 
 .anviq-mascot-avatar[data-eye-pattern="0"] .anviq-mascot-avatar-eyes-working {
@@ -275,6 +295,128 @@
 .anviq-mascot-avatar[data-working="false"] .anviq-mascot-avatar-body-working,
 .anviq-mascot-avatar[data-working="false"] .anviq-mascot-avatar-eyes-working {
   animation-play-state: paused;
+}
+
+@keyframes anviq-mascot-idle {
+  0%,
+  100% {
+    transform: translateY(1.2px) scale(1.012, 0.988);
+  }
+  50% {
+    transform: translateY(-1.4px) scale(0.988, 1.012);
+  }
+}
+
+@keyframes anviq-eyes-idle-0 {
+  0%,
+  32%,
+  100% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  35% {
+    transform: translate(0, 0) scaleY(0.08);
+  }
+  38% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  48%,
+  62% {
+    transform: translate(3px, -0.5px) scaleY(1);
+  }
+  70%,
+  84% {
+    transform: translate(-2.5px, 0.5px) scaleY(1);
+  }
+  89% {
+    transform: translate(0, 0) scaleY(0.12);
+  }
+  91% {
+    transform: translate(0, 0) scaleY(1);
+  }
+}
+
+@keyframes anviq-eyes-idle-1 {
+  0%,
+  25%,
+  100% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  32%,
+  48% {
+    transform: translate(-3px, -1px) scaleY(1);
+  }
+  54% {
+    transform: translate(0, 0) scaleY(0.08);
+  }
+  56% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  59% {
+    transform: translate(0, 0) scaleY(0.08);
+  }
+  61% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  68%,
+  82% {
+    transform: translate(2.5px, 0.5px) scaleY(1);
+  }
+}
+
+@keyframes anviq-eyes-idle-2 {
+  0%,
+  28%,
+  100% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  36%,
+  52% {
+    transform: translate(0.5px, -1.8px) scaleY(1.05);
+  }
+  58% {
+    transform: translate(0, 0) scaleY(0.08);
+  }
+  60% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  68%,
+  85% {
+    transform: translate(3px, 0) scaleY(1);
+  }
+  92% {
+    transform: translate(0, 0) scaleY(0.1);
+  }
+  94% {
+    transform: translate(0, 0) scaleY(1);
+  }
+}
+
+@keyframes anviq-eyes-idle-3 {
+  0%,
+  24%,
+  100% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  30%,
+  46% {
+    transform: translate(-2.5px, 1.2px) scaleY(0.95);
+  }
+  52% {
+    transform: translate(0, 0) scaleY(0.08);
+  }
+  54% {
+    transform: translate(0, 0) scaleY(1);
+  }
+  62%,
+  78% {
+    transform: translate(2.8px, -1px) scaleY(1);
+  }
+  86% {
+    transform: translate(0, 0) scaleY(0.08);
+  }
+  88% {
+    transform: translate(0, 0) scaleY(1);
+  }
 }
 
 @keyframes anviq-mascot-float {

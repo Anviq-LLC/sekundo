@@ -19,18 +19,15 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DropdownMenuItem,
   Spinner,
 } from "@anviq/ui-web";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SettingsPageHeader } from "../../components/settings/SettingsPageHeader";
 import type { ModelCredential } from "../../lib/models/model-auth";
-import { useSpaceQueries } from "../../lib/query/query";
 import { CompatibleModelFields } from "./compatible-model-fields";
 import { CompatibleKeyControls, ConnectionControls } from "./connection-controls";
 import type { ModelRoleConnectIntent } from "./ModelRoleSettings";
@@ -143,25 +140,11 @@ export function ModelSettingsOverlay({
     credentialByProvider.get(id)?.endpointName ??
     groups.find((group) => group.id === id)?.name ??
     id;
-  // The approval model only judges actions in Auto, so it shows only then. A Space may
-  // inherit Approvals from the account, so its page asks for whichever copy applies there.
-  const queries = useSpaceQueries();
-  const approvalMode = useQuery(
-    queries.autoReview.get.queryOptions({ input: scope === "account" ? { scope } : {} }),
-  ).data?.mode;
-  // Screen work runs on the main model unless it cannot read images, so the computer-use
-  // list shows only then, once one is chosen, or when asked for from the main model's menu.
-  const [computerOpened, setComputerOpened] = useState(false);
   const mainRole = useModelRole(me, scope, "main");
   const firstConnection = isFirstModelConnection(scope, me?.needsModel, credentials.length);
-  const computerRole = useModelRole(me, scope, "computer");
   const mainChoice = mainRole?.primary ?? mainRole?.deploymentPrimary ?? null;
   // The server answers as runs do. A model it could not check may not see, so the list shows.
   const mainSeesImages = !mainChoice || mainRole?.seesImages === true;
-  const showComputer =
-    computerOpened ||
-    !mainSeesImages ||
-    Boolean(computerRole?.primary || computerRole?.backups.length);
 
   // A hosted preset shares the compatible provider id with a saved local server.
   const connected = Boolean(
@@ -389,15 +372,8 @@ export function ModelSettingsOverlay({
                 />
               ) : null
             }
-            primaryMenuItems={
-              showComputer ? null : (
-                <DropdownMenuItem onClick={() => setComputerOpened(true)}>
-                  <Trans>Computer-use model…</Trans>
-                </DropdownMenuItem>
-              )
-            }
           />
-          {!firstConnection && approvalMode === "auto" ? (
+          {!firstConnection ? (
             <ModelRoleSettings
               userId={me.userId}
               spaceId={me.spaceId}
@@ -414,7 +390,7 @@ export function ModelSettingsOverlay({
               panel={connectionAt === "approval" ? panelFor(true) : null}
             />
           ) : null}
-          {!firstConnection && showComputer ? (
+          {!firstConnection ? (
             <ModelRoleSettings
               userId={me.userId}
               spaceId={me.spaceId}
